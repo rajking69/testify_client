@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -19,13 +21,21 @@ export const metadata: Metadata = {
   description: "Secure online assessments, automated evaluation, and performance analytics for modern education.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="en"
       className={`${outfit.variable} ${plusJakartaSans.variable} h-full antialiased font-sans`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-white text-slate-900">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-white text-slate-900">
+        <Navbar />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </body>
     </html>
   );
 }
