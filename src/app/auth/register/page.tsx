@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { signUp } from "@/app/lib/auth-client";
+import { signUp } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 type UserRole = "student" | "examiner";
 
@@ -132,21 +133,35 @@ export default function RegisterPage() {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
 
     try {
-      await signUp.email({
+      const result = await signUp.email({
         email: formData.email,
         password: formData.password,
         name: formData.name,
+        callbackURL: "/",
         fetchOptions: {
           body: {
             role: formData.role,
           },
         },
       });
-      router.push("/");
-    } catch (error) {
-      setErrors({ email: "Registration failed. Please try again." });
+
+      if (result.error) {
+        toast.error(
+          result.error.message || "Registration failed. Please try again.",
+        );
+      } else {
+        toast.success("Account created successfully!");
+        router.push("/");
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
