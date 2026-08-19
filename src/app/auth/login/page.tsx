@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "@/app/lib/auth-client";
+import { signIn } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,15 +48,28 @@ export default function LoginPage() {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
 
     try {
-      await signIn.email({
+      const result = await signIn.email({
         email: formData.email,
         password: formData.password,
+        callbackURL: "/",
       });
-      router.push("/");
-    } catch (error) {
-      setErrors({ email: "Invalid email or password" });
+
+      if (result.error) {
+        toast.error(
+          result.error.message ||
+            "Login failed. Please check your credentials.",
+        );
+      } else {
+        toast.success("Login successful!");
+        router.push("/");
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Login failed. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -233,7 +247,7 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-white text-slate-500 font-medium">
-                Don't have an account?
+                Don&apos;t have an account?
               </span>
             </div>
           </div>
