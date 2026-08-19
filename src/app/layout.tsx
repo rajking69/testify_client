@@ -36,6 +36,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${outfit.variable} ${plusJakartaSans.variable} h-full antialiased font-sans`}
+      data-scroll-behavior="smooth"
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-slate-900">
         <Navbar />
