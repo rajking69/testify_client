@@ -3,8 +3,6 @@ dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 import type { Metadata } from "next";
 import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/landing/Navbar";
-import Footer from "@/components/landing/Footer";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -38,9 +36,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-slate-900">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        {children}
         <ToastContainer
           position="top-right"
           autoClose={5000}

@@ -5,8 +5,9 @@ import { signUp } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { Logo } from "@/components/ui/Logo";
 
-type UserRole = "student" | "examiner";
+type UserRole = "student" | "teacher" | "admin";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -188,17 +189,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-              <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-extrabold text-[#152234]">
-              Testify<span className="text-[#0092E3]">.</span>
-            </span>
-          </Link>
-          <h1 className="text-3xl font-extrabold text-[#152234] mb-2">
+          <div className="flex justify-center mb-4">
+            <Logo size={44} textClassName="text-2xl font-extrabold text-[#0B2238]" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-[#0B2238] mb-2">
             Create Account
           </h1>
           <p className="text-slate-600">
@@ -270,62 +264,51 @@ export default function RegisterPage() {
             {/* Role Selection */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                I want to join as
+                Select Account Role
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2.5">
                 <button
                   type="button"
                   onClick={() => handleRoleChange("student")}
-                  className={`px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
                     formData.role === "student"
-                      ? "border-[#0092E3] bg-[#EBF7FF] text-[#0092E3]"
+                      ? "border-[#00A3C4] bg-[#EBF7FF] text-[#0B2238] shadow-sm font-bold"
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                      />
-                    </svg>
-                    Student
-                  </div>
+                  <p className="text-xs font-bold">Student</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Take Exams</p>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleRoleChange("examiner")}
-                  className={`px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${
-                    formData.role === "examiner"
-                      ? "border-[#0092E3] bg-[#EBF7FF] text-[#0092E3]"
+                  onClick={() => handleRoleChange("teacher")}
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
+                    formData.role === "teacher"
+                      ? "border-[#0B2238] bg-[#E9F0F8] text-[#0B2238] shadow-sm font-bold"
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                      />
-                    </svg>
-                    Examiner
-                  </div>
+                  <p className="text-xs font-bold">Teacher</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Conduct Exams</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRoleChange("admin")}
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
+                    formData.role === "admin"
+                      ? "border-[#E8922C] bg-[#FFF8EE] text-[#0B2238] shadow-sm font-bold"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <p className="text-xs font-bold">Admin</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Manage System</p>
                 </button>
               </div>
+              <p className="text-[11px] text-slate-500 mt-2">
+                {formData.role === "student" && "✓ Student: Attend exams and view results. (Cannot create or manage exams)"}
+                {formData.role === "teacher" && "✓ Teacher: Create, conduct, and evaluate exams. (Cannot take exams as an examinee)"}
+                {formData.role === "admin" && "✓ Admin: Institutional user management and complete system oversight."}
+              </p>
             </div>
 
             {/* Password Field */}

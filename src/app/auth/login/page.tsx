@@ -5,6 +5,7 @@ import { signIn } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -89,17 +90,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-              <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-extrabold text-[#152234]">
-              Testify<span className="text-[#0092E3]">.</span>
-            </span>
-          </Link>
-          <h1 className="text-3xl font-extrabold text-[#152234] mb-2">
+          <div className="flex justify-center mb-4">
+            <Logo size={44} textClassName="text-2xl font-extrabold text-[#0B2238]" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-[#0B2238] mb-2">
             Welcome Back
           </h1>
           <p className="text-slate-600">
