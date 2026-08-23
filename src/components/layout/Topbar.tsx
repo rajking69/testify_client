@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Home, LogOut, ChevronDown, Bell } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface TopbarProps {
   onOpenMobileSidebar: () => void;
@@ -53,7 +54,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
         </div>
       </div>
 
-      {/* Right: Landing Link & User Dropdown */}
+      {/* Right: Landing Link, Theme Toggle & User Dropdown */}
       <div className="flex items-center gap-3">
         <Link
           href="/"
@@ -63,6 +64,9 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
           <Home className="h-3.5 w-3.5" />
           <span>Landing Page</span>
         </Link>
+
+        {/* Animated Theme Toggle */}
+        <ThemeToggle />
 
         <button
           className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
