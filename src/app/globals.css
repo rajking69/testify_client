@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui";
+@custom-variant dark (.dark &, [data-theme="dark"] &);
 
 /* ==========================================================================
    TESTIFY DESIGN FOUNDATION SYSTEM (PART 1A)
@@ -66,6 +67,39 @@
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
+.dark, [data-theme="dark"] {
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-primary-light: #1e3a8a;
+  
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-light: #312e81;
+
+  --color-background: #090d16;
+  --color-bg-app: #030712;
+  --color-surface: #0f172a;
+  --color-surface-elevated: #1e293b;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #0f172a;
+
+  --color-border: #1e293b;
+  --color-border-subtle: #0f172a;
+
+  --color-success-bg: #064e3b;
+  --color-warning-bg: #78350f;
+  --color-error-bg: #7f1d1d;
+  --color-info-bg: #0c4a6e;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+}
+
 @theme inline {
   --color-background: var(--color-background);
   --color-foreground: var(--color-text-primary);
@@ -81,6 +115,7 @@ body {
   background: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==========================================================================
