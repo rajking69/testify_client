@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Testify — UI/UX Design System & Style Ruleset
 
 This ruleset defines the official UI/UX design tokens, typography, component layout rules, color palette, animations, and responsiveness standards for the **Testify** platform.

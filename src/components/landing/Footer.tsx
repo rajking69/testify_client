@@ -1,163 +1,150 @@
+"use client";
+
+import React from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Globe, ShieldCheck, Sparkles, Layers, ShieldAlert, BookOpen } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export default function Footer() {
   return (
-    <footer className="mt-auto border-t border-slate-200/80 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-950 transition-colors">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        
-        {/* Main 4-Column Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-slate-200 dark:border-slate-800">
-          
-          {/* Column 1: Platform */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Platform
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/about" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/how-it-works" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  How It Works
-                </Link>
-              </li>
-              <li>
-                <Link href="/exams" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Exams
-                </Link>
-              </li>
-            </ul>
-          </div>
+    <footer className="relative w-full overflow-hidden bg-[#F0F6FA]/90 dark:bg-[#050914] text-slate-700 dark:text-slate-300 pt-16 pb-12 transition-colors duration-300">
+      {/* 4 Heavy Animated Colorful Aurora Blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-0">
+        {/* 1. Cyber Cyan & Sky Blue Blob */}
+        <motion.div
+          animate={{
+            x: [0, 50, -30, 0],
+            y: [0, -30, 40, 0],
+            scale: [1, 1.25, 0.9, 1],
+          }}
+          transition={{
+            duration: 16,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute -top-16 -left-16 w-96 h-96 bg-gradient-to-tr from-cyan-400/40 via-sky-400/35 to-blue-500/30 dark:from-cyan-500/25 dark:via-blue-600/20 dark:to-indigo-600/20 rounded-full blur-[90px]"
+        />
 
-          {/* Column 2: Support */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Support
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/help" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  FAQ
-                </Link>
-              </li>
-              <li>
-                <Link href="/report-problem" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Report a Problem
-                </Link>
-              </li>
-            </ul>
-          </div>
+        {/* 2. Warm Golden Amber & Rose Pink Blob */}
+        <motion.div
+          animate={{
+            x: [0, -45, 35, 0],
+            y: [0, 40, -35, 0],
+            scale: [1, 1.3, 0.85, 1],
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1,
+          }}
+          className="absolute top-1/4 right-0 w-96 h-96 bg-gradient-to-bl from-amber-400/40 via-rose-400/35 to-orange-400/30 dark:from-amber-500/25 dark:via-rose-600/20 dark:to-orange-500/20 rounded-full blur-[90px]"
+        />
 
-          {/* Column 3: Legal */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Legal
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/privacy" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Terms & Conditions
-                </Link>
-              </li>
-              <li>
-                <Link href="/exam-rules" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Exam Rules & Instructions
-                </Link>
-              </li>
-            </ul>
-          </div>
+        {/* 3. Vivid Electric Violet & Purple Blob */}
+        <motion.div
+          animate={{
+            x: [0, 40, -45, 0],
+            y: [0, -35, 45, 0],
+            scale: [1, 1.2, 0.9, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2,
+          }}
+          className="absolute -bottom-10 left-1/3 w-[450px] h-[450px] bg-gradient-to-r from-purple-500/40 via-violet-400/35 to-indigo-500/35 dark:from-purple-600/25 dark:via-violet-600/20 dark:to-indigo-600/20 rounded-full blur-[100px]"
+        />
 
-          {/* Column 4: Social Media */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Connect With Us
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Follow our channels for exam updates, syllabus changes & study tips.
+        {/* 4. Luminous Emerald & Teal Blob */}
+        <motion.div
+          animate={{
+            x: [0, -35, 40, 0],
+            y: [0, 35, -40, 0],
+            scale: [0.9, 1.25, 0.9, 0.9],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1.5,
+          }}
+          className="absolute -bottom-10 right-10 w-96 h-96 bg-gradient-to-tl from-emerald-400/35 via-teal-400/30 to-cyan-300/30 dark:from-emerald-500/20 dark:via-teal-500/20 dark:to-cyan-500/20 rounded-full blur-[90px]"
+        />
+      </div>
+
+      {/* Top Colorful Animated Rainbow Neon Border */}
+      <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-cyan-400 via-purple-500 via-rose-400 via-amber-400 to-emerald-400 opacity-90 shadow-[0_0_15px_rgba(6,182,212,0.4)]" />
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12 z-10">
+        {/* Main Footer Links */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-10">
+          {/* Column 1: Brand Info */}
+          <div className="col-span-2 space-y-4">
+            <Logo size={36} textClassName="text-[#0B2238] dark:text-white font-bold" />
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm">
+              An AI-powered assessment operating system providing distraction-free testing for Students, rich question banks for Teachers, and campus-wide oversight for Administrators.
             </p>
-            <div className="flex items-center gap-3 pt-1">
-              {/* Facebook */}
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Facebook"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 transition-all"
-              >
-                <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              </a>
+          </div>
 
-              {/* YouTube */}
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="YouTube"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 transition-all"
-              >
-                <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                </svg>
-              </a>
-
-              {/* LinkedIn */}
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="LinkedIn"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-700 hover:text-white dark:hover:bg-blue-700 transition-all"
-              >
-                <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                </svg>
-              </a>
-
-              {/* GitHub */}
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="GitHub"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-900 hover:text-white dark:hover:bg-slate-700 transition-all"
-              >
-                <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                </svg>
-              </a>
+          {/* Column 2: Role Portals (Electric Violet & Purple Accents) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
+              <Sparkles className="h-3.5 w-3.5" />
+              <h4 className="font-display">Role Portals</h4>
             </div>
+            <ul className="space-y-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <li><Link href="/auth/login" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Student Exam Room</Link></li>
+              <li><Link href="/teacher/dashboard" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Teacher Workspace</Link></li>
+              <li><Link href="/admin/dashboard" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Admin Oversight</Link></li>
+              <li><Link href="/teacher/question-bank" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Question Bank</Link></li>
+            </ul>
+          </div>
+
+          {/* Column 3: Platform Features (Warm Golden Amber & Rose Pink Accents) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
+              <Layers className="h-3.5 w-3.5" />
+              <h4 className="font-display">Platform</h4>
+            </div>
+            <ul className="space-y-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <li><Link href="#features" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">All Features</Link></li>
+              <li><Link href="#security" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">AI Proctoring &amp; Lockdown</Link></li>
+              <li><Link href="#why-testify" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Auto-Grading Engine</Link></li>
+              <li><Link href="#pricing" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Pricing &amp; Plans</Link></li>
+            </ul>
+          </div>
+
+          {/* Column 4: Legal & Support (Luminous Emerald & Teal Accents) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider">
+              <BookOpen className="h-3.5 w-3.5" />
+              <h4 className="font-display">Support &amp; Trust</h4>
+            </div>
+            <ul className="space-y-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Help Documentation</span></li>
+              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Privacy Policy</span></li>
+              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Terms of Service</span></li>
+              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Accessibility Statement</span></li>
+            </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
-          <p>© 2026 Testify. All Rights Reserved.</p>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-medium text-slate-600 dark:text-slate-300">Exam Portal Status: Online</span>
+        {/* Bottom Copyright & Live Status Bar */}
+        <div className="pt-8 border-t border-slate-300/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-4">
+          <p className="flex items-center gap-1.5 font-medium">
+            © {new Date().getFullYear()} <span className="font-bold text-[#0B2238] dark:text-white">Testify Inc.</span> Built with assessment intelligence.
+          </p>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-1.5 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer font-medium">
+              <Globe className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" /> English (US)
+            </span>
+            <span>•</span>
+            <span className="inline-flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 px-3 py-1 rounded-full shadow-2xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> All Systems Operational
+            </span>
           </div>
         </div>
       </div>

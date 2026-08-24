@@ -1,47 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
-
-interface NavItem {
-  label: string;
-  href: string;
-  badge?: string;
-}
-
-// Student Navigation Items
-const studentNavItems: NavItem[] = [
-  { label: "Home", href: "/" },
-  { label: "Exams", href: "/exams" },
-  { label: "Categories", href: "/categories" },
-  { label: "Leaderboard", href: "/leaderboard" },
-  { label: "My Results", href: "/results" },
-  { label: "My Exams", href: "/my-exams" },
-];
-
-// Admin Navigation Items
-const adminNavItems: NavItem[] = [
-  { label: "Dashboard", href: "/admin/dashboard" },
-  { label: "Manage Exams", href: "/admin/exams" },
-  { label: "Manage Questions", href: "/admin/questions" },
-  { label: "Manage Students", href: "/admin/students" },
-  { label: "Results", href: "/admin/results" },
-  { label: "Reports", href: "/admin/reports" },
-];
+import { Search, Menu, X, ChevronDown, LogOut, Shield, GraduationCap, UserCheck, ShieldAlert } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function Navbar() {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  const isAdminView = session?.user?.role === "admin";
-  const isExaminerView = session?.user?.role === "examiner";
+  const [showRolesDropdown, setShowRolesDropdown] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const isLoggedIn = !!session;
-  const activeNavItems = isAdminView ? adminNavItems : studentNavItems;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -49,399 +36,264 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/90 transition-all duration-300">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-        {/* Brand Logo & View Switcher */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
-              <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent dark:from-white dark:to-slate-200">
-                Testify
-                <span className="text-blue-600 dark:text-blue-400">.</span>
-              </span>
-            </div>
-          </Link>
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
+        isScrolled
+          ? "bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800/70 shadow-xs"
+          : "bg-transparent border-b border-transparent shadow-none"
+      }`}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 h-16 sm:h-20 transition-all duration-300">
+        {/* Left: Brand Logo & Links */}
+        <div className="flex items-center gap-8">
+          <Logo size={34} textClassName="text-[#0B2238] dark:text-white font-bold" />
 
-          {/* Role Badge (based on session) */}
-          <div
-            className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
-              isAdminView
-                ? "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400"
-                : isExaminerView
-                  ? "bg-purple-500/10 text-purple-600 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400"
-                  : "bg-blue-500/10 text-blue-600 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400"
-            }`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${isAdminView ? "bg-amber-500" : isExaminerView ? "bg-purple-500" : "bg-blue-500"}`}
-            />
-            {isAdminView
-              ? "Admin Mode"
-              : isExaminerView
-                ? "Examiner Mode"
-                : "Student Mode"}
-          </div>
-        </div>
-
-        {/* Desktop Main Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {activeNavItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="px-3 py-2 text-sm font-medium text-slate-700 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
-            >
-              {item.label}
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-6 text-[13px] font-semibold text-slate-800 dark:text-slate-200">
+            <Link href="#features" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+              Features
             </Link>
-          ))}
-        </nav>
+            <Link href="#why-testify" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+              Why Testify
+            </Link>
+            <Link href="#security" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+              Security
+            </Link>
 
-        {/* Desktop Right Action Area (Notifications & Profile / Auth) */}
-        <div className="hidden md:flex items-center gap-3">
-          {/* Notifications Dropdown Toggle */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowNotifications(!showNotifications);
-                setShowProfileMenu(false);
-              }}
-              type="button"
-              aria-label="Notifications"
-              className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-              {/* Notification Badge */}
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-950 animate-pulse" />
-            </button>
-
-            {/* Notifications Popup */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800 p-4 z-50 text-sm">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    Notifications
-                  </span>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-                    Mark all read
-                  </span>
-                </div>
-                <div className="mt-3 space-y-3">
-                  <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 text-xs">
-                    <p className="font-medium text-slate-900 dark:text-slate-100">
-                      📝 Upcoming Exam Alert
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                      Software Engineering Test starts at 4:00 PM.
-                    </p>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs">
-                    <p className="font-medium text-slate-900 dark:text-slate-100">
-                      🏆 Leaderboard Update
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                      You ranked #3 in Math Speed Test!
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Authentication State Toggle / Profile Menu */}
-          {isPending ? (
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
-              <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
-            </div>
-          ) : isLoggedIn ? (
+            {/* 3 Roles Dropdown Menu (Student, Teacher, Admin) */}
             <div className="relative">
               <button
-                onClick={() => {
-                  setShowProfileMenu(!showProfileMenu);
-                  setShowNotifications(false);
-                }}
-                type="button"
-                aria-label="User menu"
-                className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                onClick={() => setShowRolesDropdown((prev) => !prev)}
+                className="flex items-center gap-1 text-slate-800 dark:text-slate-200 hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors font-semibold cursor-pointer"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold text-xs shadow-sm overflow-hidden">
-                  {session?.user?.image ? (
-                    <img
-                      src={session.user.image}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>
-                      {session?.user?.name?.charAt(0).toUpperCase() ||
-                        session?.user?.email?.charAt(0).toUpperCase() ||
-                        "U"}
-                    </span>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                  {session?.user?.name ||
-                    session?.user?.email?.split("@")[0] ||
-                    "User"}
-                </span>
-                <svg
-                  className="h-4 w-4 text-slate-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                <span>Role Portals</span>
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
               </button>
 
-              {/* Profile Dropdown Popup */}
+              {showRolesDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowRolesDropdown(false)}
+                  />
+                  <div className="absolute left-0 mt-2 w-60 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200/90 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setShowRolesDropdown(false)}
+                      className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                        <GraduationCap className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Student Portal</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Take exams &amp; view scores</p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/teacher/dashboard"
+                      onClick={() => setShowRolesDropdown(false)}
+                      className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                        <UserCheck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Teacher Portal</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Create &amp; evaluate exams</p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/admin/dashboard"
+                      onClick={() => setShowRolesDropdown(false)}
+                      className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+                        <ShieldAlert className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Admin Portal</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">System oversight &amp; analytics</p>
+                      </div>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Link href="#pricing" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+              Pricing
+            </Link>
+          </nav>
+        </div>
+
+        {/* Right: Search, Theme Toggle & Actions */}
+        <div className="hidden sm:flex items-center gap-3">
+          {/* Quick Search */}
+          <div className="relative">
+            <Search className={`absolute left-3 top-2.5 h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`} />
+            <input
+              type="text"
+              placeholder="Search platform..."
+              className={`h-8 w-36 lg:w-48 rounded-full border pl-8 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#00A3C4] transition-all shadow-2xs ${
+                isScrolled
+                  ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                  : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white placeholder-slate-200 backdrop-blur-xs"
+              }`}
+            />
+          </div>
+
+          {/* Animated Theme Toggle */}
+          <ThemeToggle />
+
+          {isLoggedIn ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu((prev) => !prev)}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer shadow-2xs ${
+                  isScrolled
+                    ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
+                    : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white hover:bg-white/30 backdrop-blur-xs"
+                }`}
+              >
+                <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#00A3C4] to-[#0B2238] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                  {session.user?.name ? session.user.name.charAt(0).toUpperCase() : "U"}
+                </div>
+                <span className="max-w-[100px] truncate">{session.user?.name || "Account"}</span>
+                <ChevronDown className={`h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`} />
+              </button>
+
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 text-sm">
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
                   <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                    <p className="font-semibold text-slate-900 dark:text-white">
-                      {session?.user?.name || "User"}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {session?.user?.email}
-                    </p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{session.user?.name}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{session.user?.email}</p>
                   </div>
-                  <div className="py-1">
-                    <Link
-                      href="/profile"
-                      onClick={() => setShowProfileMenu(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                      Profile Settings
-                    </Link>
-                    <Link
-                      href="/settings"
-                      onClick={() => setShowProfileMenu(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      Account Preferences
-                    </Link>
-                  </div>
-                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setShowProfileMenu(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left font-medium"
-                    >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                        />
-                      </svg>
-                      Log Out
-                    </button>
-                  </div>
+                  <Link
+                    href="/teacher/dashboard"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <Shield className="h-4 w-4 text-[#00A3C4]" />
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Link
                 href="/auth/login"
-                className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors"
+                className={`px-3.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                  isScrolled
+                    ? "text-slate-800 dark:text-slate-200 hover:text-[#00A3C4] dark:hover:text-white"
+                    : "text-white hover:text-cyan-300 drop-shadow-xs"
+                }`}
               >
-                Login
+                Log in
               </Link>
               <Link
                 href="/auth/register"
-                className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md shadow-blue-500/20 transition-all active:scale-95"
+                className="px-4 py-1.5 rounded-full bg-[#00A3C4] hover:bg-[#38bdf8] text-[#0B2238] text-xs font-bold shadow-md transition-all active:scale-95 cursor-pointer"
               >
-                Register
+                Create free account
               </Link>
             </div>
           )}
         </div>
 
-        {/* Mobile Hamburger Button */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          type="button"
-          className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 focus:outline-none"
-          aria-expanded={isOpen}
-          aria-label="Toggle Navigation"
-        >
-          {isOpen ? (
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          )}
-        </button>
+        {/* Mobile Menu Button */}
+        <div className="flex lg:hidden items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setIsOpen((prev) => !prev)}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${
+              isScrolled
+                ? "bg-white/80 dark:bg-slate-900 border-slate-300/80 dark:border-slate-800 text-slate-800 dark:text-slate-300 hover:text-blue-600"
+                : "bg-white/20 dark:bg-slate-900 border-white/30 dark:border-slate-800 text-white hover:text-cyan-300"
+            }`}
+            aria-label="Toggle Menu"
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer */}
       {isOpen && (
-        <div className="lg:hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-          {/* Role Badge */}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border transition-all ${
-              isAdminView
-                ? "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400"
-                : isExaminerView
-                  ? "bg-purple-500/10 text-purple-600 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400"
-                  : "bg-blue-500/10 text-blue-600 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400"
-            }`}
+        <div className="lg:hidden border-t border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl px-4 py-4 space-y-3 shadow-xl">
+          <Link
+            href="#features"
+            onClick={() => setIsOpen(false)}
+            className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
           >
-            <span
-              className={`h-2 w-2 rounded-full ${isAdminView ? "bg-amber-500" : isExaminerView ? "bg-purple-500" : "bg-blue-500"}`}
-            />
-            {isAdminView
-              ? "Admin Mode"
-              : isExaminerView
-                ? "Examiner Mode"
-                : "Student Mode"}
-          </div>
-          {/* Navigation Links */}
-          <div className="flex flex-col space-y-1">
-            <span className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              {isAdminView
-                ? "Admin Management"
-                : isExaminerView
-                  ? "Examiner Menu"
-                  : "Student Menu"}
-            </span>
-            {activeNavItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className="px-3 py-2.5 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
+            Features
+          </Link>
+          <Link
+            href="#why-testify"
+            onClick={() => setIsOpen(false)}
+            className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
+          >
+            Why Testify
+          </Link>
+          <Link
+            href="#security"
+            onClick={() => setIsOpen(false)}
+            className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
+          >
+            Security
+          </Link>
+
+          {/* Role Portals Mobile */}
+          <div className="pt-2 pb-1 border-y border-slate-100 dark:border-slate-800 space-y-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Role Portals</span>
+            <Link
+              href="/auth/login"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-[#00A3C4]" /> Student Portal
+            </Link>
+            <Link
+              href="/teacher/dashboard"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
+            >
+              <UserCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Teacher Portal
+            </Link>
+            <Link
+              href="/admin/dashboard"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
+            >
+              <ShieldAlert className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" /> Admin Portal
+            </Link>
           </div>
 
-          {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
-            {isLoggedIn ? (
-              <>
-                <Link
-                  href="/profile"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800"
-                >
-                  My Profile & Settings
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsOpen(false);
-                  }}
-                  className="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
-                >
-                  Log Out
-                </button>
-              </>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/auth/register"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
+          <div className="pt-2 flex flex-col gap-2">
+            <Link
+              href="/auth/login"
+              onClick={() => setIsOpen(false)}
+              className="text-center py-2 text-xs font-bold text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-full bg-white/70"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/auth/register"
+              onClick={() => setIsOpen(false)}
+              className="text-center py-2 rounded-full bg-[#00A3C4] text-[#0B2238] text-xs font-bold shadow-sm"
+            >
+              Create free account
+            </Link>
           </div>
         </div>
       )}
