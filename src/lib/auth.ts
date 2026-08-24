@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, customSession } from "better-auth/plugins";
 import { Resend } from "resend";
 
 const mongoUri =
@@ -13,7 +13,9 @@ const client = new MongoClient(mongoUri);
 const db = client.db(mongoDbName);
 
 // Initialize Resend if API key is available
-const resend = new Resend(process.env.RESEND_API_KEY as string);
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY as string)
+  : null;
 const fromEmail = process.env.RESEND_FROM_EMAIL as string;
 
 export const auth = betterAuth({
@@ -21,16 +23,35 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+  },
   user: {
     additionalFields: {
       role: {
-        type: "string",
+        type: ["student", "teacher", "admin"],
         required: false,
         defaultValue: "student",
+        input: false,
+        returned: true,
       },
     },
   },
   plugins: [
+    customSession(async ({ user, session }) => {
+      return {
+        user,
+        session,
+        roles: [user.role],
+      };
+    }),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
         if (type === "forget-password") {
