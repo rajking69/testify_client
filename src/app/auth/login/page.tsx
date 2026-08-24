@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "@/lib/auth-client";
+import { signIn, socialSignIn } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -96,6 +96,36 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof typeof errors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      await socialSignIn({
+        provider: "google",
+        callbackURL: "/dashboard/teacher",
+      });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Google sign-in failed. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
+  const signInWithGitHub = async () => {
+    try {
+      await socialSignIn({
+        provider: "github",
+        callbackURL: "/dashboard/teacher",
+      });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "GitHub sign-in failed. Please try again.";
+      toast.error(errorMessage);
     }
   };
 
@@ -343,11 +373,7 @@ export default function LoginPage() {
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    onClick={() =>
-                      toast.info(
-                        "Google authentication integration coming soon",
-                      )
-                    }
+                    onClick={signInWithGoogle}
                     className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
                     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
@@ -373,11 +399,7 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      toast.info(
-                        "GitHub authentication integration coming soon",
-                      )
-                    }
+                    onClick={signInWithGitHub}
                     className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
                     <svg
