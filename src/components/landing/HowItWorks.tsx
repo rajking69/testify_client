@@ -1,116 +1,105 @@
+"use client";
+
 import React from "react";
+import { motion } from "framer-motion";
 import {
-  FiFilePlus,
-  FiClock,
-  FiSend,
-  FiAward,
-  FiArrowRight,
-} from "react-icons/fi";
-
-interface Step {
-  number: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  stepTag: string;
-}
-
-const steps: Step[] = [
-  {
-    number: "01",
-    title: "Create / Choose Assessment",
-    description:
-      "Select a prebuilt template from the question bank or customize a new exam with tailored rules, durations, and passing thresholds.",
-    icon: <FiFilePlus className="w-6 h-6 text-[#0092E3]" />,
-    stepTag: "Step 01",
-  },
-  {
-    number: "02",
-    title: "Take Assessment",
-    description:
-      "Candidates log into their secure examination session, answering questions in a focused, distraction-free environment with real-time timer tracking.",
-    icon: <FiClock className="w-6 h-6 text-[#0092E3]" />,
-    stepTag: "Step 02",
-  },
-  {
-    number: "03",
-    title: "Submit",
-    description:
-      "Review answered, unattempted, and flagged questions on the summary screen before locking in final exam submission.",
-    icon: <FiSend className="w-6 h-6 text-[#0092E3]" />,
-    stepTag: "Step 03",
-  },
-  {
-    number: "04",
-    title: "Get Result",
-    description:
-      "Instantly receive automated grades, detailed question explanations, and performance metrics right after submission.",
-    icon: <FiAward className="w-6 h-6 text-[#0092E3]" />,
-    stepTag: "Step 04",
-  },
-];
+  FilePlus2,
+  Send,
+  MonitorPlay,
+  CheckCircle,
+} from "lucide-react";
+import { AnimatedBackground } from "./AnimatedBackground";
 
 export default function HowItWorks() {
+  const steps = [
+    {
+      number: "01",
+      icon: <FilePlus2 className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
+      title: "Teacher Creates Exam",
+      desc: "Assemble questions from your Question Bank or generate new ones using AI prompts and LaTeX equations.",
+      badge: "Step 1",
+    },
+    {
+      number: "02",
+      icon: <Send className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
+      title: "Distribute Test Code",
+      desc: "Share a 6-digit exam code with your students or auto-schedule it via your connected Google Classroom or LMS.",
+      badge: "Step 2",
+    },
+    {
+      number: "03",
+      icon: <MonitorPlay className="h-6 w-6 text-[#E8922C] dark:text-amber-400" />,
+      title: "Students Attend Test",
+      desc: "Students enter the locked test room on their laptops with auto-saving answers and continuous proctoring checks.",
+      badge: "Step 3",
+    },
+    {
+      number: "04",
+      icon: <CheckCircle className="h-6 w-6 text-[#00A3C4] dark:text-emerald-400" />,
+      title: "Auto-Grade & Analytics",
+      desc: "Instant score generation, AI rubric assistance, and class performance analytics available immediately on submission.",
+      badge: "Step 4",
+    },
+  ];
+
   return (
-    <section className="py-24 lg:py-32 bg-white text-[#152234] relative overflow-hidden">
-      {/* Background Ambient Glow */}
-      <div className="absolute top-1/3 right-5 w-80 h-80 bg-[#0092E3]/5 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+    <section id="how-it-works" className="relative w-full overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#F1F7FB] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 py-16 lg:py-24 border-t border-[#E8EEF3] dark:border-slate-800 transition-colors duration-300">
+      {/* Moving Animated Glow & Tech Grid */}
+      <AnimatedBackground />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 relative z-10">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#0092E3] bg-[#EBF7FF] px-3.5 py-1.5 rounded-full border border-blue-100 shadow-xs inline-block animate-float">
-            Workflow Process
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16 z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center max-w-2xl mx-auto space-y-3"
+        >
+          <span className="text-xs font-bold uppercase tracking-wider text-[#00A3C4] dark:text-cyan-400 bg-blue-50/90 dark:bg-slate-900/90 px-3.5 py-1 rounded-full border border-blue-200 dark:border-slate-800 shadow-2xs">
+            Simple 4-Step Flow
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#152234] tracking-tight">
-            How Testify Works
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-[#0B2238] dark:text-white">
+            How Testify works from start to finish
           </h2>
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            A simple 4-step assessment process designed to make test creation, delivery,
-            and evaluation seamless for instructors and candidates.
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+            A frictionless journey designed for maximum speed, security, and student ease.
           </p>
-        </div>
+        </motion.div>
 
-        {/* 4 Step Process Cards with Hover & Arrow Animations */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
-          {steps.map((step, index) => (
-            <div
-              key={step.number}
-              className="group card-hover-effect bg-[#F8FAFC] border border-slate-200 rounded-2xl p-8 hover:bg-white hover:shadow-2xl hover:shadow-[#0092E3]/15 hover:border-[#0092E3]/60 flex flex-col justify-between"
+        {/* 4 Step Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {steps.map((s, idx) => (
+            <motion.div
+              key={s.number}
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: idx * 0.1 }}
+              whileHover={{ y: -6 }}
+              className="p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 backdrop-blur-sm shadow-xs hover:shadow-lg dark:hover:border-cyan-500/30 transition-all duration-200 space-y-4 relative flex flex-col justify-between"
             >
-              <div>
-                {/* Header: Monospace Step Number + Icon Container */}
-                <div className="flex items-center justify-between mb-6">
-                  <span className="text-3xl font-extrabold text-slate-300 font-mono group-hover:text-[#0092E3] group-hover:scale-110 transition-all duration-300">
-                    {step.number}
-                  </span>
-                  <div className="w-12 h-12 rounded-xl bg-[#EBF7FF] border border-blue-100 flex items-center justify-center group-hover:rotate-6 group-hover:scale-110 transition-transform duration-300">
-                    {step.icon}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+                    {s.icon}
                   </div>
-                </div>
-
-                {/* Step Tag */}
-                <div className="mb-3">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#0092E3] bg-white border border-blue-100 px-2.5 py-1 rounded-md shadow-2xs">
-                    {step.stepTag}
+                  <span className="text-xs font-extrabold font-mono text-[#00A3C4] dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 rounded-full">
+                    {s.number}
                   </span>
                 </div>
-
-                <h3 className="text-lg font-bold text-[#152234] mb-2.5 group-hover:text-[#0092E3] transition-colors">
-                  {step.title}
+                <h3 className="text-base font-bold font-display text-[#0B2238] dark:text-white">
+                  {s.title}
                 </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  {step.description}
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {s.desc}
                 </p>
               </div>
 
-              {/* Desktop Arrow Indicator with Slide Effect */}
-              {index < steps.length - 1 && (
-                <div className="hidden lg:flex justify-end pt-4 border-t border-slate-200/80 mt-6">
-                  <FiArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-2 group-hover:text-[#0092E3] transition-all duration-300" />
-                </div>
-              )}
-            </div>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                <span>{s.badge}</span>
+                <span className="text-[#00A3C4] dark:text-cyan-400 font-bold">→</span>
+              </div>
+            </motion.div>
           ))}
         </div>
       </div>
