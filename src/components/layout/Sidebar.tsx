@@ -8,6 +8,8 @@ import {
   HelpCircle,
   BookOpen,
   BarChart3,
+  Activity,
+  FileCheck2,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +47,21 @@ const teacherNavItems: NavItem[] = [
     label: "Exams",
     href: "/teacher/exams",
     icon: <BookOpen className="h-5 w-5" />,
+  },
+  {
+    label: "Students",
+    href: "/teacher/students",
+    icon: <GraduationCap className="h-5 w-5" />,
+  },
+  {
+    label: "Monitoring",
+    href: "/teacher/monitoring",
+    icon: <Activity className="h-5 w-5" />,
+  },
+  {
+    label: "Evaluation",
+    href: "/teacher/evaluation",
+    icon: <FileCheck2 className="h-5 w-5" />,
   },
   {
     label: "Results",

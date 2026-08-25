@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { BookOpen, HelpCircle, ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, HelpCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -20,12 +20,12 @@ export default function TeacherDashboardPage() {
             Teacher Dashboard
           </h2>
           <p className="text-indigo-100 text-sm leading-relaxed">
-            Welcome back to your assessment portal. The application shell and reusable UI design system components are active.
+            Manage admission, monitor live exams, evaluate submissions, and publish student results from one workspace.
           </p>
           <div className="pt-2">
-            <Link href="/teacher/question-bank">
+            <Link href="/teacher/students">
               <Button variant="secondary" className="bg-white text-indigo-700 hover:bg-indigo-50 font-bold" rightIcon={<ArrowRight className="h-4 w-4" />}>
-                Question Bank
+                Admit students
               </Button>
             </Link>
           </div>
@@ -39,12 +39,12 @@ export default function TeacherDashboardPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 mb-2">
               <HelpCircle className="h-5 w-5" />
             </div>
-            <CardTitle>Question Bank Boundary</CardTitle>
-            <CardDescription>Ready for Card 18 - Question Bank Management</CardDescription>
+              <CardTitle>Student admission</CardTitle>
+              <CardDescription>Review requests and approve exam access</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Standardized UI card component utilizing Part 1A & 1B design system tokens.
+              Assign students to the right exam and track pending requests.
             </p>
           </CardContent>
         </Card>
@@ -54,12 +54,12 @@ export default function TeacherDashboardPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-2">
               <BookOpen className="h-5 w-5" />
             </div>
-            <CardTitle>Exams & Evaluation Shell</CardTitle>
-            <CardDescription>Ready for exam creation and scheduling features</CardDescription>
+              <CardTitle>Exam operations</CardTitle>
+              <CardDescription>Monitor sessions and evaluate submissions</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Standardized UI card component utilizing Part 1A & 1B design system tokens.
+              Follow live activity, review answers, and publish final results.
             </p>
           </CardContent>
         </Card>
