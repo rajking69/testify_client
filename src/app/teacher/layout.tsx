@@ -18,32 +18,65 @@ export default function TeacherLayout({
 
   const userRole = (session?.user as { role?: string })?.role;
 
-  // Student accounts cannot access the teacher exam builder
+  // Unauthenticated visitors cannot access teacher dashboard
+  if (!isPending && !session) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-xl text-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+            <GraduationCap className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">
+            Teacher Authentication Required
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            You must be signed in with an authorized Teacher account to access the Question Bank and exam dashboard.
+          </p>
+          <div className="pt-2 flex flex-col gap-2">
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-semibold text-xs px-5 py-2.5 shadow-sm hover:bg-indigo-700 transition-colors"
+            >
+              <GraduationCap className="h-4 w-4" /> Sign In as Teacher
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" /> Return to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Student accounts cannot access the teacher exam builder & dashboard
   if (!isPending && session && userRole === "student") {
     return (
-      <div className="min-h-screen bg-[#FCFBF7] flex items-center justify-center p-4">
-        <div className="max-w-md w-full rounded-3xl border border-rose-200 bg-white p-8 shadow-xl text-center space-y-4">
-          <div className="h-14 w-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-3xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 p-8 shadow-xl text-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
             <ShieldAlert className="h-7 w-7" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 font-display">
-            Teacher Access Restricted
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">
+            Teacher Workspace Restricted
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            You are currently signed in as a <strong className="text-blue-600">Student</strong>. Student accounts cannot create, edit, or manage exams.
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            You are currently signed in as a <strong className="text-indigo-600 dark:text-indigo-400">Student</strong>. Student accounts cannot access, create, or manage teacher dashboards and question banks.
           </p>
           <div className="pt-2 flex flex-col gap-2">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B2238] text-white font-semibold text-xs px-5 py-2.5 shadow-sm hover:bg-[#13304A] transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-semibold text-xs px-5 py-2.5 shadow-sm hover:bg-indigo-700 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" /> Return to Home
+              <ArrowLeft className="h-4 w-4" /> Go to Student Home / Exams
             </Link>
             <Link
               href="/auth/login"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs px-5 py-2.5 hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
-              <GraduationCap className="h-4 w-4" /> Sign in with Teacher Account
+              <GraduationCap className="h-4 w-4" /> Switch to Teacher Account
             </Link>
           </div>
         </div>
