@@ -1,27 +1,22 @@
 import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { database, mongoClient } from "./mongodb";
+import { userAdditionalFields } from "./user-schema";
 
-const mongoUri =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://Testify-admin:qldkEJD7isbPQ2yQ@cluster013.ojpnf3t.mongodb.net/testify?retryWrites=true&w=majority";
-const mongoDbName = process.env.MONGODB_DB_NAME || "testify";
+const authSecret = process.env.BETTER_AUTH_SECRET;
 
-const client = new MongoClient(mongoUri);
-const db = client.db(mongoDbName);
+if (!authSecret) {
+  throw new Error("Missing BETTER_AUTH_SECRET. Add it to .env.local before starting the server.");
+}
 
 export const auth = betterAuth({
-  database: mongodbAdapter(db, { client }),
+  database: mongodbAdapter(database, { client: mongoClient }),
+  secret: authSecret,
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   emailAndPassword: {
     enabled: true,
   },
   user: {
-    additionalFields: {
-      role: {
-        type: "string",
-        required: false,
-        defaultValue: "student",
-      },
-    },
+    additionalFields: userAdditionalFields,
   },
 });

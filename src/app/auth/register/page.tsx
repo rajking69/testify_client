@@ -24,8 +24,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { AnimatedBackground } from "@/components/landing/AnimatedBackground";
-
-type UserRole = "student" | "teacher" | "admin";
+import type { UserRole } from "@/lib/user-schema";
 
 export default function RegisterPage() {
   const router = useRouter();
