@@ -1,10 +1,5 @@
 @import "tailwindcss";
 @plugin "daisyui";
-@custom-variant dark (.dark &, [data-theme="dark"] &);
-
-/* ==========================================================================
-   TESTIFY DESIGN FOUNDATION SYSTEM (PART 1A)
-   ========================================================================== */
 
 :root {
   /* 1. BRAND & SEMANTIC COLOR PALETTE */
