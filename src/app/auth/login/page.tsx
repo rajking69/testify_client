@@ -70,7 +70,7 @@ export default function LoginPage() {
       const result = await signIn.email({
         email: formData.email,
         password: formData.password,
-        callbackURL: "/",
+        callbackURL: process.env.FRONTEND_URL as string,
       });
 
       if (result.error) {
@@ -103,7 +103,7 @@ export default function LoginPage() {
     try {
       await socialSignIn({
         provider: "google",
-        callbackURL: "/dashboard/teacher",
+        callbackURL: `${process.env.FRONTEND_URL}/`,
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -118,7 +118,7 @@ export default function LoginPage() {
     try {
       await socialSignIn({
         provider: "github",
-        callbackURL: "/dashboard/teacher",
+        callbackURL: `${process.env.FRONTEND_URL}/`,
       });
     } catch (err: unknown) {
       const errorMessage =

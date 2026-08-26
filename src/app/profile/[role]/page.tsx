@@ -195,7 +195,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
     try {
       await linkSocialAccount({
         provider,
-        callbackURL: `/profile/${params.role}`,
+        callbackURL: `${process.env.FRONTEND_URL}/profile/${params.role}`,
       });
     } catch (err: unknown) {
       const errorMessage =

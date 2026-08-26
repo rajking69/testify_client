@@ -151,7 +151,7 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        callbackURL: "/",
+        callbackURL: `${process.env.FRONTEND_URL}/`,
         fetchOptions: {
           body: {
             role: formData.role,
@@ -194,7 +194,7 @@ export default function RegisterPage() {
     try {
       await socialSignIn({
         provider: "google",
-        callbackURL: `/dashboard/${formData.role}`,
+        callbackURL: `${process.env.FRONTEND_URL}/dashboard/${formData.role}`,
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -209,7 +209,7 @@ export default function RegisterPage() {
     try {
       await socialSignIn({
         provider: "github",
-        callbackURL: `/dashboard/${formData.role}`,
+        callbackURL: `${process.env.FRONTEND_URL}/dashboard/${formData.role}`,
       });
     } catch (err: unknown) {
       const errorMessage =
