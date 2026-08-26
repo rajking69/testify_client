@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Topbar } from "@/components/layout/Topbar";
+import { AdminSidebar } from "@/components/admin/layout/AdminSidebar";
+import { AdminTopbar } from "@/components/admin/layout/AdminTopbar";
 import { authClient } from "@/lib/auth-client";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { Toaster } from "sonner";
 
 export default function AdminLayout({
   children,
@@ -23,7 +24,7 @@ export default function AdminLayout({
     // Non-admins can't access admin dashboard
     if (userRole !== "admin") {
       return (
-        <div className="min-h-screen bg-[#FCFBF7] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 flex items-center justify-center p-4">
           <div className="max-w-md w-full rounded-3xl border border-rose-200 bg-white p-8 shadow-xl text-center space-y-4">
             <div className="h-14 w-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <ShieldAlert className="h-7 w-7" />
@@ -60,7 +61,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 flex flex-col lg:flex-row text-slate-900 dark:text-slate-100">
       {/* Sidebar Navigation */}
-      <Sidebar
+      <AdminSidebar
         isOpen={isMobileOpen}
         isCollapsed={isCollapsed}
         onClose={() => setIsMobileOpen(false)}
@@ -70,13 +71,16 @@ export default function AdminLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar Header */}
-        <Topbar onOpenMobileSidebar={() => setIsMobileOpen(true)} />
+        <AdminTopbar onOpenMobileSidebar={() => setIsMobileOpen(true)} />
 
         {/* Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
+
+      {/* Toast Notifications */}
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }
