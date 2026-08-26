@@ -85,7 +85,7 @@ export default function TestifyHero() {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="block text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#0B2238] dark:text-slate-100 tracking-tight font-serif italic opacity-95"
               >
-                Simply Powerful
+                Simple and Powerful
               </motion.span>
               <motion.h1
                 initial={{ opacity: 0, y: 15 }}
@@ -180,7 +180,7 @@ export default function TestifyHero() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 dark:border-emerald-800 shadow-2xs">
-                    <Shield className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> AI Proctoring Active
+                    <Shield className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> AI Proctoring is Active
                   </div>
                 </div>
 
@@ -200,7 +200,7 @@ export default function TestifyHero() {
                         <div className="space-y-1">
                           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Teacher Controls</p>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#0B2238] dark:bg-blue-600 text-white font-semibold shadow-xs">
-                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank (48)
+                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank (48 Questions)
                           </div>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
                             <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitor (32)
@@ -212,7 +212,7 @@ export default function TestifyHero() {
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                           <span className="text-[10px] font-bold uppercase text-slate-400">AI Evaluation</span>
                           <div className="mt-1 flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                            <span>Auto-Grading</span>
+                            <span>Autograding</span>
                             <span className="text-emerald-600 dark:text-emerald-400 font-bold">Enabled</span>
                           </div>
                         </div>
@@ -244,7 +244,7 @@ export default function TestifyHero() {
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-[10px]">
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">32 Submitted • 0 Violations</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">32 Submissions • 0 Violations</span>
                           <span className="text-emerald-700 dark:text-emerald-400 font-bold">100% Integrity Score</span>
                         </div>
                       </div>
@@ -277,7 +277,7 @@ export default function TestifyHero() {
                           Explain the primary difference between synchronous and asynchronous execution in JavaScript.
                         </p>
                         <div className="p-2 rounded-md bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px]">
-                          Type response here... (Auto-saving every 5s)
+                          Type response here... (Automatically saved every 5 seconds)
                         </div>
                       </div>
 
@@ -303,7 +303,7 @@ export default function TestifyHero() {
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <div>
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm">Institutional Admin Oversight</h4>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Campus-Wide Assessments Overview</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Campus-Wide Assessment Overview</p>
                         </div>
                         <span className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-2.5 py-0.5 rounded-md border border-purple-200 dark:border-purple-800 text-[10px]">
                           System Healthy

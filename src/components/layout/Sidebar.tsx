@@ -8,6 +8,8 @@ import {
   HelpCircle,
   BookOpen,
   BarChart3,
+  Activity,
+  FileCheck2,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -40,66 +42,81 @@ const roleNavItems: Record<string, NavItem[]> = {
   teacher: [
     {
       label: "Dashboard",
-      href: "/dashboard/teacher",
+      href: "/teacher/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       label: "Question Bank",
-      href: "/dashboard/teacher/question-bank",
+      href: "/teacher/questions",
       icon: <HelpCircle className="h-5 w-5" />,
     },
     {
       label: "Exams",
-      href: "/dashboard/teacher/exams",
+      href: "/teacher/exams",
       icon: <BookOpen className="h-5 w-5" />,
     },
     {
+      label: "Students",
+      href: "/teacher/students",
+      icon: <GraduationCap className="h-5 w-5" />,
+    },
+    {
+      label: "Monitoring",
+      href: "/teacher/monitoring",
+      icon: <Activity className="h-5 w-5" />,
+    },
+    {
+      label: "Evaluation",
+      href: "/teacher/evaluation",
+      icon: <FileCheck2 className="h-5 w-5" />,
+    },
+    {
       label: "Results",
-      href: "/dashboard/teacher/results",
+      href: "/teacher/results",
       icon: <BarChart3 className="h-5 w-5" />,
     },
   ],
   admin: [
     {
       label: "Dashboard",
-      href: "/dashboard/admin",
+      href: "/admin/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       label: "User Management",
-      href: "/dashboard/admin/users",
+      href: "/admin/users",
       icon: <Users className="h-5 w-5" />,
     },
     {
       label: "System Health",
-      href: "/dashboard/admin/health",
+      href: "/admin/health",
       icon: <ShieldAlert className="h-5 w-5" />,
     },
     {
       label: "Settings",
-      href: "/dashboard/admin/settings",
+      href: "/admin/settings",
       icon: <Settings className="h-5 w-5" />,
     },
   ],
   student: [
     {
       label: "Dashboard",
-      href: "/dashboard/student",
+      href: "/student/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       label: "Available Exams",
-      href: "/dashboard/student/exams",
+      href: "/student/exams",
       icon: <BookOpen className="h-5 w-5" />,
     },
     {
       label: "My Results",
-      href: "/dashboard/student/results",
+      href: "/student/results",
       icon: <Trophy className="h-5 w-5" />,
     },
     {
       label: "Study Progress",
-      href: "/dashboard/student/progress",
+      href: "/student/progress",
       icon: <Clock className="h-5 w-5" />,
     },
   ],

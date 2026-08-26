@@ -101,7 +101,7 @@ export default function Navbar() {
                   />
                   <div className="absolute left-0 mt-2 w-60 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200/90 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
                     <Link
-                      href="/dashboard/student"
+                      href="/student/dashboard"
                       onClick={() => setShowRolesDropdown(false)}
                       className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
@@ -119,7 +119,7 @@ export default function Navbar() {
                     </Link>
 
                     <Link
-                      href="/dashboard/teacher"
+                      href="/teacher/dashboard"
                       onClick={() => setShowRolesDropdown(false)}
                       className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
@@ -137,7 +137,7 @@ export default function Navbar() {
                     </Link>
 
                     <Link
-                      href="/dashboard/admin"
+                      href="/admin/dashboard"
                       onClick={() => setShowRolesDropdown(false)}
                       className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
@@ -222,7 +222,7 @@ export default function Navbar() {
                     </p>
                   </div>
                   <Link
-                    href={`dashboard/${session?.user?.role}`}
+                    href={`${session?.user?.role}/dashboard`}
                     onClick={() => setShowProfileMenu(false)}
                     className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
@@ -317,7 +317,7 @@ export default function Navbar() {
               Role Portals
             </span>
             <Link
-              href="/dashboard/student"
+              href="/student/dashboard"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
@@ -325,7 +325,7 @@ export default function Navbar() {
               Portal
             </Link>
             <Link
-              href="/dashboard/teacher"
+              href="/teacher/dashboard"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
@@ -333,7 +333,7 @@ export default function Navbar() {
               Teacher Portal
             </Link>
             <Link
-              href="/dashboard/admin"
+              href="/admin/dashboard"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >

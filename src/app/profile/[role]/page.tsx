@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  authClient,
   changePassword,
   linkSocialAccount,
   updateUser,
+  useSession,
 } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -25,7 +25,7 @@ import Link from "next/link";
 
 export default function ProfilePage({ params }: { params: { role: string } }) {
   const router = useRouter();
-  const { data: session, isPending, refetch } = authClient.useSession();
+  const { data: session, isPending, refetch } = useSession();
   const user = session?.user;
 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -195,7 +195,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
     try {
       await linkSocialAccount({
         provider,
-        callbackURL: `${process.env.FRONTEND_URL}/profile/${params.role}`,
+        callbackURL: `/profile/${params.role}`,
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -228,7 +228,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
         transition={{ duration: 0.6 }}
       >
         <Link
-          href={`/dashboard/${params.role}`}
+          href={`/${params.role}/dashboard`}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-[#0092E3] dark:hover:text-cyan-400 transition-colors mb-4 group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
