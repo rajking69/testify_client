@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "@/lib/auth-client";
+import { signIn, socialSignIn } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -29,7 +29,9 @@ export default function LoginPage() {
   });
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {},
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (email: string) => {
@@ -48,8 +50,8 @@ export default function LoginPage() {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
     }
 
     setErrors(newErrors);
@@ -68,12 +70,12 @@ export default function LoginPage() {
       const result = await signIn.email({
         email: formData.email,
         password: formData.password,
-        callbackURL: "/",
       });
 
       if (result.error) {
         toast.error(
-          result.error.message || "Login failed. Please check your credentials."
+          result.error.message ||
+            "Login failed. Please check your credentials.",
         );
       } else {
         toast.success("Login successful!");
@@ -93,6 +95,36 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof typeof errors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      await socialSignIn({
+        provider: "google",
+        callbackURL: process.env.FRONTEND_URL
+      });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Google sign-in failed. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
+  const signInWithGitHub = async () => {
+    try {
+      await socialSignIn({
+        provider: "github",
+        callbackURL: process.env.FRONTEND_URL
+      });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "GitHub sign-in failed. Please try again.";
+      toast.error(errorMessage);
     }
   };
 
@@ -124,7 +156,11 @@ export default function LoginPage() {
           <div className="hidden lg:flex lg:flex-col lg:col-span-6 xl:col-span-7 space-y-7 justify-center">
             {/* Desktop Brand Logo */}
             <div>
-              <Logo size={46} href="/" textClassName="text-2xl font-extrabold text-[#0B2238] dark:text-white" />
+              <Logo
+                size={46}
+                href="/"
+                textClassName="text-2xl font-extrabold text-[#0B2238] dark:text-white"
+              />
             </div>
 
             {/* Short, Punchy Headline */}
@@ -167,7 +203,9 @@ export default function LoginPage() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Final Term Assessment</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Final Term Assessment
+                  </span>
                 </div>
                 <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
                   <Clock className="h-3 w-3" /> 00:45:20
@@ -175,9 +213,12 @@ export default function LoginPage() {
               </div>
               <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Proctoring: Active &amp; Verified
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />{" "}
+                  Proctoring: Active &amp; Verified
                 </span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">25 of 30 Answered</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  25 of 30 Answered
+                </span>
               </div>
             </div>
           </div>
@@ -228,7 +269,9 @@ export default function LoginPage() {
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-[11px] text-red-600 dark:text-red-400 text-left">{errors.email}</p>
+                    <p className="text-[11px] text-red-600 dark:text-red-400 text-left">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
 
@@ -242,7 +285,7 @@ export default function LoginPage() {
                       Password
                     </label>
                     <Link
-                      href="/forgot-password"
+                      href="/auth/forgot-password"
                       className="text-xs font-semibold text-[#00A3C4] dark:text-cyan-400 hover:underline cursor-pointer"
                     >
                       Forgot password?
@@ -269,11 +312,17 @@ export default function LoginPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-[11px] text-red-600 dark:text-red-400 text-left">{errors.password}</p>
+                    <p className="text-[11px] text-red-600 dark:text-red-400 text-left">
+                      {errors.password}
+                    </p>
                   )}
                 </div>
 
@@ -286,7 +335,9 @@ export default function LoginPage() {
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-[#00A3C4] focus:ring-[#00A3C4] cursor-pointer"
                     />
-                    <span className="text-xs text-slate-600 dark:text-slate-400">Remember this device</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Remember this device
+                    </span>
                   </label>
                 </div>
 
@@ -297,7 +348,9 @@ export default function LoginPage() {
                     disabled={isLoading}
                     className="w-full py-3 px-4 rounded-xl bg-[#0B2238] dark:bg-[#00A3C4] hover:bg-[#153450] dark:hover:bg-[#38bdf8] text-white dark:text-[#0B2238] font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
                   >
-                    <span>{isLoading ? "Signing in..." : "Sign In to Testify"}</span>
+                    <span>
+                      {isLoading ? "Signing in..." : "Sign In to Testify"}
+                    </span>
                     {!isLoading && <ArrowRight className="h-4 w-4" />}
                   </button>
                 </div>
@@ -310,14 +363,16 @@ export default function LoginPage() {
                     <div className="w-full border-t border-slate-200/80 dark:border-slate-800" />
                   </div>
                   <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
-                    <span className="px-3 bg-white/95 dark:bg-slate-900">or continue with</span>
+                    <span className="px-3 bg-white/95 dark:bg-slate-900">
+                      or continue with
+                    </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => toast.info("Google authentication integration coming soon")}
+                    onClick={signInWithGoogle}
                     className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
                     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
@@ -343,10 +398,13 @@ export default function LoginPage() {
 
                   <button
                     type="button"
-                    onClick={() => toast.info("GitHub authentication integration coming soon")}
+                    onClick={signInWithGitHub}
                     className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
-                    <svg className="h-4 w-4 shrink-0 fill-current text-slate-800 dark:text-slate-200" viewBox="0 0 24 24">
+                    <svg
+                      className="h-4 w-4 shrink-0 fill-current text-slate-800 dark:text-slate-200"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         fillRule="evenodd"
                         clipRule="evenodd"
@@ -377,7 +435,9 @@ export default function LoginPage() {
 
       {/* Bottom Footer Notice */}
       <div className="relative z-10 text-center text-xs text-slate-500 dark:text-slate-400 pb-2">
-        <span>Protected by enterprise-grade SSL encryption • © 2026 Testify Inc.</span>
+        <span>
+          Protected by enterprise-grade SSL encryption • © 2026 Testify Inc.
+        </span>
       </div>
     </div>
   );

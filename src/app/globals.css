@@ -1,72 +1,74 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-:root {
+:root[data-theme="light"] {
   /* 1. BRAND & SEMANTIC COLOR PALETTE */
-  --color-primary: #2563eb;          /* Blue 600 - Primary Brand */
-  --color-primary-hover: #1d4ed8;    /* Blue 700 - Active/Hover state */
-  --color-primary-light: #eff6ff;    /* Blue 50 - Light tint */
-  
-  --color-accent: #4f46e5;           /* Indigo 600 - Secondary/Accent */
-  --color-accent-hover: #4338ca;     /* Indigo 700 */
-  --color-accent-light: #eef2ff;     /* Indigo 50 */
+  --color-primary: #2563eb; /* Blue 600 - Primary Brand */
+  --color-primary-hover: #1d4ed8; /* Blue 700 - Active/Hover state */
+  --color-primary-light: #eff6ff; /* Blue 50 - Light tint */
+
+  --color-accent: #4f46e5; /* Indigo 600 - Secondary/Accent */
+  --color-accent-hover: #4338ca; /* Indigo 700 */
+  --color-accent-light: #eef2ff; /* Indigo 50 */
 
   /* Surface & Background Hierarchy */
-  --color-background: #ffffff;       /* Default Page Background */
-  --color-bg-app: #f8fafc;           /* Dashboard App Viewport Background */
-  --color-surface: #ffffff;          /* Default Card & Modal Surface */
+  --color-background: #ffffff; /* Default Page Background */
+  --color-bg-app: #f8fafc; /* Dashboard App Viewport Background */
+  --color-surface: #ffffff; /* Default Card & Modal Surface */
   --color-surface-elevated: #f8fafc; /* Elevated Surface / Hover Fill */
 
   /* Text Hierarchy */
-  --color-text-primary: #0f172a;     /* Slate 900 - Headings & High Emphasis */
-  --color-text-secondary: #475569;   /* Slate 600 - Body & Supporting Text */
-  --color-text-muted: #94a3b8;       /* Slate 400 - Captions, Placeholders */
-  --color-text-inverse: #ffffff;     /* White - Text on dark fill */
+  --color-text-primary: #0f172a; /* Slate 900 - Headings & High Emphasis */
+  --color-text-secondary: #475569; /* Slate 600 - Body & Supporting Text */
+  --color-text-muted: #94a3b8; /* Slate 400 - Captions, Placeholders */
+  --color-text-inverse: #ffffff; /* White - Text on dark fill */
 
   /* Borders & Dividers */
-  --color-border: #e2e8f0;           /* Slate 200 - Standard Borders */
-  --color-border-subtle: #f1f5f9;    /* Slate 100 - Divider lines */
+  --color-border: #e2e8f0; /* Slate 200 - Standard Borders */
+  --color-border-subtle: #f1f5f9; /* Slate 100 - Divider lines */
 
   /* Status / Feedback Colors */
-  --color-success: #10b981;          /* Emerald 500 */
-  --color-success-bg: #ecfdf5;       /* Emerald 50 */
-  --color-warning: #f59e0b;          /* Amber 500 */
-  --color-warning-bg: #fffbeb;       /* Amber 50 */
-  --color-error: #ef4444;            /* Rose 500 */
-  --color-error-bg: #fef2f2;         /* Rose 50 */
-  --color-info: #0ea5e9;             /* Sky 500 */
-  --color-info-bg: #f0f9ff;          /* Sky 50 */
+  --color-success: #10b981; /* Emerald 500 */
+  --color-success-bg: #ecfdf5; /* Emerald 50 */
+  --color-warning: #f59e0b; /* Amber 500 */
+  --color-warning-bg: #fffbeb; /* Amber 50 */
+  --color-error: #ef4444; /* Rose 500 */
+  --color-error-bg: #fef2f2; /* Rose 50 */
+  --color-info: #0ea5e9; /* Sky 500 */
+  --color-info-bg: #f0f9ff; /* Sky 50 */
 
   /* 2. SPACING SYSTEM SCALE */
-  --spacing-xs: 0.25rem;             /* 4px */
-  --spacing-sm: 0.5rem;              /* 8px */
-  --spacing-md: 0.75rem;             /* 12px */
-  --spacing-lg: 1rem;                /* 16px */
-  --spacing-xl: 1.5rem;              /* 24px */
-  --spacing-2xl: 2rem;               /* 32px */
-  --spacing-3xl: 3rem;               /* 48px */
-  --spacing-4xl: 4rem;               /* 64px */
-  --spacing-5xl: 5rem;               /* 80px */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem; /* 8px */
+  --spacing-md: 0.75rem; /* 12px */
+  --spacing-lg: 1rem; /* 16px */
+  --spacing-xl: 1.5rem; /* 24px */
+  --spacing-2xl: 2rem; /* 32px */
+  --spacing-3xl: 3rem; /* 48px */
+  --spacing-4xl: 4rem; /* 64px */
+  --spacing-5xl: 5rem; /* 80px */
 
   /* 3. CONSISTENT UI PATTERN TOKENS */
-  --radius-sm: 0.375rem;             /* 6px */
-  --radius-md: 0.5rem;               /* 8px */
-  --radius-lg: 0.75rem;              /* 12px */
-  --radius-xl: 1rem;                /* 16px */
-  --radius-2xl: 1.5rem;              /* 24px */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
+  --radius-xl: 1rem; /* 16px */
+  --radius-2xl: 1.5rem; /* 24px */
   --radius-full: 9999px;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
-.dark, [data-theme="dark"] {
+:root[data-theme="dark"] {
   --color-primary: #3b82f6;
   --color-primary-hover: #60a5fa;
   --color-primary-light: #1e3a8a;
-  
+
   --color-accent: #6366f1;
   --color-accent-hover: #818cf8;
   --color-accent-light: #312e81;
@@ -91,8 +93,10 @@
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -110,7 +114,9 @@ body {
   background: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-plus-jakarta), system-ui, sans-serif;
-  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==========================================================================
@@ -273,4 +279,185 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 2.5s infinite;
+}
+
+/* ==========================================================================
+   TESTIFY TOAST NOTIFICATION STYLING
+   ========================================================================== */
+
+/* Base Toast Container Styles */
+:root {
+  --toastify-color-light: var(--color-surface);
+  --toastify-color-dark: var(--color-surface);
+  --toastify-color-info: #0092e3;
+  --toastify-color-success: #00cbb8;
+  --toastify-color-warning: #e8922c;
+  --toastify-color-error: #ef4444;
+  --toastify-color-transparent: rgba(255, 255, 255, 0.9);
+
+  --toastify-text-color-light: var(--color-text-primary);
+  --toastify-text-color-dark: var(--color-text-primary);
+  --toastify-text-color-info: #ffffff;
+  --toastify-text-color-success: #ffffff;
+  --toastify-text-color-warning: #ffffff;
+  --toastify-text-color-error: #ffffff;
+
+  --toastify-font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+}
+
+/* Custom Toast Styles matching Testify Design System */
+.Toastify__toast-container {
+  --toastify-z-index: 9999;
+}
+
+.Toastify__toast {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(12px);
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+/* Success Toast - Mint/Teal Theme */
+.Toastify__toast--success {
+  background: linear-gradient(135deg, #00cbb8 0%, #49bbbd 100%);
+  border-color: #00cbb8;
+  color: #ffffff;
+}
+
+.Toastify__toast--success .Toastify__toast-icon {
+  color: #ffffff;
+}
+
+/* Error Toast - Rose/Red Theme */
+.Toastify__toast--error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.Toastify__toast--error .Toastify__toast-icon {
+  color: #ffffff;
+}
+
+/* Info Toast - Primary Blue Theme */
+.Toastify__toast--info {
+  background: linear-gradient(135deg, #0092e3 0%, #00a3c4 100%);
+  border-color: #0092e3;
+  color: #ffffff;
+}
+
+.Toastify__toast--info .Toastify__toast-icon {
+  color: #ffffff;
+}
+
+/* Warning Toast - Amber/Orange Theme */
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, #e8922c 0%, #f59e0b 100%);
+  border-color: #e8922c;
+  color: #ffffff;
+}
+
+.Toastify__toast--warning .Toastify__toast-icon {
+  color: #ffffff;
+}
+
+/* Default Toast - Navy Brand Theme */
+.Toastify__toast--default {
+  background: linear-gradient(135deg, #152234 0%, #2f327d 100%);
+  border-color: #152234;
+  color: #ffffff;
+}
+
+/* Progress Bar Styling */
+.Toastify__progress-bar {
+  height: 3px;
+  border-radius: 2px;
+}
+
+.Toastify__progress-bar--success {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.Toastify__progress-bar--error {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.Toastify__progress-bar--info {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.Toastify__progress-bar--warning {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Close Button Styling */
+.Toastify__close-button {
+  color: rgba(255, 255, 255, 0.8);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+  color: #ffffff;
+}
+
+/* Dark Mode Toast Adjustments */
+.dark .Toastify__toast,
+[data-theme="dark"] .Toastify__toast {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.dark .Toastify__toast--success,
+[data-theme="dark"] .Toastify__toast--success {
+  background: linear-gradient(135deg, #00cbb8 0%, #49bbbd 100%);
+  color: #0b2238;
+}
+
+.dark .Toastify__toast--success .Toastify__toast-icon,
+[data-theme="dark"] .Toastify__toast--success .Toastify__toast-icon {
+  color: #0b2238;
+}
+
+.dark .Toastify__toast--error,
+[data-theme="dark"] .Toastify__toast--error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+}
+
+.dark .Toastify__toast--info,
+[data-theme="dark"] .Toastify__toast--info {
+  background: linear-gradient(135deg, #0092e3 0%, #00a3c4 100%);
+  color: #0b2238;
+}
+
+.dark .Toastify__toast--info .Toastify__toast-icon,
+[data-theme="dark"] .Toastify__toast--info .Toastify__toast-icon {
+  color: #0b2238;
+}
+
+.dark .Toastify__toast--warning,
+[data-theme="dark"] .Toastify__toast--warning {
+  background: linear-gradient(135deg, #e8922c 0%, #f59e0b 100%);
+  color: #0b2238;
+}
+
+.dark .Toastify__toast--warning .Toastify__toast-icon,
+[data-theme="dark"] .Toastify__toast--warning .Toastify__toast-icon {
+  color: #0b2238;
+}
+
+.dark .Toastify__close-button,
+[data-theme="dark"] .Toastify__close-button {
+  color: var(--color-text-muted);
+}
+
+.dark .Toastify__close-button:hover,
+[data-theme="dark"] .Toastify__close-button:hover {
+  color: var(--color-text-primary);
 }

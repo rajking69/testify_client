@@ -3,7 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Globe, ShieldCheck, Sparkles, Layers, ShieldAlert, BookOpen } from "lucide-react";
+import {
+  Globe,
+  ShieldCheck,
+  Sparkles,
+  Layers,
+  ShieldAlert,
+  BookOpen,
+} from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
 export default function Footer() {
@@ -83,9 +90,14 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-10">
           {/* Column 1: Brand Info */}
           <div className="col-span-2 space-y-4">
-            <Logo size={36} textClassName="text-[#0B2238] dark:text-white font-bold" />
+            <Logo
+              size={36}
+              textClassName="text-[#0B2238] dark:text-white font-bold"
+            />
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm">
-              An AI-powered assessment operating system providing distraction-free testing for Students, rich question banks for Teachers, and campus-wide oversight for Administrators.
+              An AI-powered assessment operating system providing
+              distraction-free testing for Students, rich question banks for
+              Teachers, and campus-wide oversight for Administrators.
             </p>
           </div>
 
@@ -96,10 +108,38 @@ export default function Footer() {
               <h4 className="font-display">Role Portals</h4>
             </div>
             <ul className="space-y-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <li><Link href="/auth/login" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Student Exam Room</Link></li>
-              <li><Link href="/teacher/dashboard" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Teacher Workspace</Link></li>
-              <li><Link href="/admin/dashboard" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Admin Oversight</Link></li>
-              <li><Link href="/teacher/question-bank" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Question Bank</Link></li>
+              <li>
+                <Link
+                  href="/student/dashboard"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                >
+                  Student Exam Room
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/teacher/dashboard"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                >
+                  Teacher Workspace
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/admin/dashboard"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                >
+                  Admin Oversight
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/teacher/questions"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                >
+                  Question Bank
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -110,10 +150,38 @@ export default function Footer() {
               <h4 className="font-display">Platform</h4>
             </div>
             <ul className="space-y-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <li><Link href="#features" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">All Features</Link></li>
-              <li><Link href="#security" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">AI Proctoring &amp; Lockdown</Link></li>
-              <li><Link href="#why-testify" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Auto-Grading Engine</Link></li>
-              <li><Link href="#pricing" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">Pricing &amp; Plans</Link></li>
+              <li>
+                <Link
+                  href="#features"
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  All Features
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#security"
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  AI Proctoring &amp; Lockdown
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#why-testify"
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  Auto-Grading Engine
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#pricing"
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  Pricing &amp; Plans
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -124,10 +192,26 @@ export default function Footer() {
               <h4 className="font-display">Support &amp; Trust</h4>
             </div>
             <ul className="space-y-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Help Documentation</span></li>
-              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Privacy Policy</span></li>
-              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Terms of Service</span></li>
-              <li><span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">Accessibility Statement</span></li>
+              <li>
+                <span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+                  Help Documentation
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+                  Privacy Policy
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+                  Terms of Service
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+                  Accessibility Statement
+                </span>
+              </li>
             </ul>
           </div>
         </div>
@@ -135,15 +219,21 @@ export default function Footer() {
         {/* Bottom Copyright & Live Status Bar */}
         <div className="pt-8 border-t border-slate-300/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-4">
           <p className="flex items-center gap-1.5 font-medium">
-            © {new Date().getFullYear()} <span className="font-bold text-[#0B2238] dark:text-white">Testify Inc.</span> Built with assessment intelligence.
+            © {new Date().getFullYear()}{" "}
+            <span className="font-bold text-[#0B2238] dark:text-white">
+              Testify Inc.
+            </span>{" "}
+            Built with assessment intelligence.
           </p>
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1.5 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer font-medium">
-              <Globe className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" /> English (US)
+              <Globe className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />{" "}
+              English (US)
             </span>
             <span>•</span>
             <span className="inline-flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 px-3 py-1 rounded-full shadow-2xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> All Systems Operational
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
+              All Systems Operational
             </span>
           </div>
         </div>

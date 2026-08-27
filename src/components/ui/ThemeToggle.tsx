@@ -2,8 +2,8 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, Laptop } from "lucide-react";
-import { useTheme } from "../providers/ThemeProvider";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface ThemeToggleProps {
   variant?: "icon" | "pill";
@@ -14,21 +14,23 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   variant = "icon",
   className = "",
 }) => {
-  const { theme, resolvedTheme, toggleTheme, mounted } = useTheme();
+  const { theme, setTheme } = useTheme();
 
-  if (!mounted) {
+  if (!theme) {
     return (
-      <div className={`w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse ${className}`} />
+      <div
+        className={`w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse ${className}`}
+      />
     );
   }
 
-  const isDark = resolvedTheme === "dark";
+  const isDark = theme === "dark";
 
   if (variant === "pill") {
     return (
       <button
-        onClick={toggleTheme}
-        aria-label="Toggle dark mode"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        aria-label="Toggle theme"
         className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-blue-500/50 transition-all duration-300 shadow-sm cursor-pointer ${className}`}
       >
         <div className="relative w-4 h-4 flex items-center justify-center">
@@ -67,8 +69,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.92 }}
-      onClick={toggleTheme}
-      aria-label="Toggle dark theme"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label="Toggle theme"
       className={`relative inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-800/70 backdrop-blur-md text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/40 dark:hover:border-blue-500/40 shadow-sm transition-colors duration-200 cursor-pointer overflow-hidden group ${className}`}
     >
       {/* Background glow animation */}
