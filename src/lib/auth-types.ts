@@ -5,7 +5,6 @@ export const authConfig = {
   user: {
     additionalFields: {
       role: {
-        type: ["student", "teacher", "admin"],
         required: false,
         defaultValue: "student",
         input: false,
