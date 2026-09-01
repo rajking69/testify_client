@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,7 +17,6 @@ import {
   ChevronRight,
   GraduationCap,
   FileText,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/admin/utils";
@@ -117,18 +116,21 @@ export function AdminSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out lg:static",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out lg:sticky max-h-screen",
           isCollapsed ? "w-20" : "w-64",
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Header */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100 dark:border-slate-900">
-          <Link href="/admin/dashboard" className="flex items-center gap-3 overflow-hidden">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
-              <ShieldAlert className="h-6 w-6" />
-            </div>
-            {!isCollapsed && (
+          {!isCollapsed && (
+            <Link
+              href="/"
+              className="flex items-center gap-3 overflow-hidden"
+            >
+              <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                <ShieldAlert className="h-6 w-6" />
+              </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold font-display tracking-tight text-slate-900 dark:text-white">
                   Testify
@@ -137,8 +139,8 @@ export function AdminSidebar({
                   Admin Portal
                 </span>
               </div>
-            )}
-          </Link>
+            </Link>
+          )}
 
           <button
             onClick={onToggleCollapse}
@@ -156,7 +158,8 @@ export function AdminSidebar({
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+            const isActive =
+              pathname === item.href || pathname?.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
@@ -166,20 +169,24 @@ export function AdminSidebar({
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative",
                   isActive
                     ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900",
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
                 <div
                   className={cn(
                     "transition-transform duration-200 group-hover:scale-110",
-                    isActive ? "text-white" : "text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400"
+                    isActive
+                      ? "text-white"
+                      : "text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400",
                   )}
                 >
                   {item.icon}
                 </div>
                 {!isCollapsed && (
-                  <span className="truncate flex-1 font-display">{item.label}</span>
+                  <span className="truncate flex-1 font-display">
+                    {item.label}
+                  </span>
                 )}
                 {item.badge && !isCollapsed && (
                   <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 rounded-full">
@@ -196,13 +203,15 @@ export function AdminSidebar({
           {!isCollapsed && user && (
             <div className="mb-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                {user.name ? user.name.charAt(0).toUpperCase() : "A"}
+                {user?.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-xs font-bold font-display text-slate-900 dark:text-white truncate">
-                  {user.name || "Admin"}
+                  {user?.role}
                 </span>
-                <span className="text-[11px] text-slate-400 truncate">{user.email}</span>
+                <span className="text-[11px] text-slate-400 truncate">
+                  {user?.email}
+                </span>
               </div>
             </div>
           )}
@@ -211,7 +220,7 @@ export function AdminSidebar({
             onClick={handleLogout}
             className={cn(
               "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors",
-              isCollapsed && "justify-center px-0"
+              isCollapsed && "justify-center px-0",
             )}
             title="Sign Out"
           >
