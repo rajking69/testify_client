@@ -7,8 +7,6 @@ import {
   Settings,
   User,
   LogOut,
-  Moon,
-  Sun,
   Menu,
   ChevronDown,
 } from "lucide-react";
@@ -34,9 +32,27 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
   };
 
   const notifications = [
-    { id: 1, title: "New user registration", message: "5 new users registered today", time: "2h ago", unread: true },
-    { id: 2, title: "System alert", message: "High CPU usage detected", time: "4h ago", unread: true },
-    { id: 3, title: "Payment received", message: "New subscription payment from Lisa Anderson", time: "6h ago", unread: false },
+    {
+      id: 1,
+      title: "New user registration",
+      message: "5 new users registered today",
+      time: "2h ago",
+      unread: true,
+    },
+    {
+      id: 2,
+      title: "System alert",
+      message: "High CPU usage detected",
+      time: "4h ago",
+      unread: true,
+    },
+    {
+      id: 3,
+      title: "Payment received",
+      message: "New subscription payment from Lisa Anderson",
+      time: "6h ago",
+      unread: false,
+    },
   ];
 
   return (
@@ -91,7 +107,9 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
               />
               <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 p-4 z-20">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">Notifications</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    Notifications
+                  </h3>
                   <Badge variant="secondary" className="text-xs">
                     {notifications.filter((n) => n.unread).length} new
                   </Badge>
@@ -104,7 +122,7 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
                         "p-3 rounded-lg border transition-colors",
                         notification.unread
                           ? "bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800"
-                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700",
                       )}
                     >
                       <div className="flex items-start justify-between">
@@ -120,7 +138,9 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
                           <span className="h-2 w-2 bg-purple-500 rounded-full mt-1" />
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-2">{notification.time}</p>
+                      <p className="text-[11px] text-slate-500 mt-2">
+                        {notification.time}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -138,14 +158,13 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
             variant="ghost"
             size="sm"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center gap-2"
+            className="flex flex-col items-center gap-2"
           >
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold">
-              {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
+              {user?.name.charAt(0).toUpperCase()}
             </div>
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 mx-auto" />
           </Button>
-
           {showProfileMenu && (
             <>
               <div
@@ -157,7 +176,9 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
                   <p className="text-sm font-medium text-slate-900 dark:text-white">
                     {user?.name || "Admin User"}
                   </p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">{user?.email}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {user?.email}
+                  </p>
                 </div>
                 <div className="py-2">
                   <button
