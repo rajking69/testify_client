@@ -11,6 +11,7 @@ import {
   Bell,
   User,
   Shield,
+  Target,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -83,7 +84,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
         </div>
       </div>
 
-      {/* Right: Landing Link, Theme Toggle & User Dropdown */}
+      {/* Right: Landing Link, Practice Link, Theme Toggle & User Dropdown */}
       <div className="flex items-center gap-3">
         <Link
           href="/"
@@ -92,6 +93,14 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
         >
           <Home className="h-3.5 w-3.5" />
           <span>Landing Page</span>
+        </Link>
+        <Link
+          href="/practice"
+          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+          title="Go to Practice Mode"
+        >
+          <Target className="h-3.5 w-3.5" />
+          <span>Practice</span>
         </Link>
 
         {/* Animated Theme Toggle */}
@@ -156,6 +165,14 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
                   >
                     <Shield className="h-4 w-4 text-slate-400" />
                     Dashboard
+                  </Link>
+                  <Link
+                    href="/practice"
+                    onClick={() => setShowDropdown(false)}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Target className="h-4 w-4 text-slate-400" />
+                    Practice Mode
                   </Link>
                   <Link
                     href="/"
