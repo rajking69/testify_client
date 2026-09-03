@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signUp } from "@/lib/auth-client";
+import { signUp, socialSignIn } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -19,7 +19,6 @@ import {
   GraduationCap,
   School,
   Shield,
-  Clock,
   CheckCircle2,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -63,18 +62,42 @@ export default function RegisterPage() {
   const getPasswordStrengthLabel = (strength: number) => {
     switch (strength) {
       case 0:
-        return { label: "Weak", color: "bg-red-500", textColor: "text-red-500" };
+        return {
+          label: "Weak",
+          color: "bg-red-500",
+          textColor: "text-red-500",
+        };
       case 1:
-        return { label: "Weak", color: "bg-orange-500", textColor: "text-orange-500" };
+        return {
+          label: "Weak",
+          color: "bg-orange-500",
+          textColor: "text-orange-500",
+        };
       case 2:
-        return { label: "Fair", color: "bg-yellow-500", textColor: "text-yellow-500" };
+        return {
+          label: "Fair",
+          color: "bg-yellow-500",
+          textColor: "text-yellow-500",
+        };
       case 3:
-        return { label: "Good", color: "bg-blue-500", textColor: "text-blue-500" };
+        return {
+          label: "Good",
+          color: "bg-blue-500",
+          textColor: "text-blue-500",
+        };
       case 4:
       case 5:
-        return { label: "Strong", color: "bg-emerald-500", textColor: "text-emerald-500" };
+        return {
+          label: "Strong",
+          color: "bg-emerald-500",
+          textColor: "text-emerald-500",
+        };
       default:
-        return { label: "Weak", color: "bg-red-500", textColor: "text-red-500" };
+        return {
+          label: "Weak",
+          color: "bg-red-500",
+          textColor: "text-red-500",
+        };
     }
   };
 
@@ -127,21 +150,21 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        callbackURL: "/",
+        role: formData.role,
         fetchOptions: {
           body: {
             role: formData.role,
           },
         },
-      });
+      } as any);
 
       if (result.error) {
         toast.error(
-          result.error.message || "Registration failed. Please try again."
+          result.error.message || "Registration failed. Please try again.",
         );
       } else {
-        toast.success("Account created successfully!");
-        router.push("/");
+        toast.success(`Welcome to Testify! Registered as ${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}.`);
+        router.push(`/${formData.role}/dashboard`);
       }
     } catch (err: unknown) {
       const errorMessage =
@@ -164,6 +187,36 @@ export default function RegisterPage() {
 
   const handleRoleChange = (role: UserRole) => {
     setFormData((prev) => ({ ...prev, role }));
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      await socialSignIn({
+        provider: "google",
+        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
+      });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Google sign-in failed. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
+  const signInWithGitHub = async () => {
+    try {
+      await socialSignIn({
+        provider: "github",
+        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
+      });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "GitHub sign-in failed. Please try again.";
+      toast.error(errorMessage);
+    }
   };
 
   const passwordStrength = getPasswordStrength(formData.password);
@@ -197,7 +250,11 @@ export default function RegisterPage() {
           <div className="hidden lg:flex lg:flex-col lg:col-span-6 xl:col-span-6 space-y-7 justify-center">
             {/* Desktop Brand Logo */}
             <div>
-              <Logo size={46} href="/" textClassName="text-2xl font-extrabold text-[#0B2238] dark:text-white" />
+              <Logo
+                size={46}
+                href="/"
+                textClassName="text-2xl font-extrabold text-[#0B2238] dark:text-white"
+              />
             </div>
 
             {/* Headline */}
@@ -209,7 +266,8 @@ export default function RegisterPage() {
                 </span>
               </h1>
               <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-lg font-medium">
-                Start creating interactive assessments, dynamic question banks, and automated grading workflows in minutes.
+                Start creating interactive assessments, dynamic question banks,
+                and automated grading workflows in minutes.
               </p>
             </div>
 
@@ -219,19 +277,26 @@ export default function RegisterPage() {
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-100/90 dark:bg-cyan-950/80 text-[#00A3C4] dark:text-cyan-400 border border-cyan-300/60 dark:border-cyan-800">
                   <Zap className="h-3.5 w-3.5" />
                 </span>
-                <span>Instant classroom setup with 1-click exam publishing</span>
+                <span>
+                  Instant classroom setup with 1-click exam publishing
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100/90 dark:bg-amber-950/80 text-[#E8922C] dark:text-amber-400 border border-amber-300/60 dark:border-amber-800">
                   <ShieldCheck className="h-3.5 w-3.5" />
                 </span>
-                <span>Automated anti-cheat lockdown &amp; real-time integrity monitoring</span>
+                <span>
+                  Automated anti-cheat lockdown &amp; real-time integrity
+                  monitoring
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100/90 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 border border-purple-300/60 dark:border-purple-800">
                   <BarChart3 className="h-3.5 w-3.5" />
                 </span>
-                <span>Comprehensive student analytics with topic mastery tracking</span>
+                <span>
+                  Comprehensive student analytics with topic mastery tracking
+                </span>
               </div>
             </div>
 
@@ -240,7 +305,9 @@ export default function RegisterPage() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Question Bank: Physics 101</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Question Bank: Physics 101
+                  </span>
                 </div>
                 <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
                   50 Questions Ready
@@ -248,9 +315,12 @@ export default function RegisterPage() {
               </div>
               <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Auto-Grading: Active
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />{" "}
+                  Auto-Grading: Active
                 </span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">32 Students Enrolled</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  32 Students Enrolled
+                </span>
               </div>
             </div>
           </div>
@@ -302,7 +372,9 @@ export default function RegisterPage() {
                     />
                   </div>
                   {errors.name && (
-                    <p className="text-[10px] text-red-600 dark:text-red-400 text-left">{errors.name}</p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 text-left">
+                      {errors.name}
+                    </p>
                   )}
                 </div>
 
@@ -332,7 +404,9 @@ export default function RegisterPage() {
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-[10px] text-red-600 dark:text-red-400 text-left">{errors.email}</p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 text-left">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
 
@@ -412,7 +486,11 @@ export default function RegisterPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                       >
-                        {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        {showPassword ? (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -443,10 +521,16 @@ export default function RegisterPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                       >
-                        {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -456,7 +540,9 @@ export default function RegisterPage() {
                 {formData.password && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-slate-500 dark:text-slate-400">Strength:</span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Strength:
+                      </span>
                       <span className={`font-bold ${strengthLabel.textColor}`}>
                         {strengthLabel.label}
                       </span>
@@ -486,13 +572,22 @@ export default function RegisterPage() {
                     required
                     className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-[#00A3C4] focus:ring-[#00A3C4] cursor-pointer"
                   />
-                  <label htmlFor="terms" className="text-[11px] text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                  <label
+                    htmlFor="terms"
+                    className="text-[11px] text-slate-600 dark:text-slate-400 cursor-pointer select-none"
+                  >
                     I agree to the{" "}
-                    <Link href="/terms" className="font-semibold text-[#00A3C4] dark:text-cyan-400 hover:underline">
+                    <Link
+                      href="/terms"
+                      className="font-semibold text-[#00A3C4] dark:text-cyan-400 hover:underline"
+                    >
                       Terms
                     </Link>{" "}
                     and{" "}
-                    <Link href="/privacy" className="font-semibold text-[#00A3C4] dark:text-cyan-400 hover:underline">
+                    <Link
+                      href="/privacy"
+                      className="font-semibold text-[#00A3C4] dark:text-cyan-400 hover:underline"
+                    >
                       Privacy Policy
                     </Link>
                   </label>
@@ -505,7 +600,9 @@ export default function RegisterPage() {
                     disabled={isLoading}
                     className="w-full py-2.5 px-4 rounded-xl bg-[#0B2238] dark:bg-[#00A3C4] hover:bg-[#153450] dark:hover:bg-[#38bdf8] text-white dark:text-[#0B2238] font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
                   >
-                    <span>{isLoading ? "Creating account..." : "Create Account"}</span>
+                    <span>
+                      {isLoading ? "Creating account..." : "Create Account"}
+                    </span>
                     {!isLoading && <ArrowRight className="h-4 w-4" />}
                   </button>
                 </div>
@@ -518,14 +615,16 @@ export default function RegisterPage() {
                     <div className="w-full border-t border-slate-200/80 dark:border-slate-800" />
                   </div>
                   <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
-                    <span className="px-3 bg-white/95 dark:bg-slate-900">or sign up with</span>
+                    <span className="px-3 bg-white/95 dark:bg-slate-900">
+                      or sign up with
+                    </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => toast.info("Google registration integration coming soon")}
+                    onClick={signInWithGoogle}
                     className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
                     <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24">
@@ -551,10 +650,13 @@ export default function RegisterPage() {
 
                   <button
                     type="button"
-                    onClick={() => toast.info("GitHub registration integration coming soon")}
+                    onClick={signInWithGitHub}
                     className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   >
-                    <svg className="h-3.5 w-3.5 shrink-0 fill-current text-slate-800 dark:text-slate-200" viewBox="0 0 24 24">
+                    <svg
+                      className="h-3.5 w-3.5 shrink-0 fill-current text-slate-800 dark:text-slate-200"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         fillRule="evenodd"
                         clipRule="evenodd"
@@ -585,7 +687,9 @@ export default function RegisterPage() {
 
       {/* Bottom Footer Notice */}
       <div className="relative z-10 text-center text-xs text-slate-500 dark:text-slate-400 pb-2">
-        <span>Protected by enterprise-grade SSL encryption • © 2026 Testify Inc.</span>
+        <span>
+          Protected by enterprise-grade SSL encryption • © 2026 Testify Inc.
+        </span>
       </div>
     </div>
   );

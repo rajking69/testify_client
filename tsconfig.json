@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@server/*": ["../testify_server/src/*"]
     }
   },
   "include": [
@@ -28,7 +29,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    "../testify_server/src/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

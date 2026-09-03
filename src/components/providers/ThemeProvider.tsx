@@ -1,98 +1,36 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import React, { useEffect } from "react";
+import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
+import type { ThemeProviderProps } from "next-themes";
 
-type Theme = "light" | "dark" | "system";
-
-interface ThemeContextType {
-  theme: Theme;
-  resolvedTheme: "light" | "dark";
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
-  mounted: boolean;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem("testify-theme") as Theme) || "system";
-  });
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+function ThemeSync() {
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    if (!mounted) return;
-
+    if (typeof document === "undefined") return;
     const root = document.documentElement;
-    const systemQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    if (resolvedTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+      root.setAttribute("data-theme", "dark");
+      root.style.colorScheme = "dark";
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+      root.setAttribute("data-theme", "light");
+      root.style.colorScheme = "light";
+    }
+  }, [resolvedTheme]);
 
-    const applyTheme = () => {
-      let isDark = false;
-      if (theme === "system") {
-        isDark = systemQuery.matches;
-      } else {
-        isDark = theme === "dark";
-      }
-
-      const activeResolved = isDark ? "dark" : "light";
-      setResolvedTheme(activeResolved);
-
-      if (isDark) {
-        root.classList.add("dark");
-        root.setAttribute("data-theme", "dark");
-      } else {
-        root.classList.remove("dark");
-        root.setAttribute("data-theme", "light");
-      }
-    };
-
-    applyTheme();
-
-    const handleSystemChange = () => {
-      if (theme === "system") {
-        applyTheme();
-      }
-    };
-
-    systemQuery.addEventListener("change", handleSystemChange);
-    return () => systemQuery.removeEventListener("change", handleSystemChange);
-  }, [theme, mounted]);
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem("testify-theme", newTheme);
-  };
-
-  const toggleTheme = () => {
-    const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-  };
-
-  return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        resolvedTheme,
-        setTheme,
-        toggleTheme,
-        mounted,
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
-  );
+  return null;
 }
 
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return (
+    <NextThemesProvider {...props}>
+      <ThemeSync />
+      {children}
+    </NextThemesProvider>
+  );
 }

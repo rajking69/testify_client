@@ -3,14 +3,26 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession, signOut } from "@/lib/auth-client";
-import { Search, Menu, X, ChevronDown, LogOut, Shield, GraduationCap, UserCheck, ShieldAlert } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import {
+  Search,
+  Menu,
+  X,
+  ChevronDown,
+  LogOut,
+  Shield,
+  GraduationCap,
+  UserCheck,
+  ShieldAlert,
+  User,
+  Target,
+} from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function Navbar() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session } = authClient.useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
@@ -31,7 +43,7 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    await signOut();
+    await authClient.signOut();
     router.push("/");
   };
 
@@ -46,17 +58,36 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 h-16 sm:h-20 transition-all duration-300">
         {/* Left: Brand Logo & Links */}
         <div className="flex items-center gap-8">
-          <Logo size={34} textClassName="text-[#0B2238] dark:text-white font-bold" />
+          <Logo
+            size={34}
+            textClassName="text-[#0B2238] dark:text-white font-bold"
+          />
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6 text-[13px] font-semibold text-slate-800 dark:text-slate-200">
-            <Link href="#features" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+            <Link
+              href="#features"
+              className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
+            >
               Features
             </Link>
-            <Link href="#why-testify" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+            <Link
+              href="#why-testify"
+              className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
+            >
               Why Testify
             </Link>
-            <Link href="#security" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+            <Link
+              href="/practice"
+              className="flex items-center gap-1.5 hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
+            >
+              <Target className="h-3.5 w-3.5" />
+              Practice
+            </Link>
+            <Link
+              href="#security"
+              className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
+            >
               Security
             </Link>
 
@@ -78,7 +109,7 @@ export default function Navbar() {
                   />
                   <div className="absolute left-0 mt-2 w-60 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200/90 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
                     <Link
-                      href="/auth/login"
+                      href="/student/dashboard"
                       onClick={() => setShowRolesDropdown(false)}
                       className="flex items-start gap-2.5 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
@@ -86,8 +117,12 @@ export default function Navbar() {
                         <GraduationCap className="h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Student Portal</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Take exams &amp; view scores</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          Student Portal
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Take exams &amp; view scores
+                        </p>
                       </div>
                     </Link>
 
@@ -100,8 +135,12 @@ export default function Navbar() {
                         <UserCheck className="h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Teacher Portal</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Create &amp; evaluate exams</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          Teacher Portal
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Create &amp; evaluate exams
+                        </p>
                       </div>
                     </Link>
 
@@ -114,8 +153,12 @@ export default function Navbar() {
                         <ShieldAlert className="h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Admin Portal</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">System oversight &amp; analytics</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          Admin Portal
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          System oversight &amp; analytics
+                        </p>
                       </div>
                     </Link>
                   </div>
@@ -123,7 +166,10 @@ export default function Navbar() {
               )}
             </div>
 
-            <Link href="#pricing" className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors">
+            <Link
+              href="#pricing"
+              className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
+            >
               Pricing
             </Link>
           </nav>
@@ -133,7 +179,9 @@ export default function Navbar() {
         <div className="hidden sm:flex items-center gap-3">
           {/* Quick Search */}
           <div className="relative">
-            <Search className={`absolute left-3 top-2.5 h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`} />
+            <Search
+              className={`absolute left-3 top-2.5 h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`}
+            />
             <input
               type="text"
               placeholder="Search platform..."
@@ -159,25 +207,44 @@ export default function Navbar() {
                 }`}
               >
                 <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#00A3C4] to-[#0B2238] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                  {session.user?.name ? session.user.name.charAt(0).toUpperCase() : "U"}
+                  {session.user?.name
+                    ? session.user.name.charAt(0).toUpperCase()
+                    : "U"}
                 </div>
-                <span className="max-w-[100px] truncate">{session.user?.name || "Account"}</span>
-                <ChevronDown className={`h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`} />
+                <span className="max-w-[100px] truncate">
+                  {session.user?.name || "Account"}
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`}
+                />
               </button>
 
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
                   <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{session.user?.name}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{session.user?.email}</p>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{session.user?.name}</p>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                        {((session.user as { role?: string })?.role) || "User"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{session.user?.email}</p>
                   </div>
                   <Link
-                    href="/teacher/dashboard"
+                    href={`/${((session.user as { role?: string })?.role) || "student"}/dashboard`}
                     onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Shield className="h-4 w-4 text-[#00A3C4]" />
                     Dashboard
+                  </Link>
+                  <Link
+                    href={`/profile/${((session.user as { role?: string })?.role) || "student"}`}
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <User className="h-4 w-4 text-[#00A3C4]" />
+                    Profile Settings
                   </Link>
                   <button
                     onClick={handleLogout}
@@ -246,6 +313,14 @@ export default function Navbar() {
             Why Testify
           </Link>
           <Link
+            href="/practice"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
+          >
+            <Target className="h-3.5 w-3.5" />
+            Practice Mode
+          </Link>
+          <Link
             href="#security"
             onClick={() => setIsOpen(false)}
             className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
@@ -255,27 +330,32 @@ export default function Navbar() {
 
           {/* Role Portals Mobile */}
           <div className="pt-2 pb-1 border-y border-slate-100 dark:border-slate-800 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Role Portals</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              Role Portals
+            </span>
             <Link
-              href="/auth/login"
+              href="/student/dashboard"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
-              <GraduationCap className="h-3.5 w-3.5 text-[#00A3C4]" /> Student Portal
+              <GraduationCap className="h-3.5 w-3.5 text-[#00A3C4]" /> Student
+              Portal
             </Link>
             <Link
               href="/teacher/dashboard"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
-              <UserCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Teacher Portal
+              <UserCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />{" "}
+              Teacher Portal
             </Link>
             <Link
               href="/admin/dashboard"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
-              <ShieldAlert className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" /> Admin Portal
+              <ShieldAlert className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />{" "}
+              Admin Portal
             </Link>
           </div>
 
