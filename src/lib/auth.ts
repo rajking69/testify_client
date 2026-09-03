@@ -26,7 +26,6 @@ const resend = process.env.RESEND_API_KEY
 const fromEmail = process.env.RESEND_FROM_EMAIL as string;
 
 const authBaseURL =
-  process.env.BETTER_AUTH_URL ||
   process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
   "http://localhost:3000";
 
@@ -35,11 +34,8 @@ export const auth = betterAuth({
   baseURL: authBaseURL,
   trustedOrigins: [
     "http://localhost:3000",
-    "http://localhost:5000",
     "http://127.0.0.1:3000",
-    "http://127.0.0.1:5000",
     process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-    process.env.BETTER_AUTH_URL,
     process.env.FRONTEND_URL,
   ].filter(Boolean) as string[],
   secret: process.env.BETTER_AUTH_SECRET,
