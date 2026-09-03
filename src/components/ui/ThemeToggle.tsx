@@ -14,9 +14,14 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   variant = "icon",
   className = "",
 }) => {
-  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
-  if (!theme) {
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
     return (
       <div
         className={`w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse ${className}`}
@@ -24,7 +29,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     );
   }
 
-  const isDark = theme === "dark";
+  const currentTheme = theme === "system" ? resolvedTheme : theme;
+  const isDark = currentTheme === "dark";
 
   if (variant === "pill") {
     return (

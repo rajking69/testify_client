@@ -52,7 +52,7 @@ export default function AdminPaymentsPage() {
       const search = filters.search.toLowerCase();
       return (
         payment.userName.toLowerCase().includes(search) ||
-        payment.userEmail.toLowerCase().includes(search) ||
+        (payment.userEmail || "").toLowerCase().includes(search) ||
         payment.transactionId.toLowerCase().includes(search)
       );
     }
@@ -88,7 +88,7 @@ export default function AdminPaymentsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-sm font-mono text-slate-700 dark:text-slate-300">
-          {value}
+          {String(value || "")}
         </span>
       ),
     },
@@ -96,13 +96,13 @@ export default function AdminPaymentsPage() {
       key: "userName",
       header: "Customer",
       sortable: true,
-      render: (value, payment) => (
+      render: (_, payment) => (
         <div>
           <p className="font-medium text-slate-900 dark:text-white">
             {payment.userName}
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            {payment.userEmail}
+            {payment.userEmail || ""}
           </p>
         </div>
       ),
@@ -113,7 +113,7 @@ export default function AdminPaymentsPage() {
       sortable: true,
       render: (value, payment) => (
         <span className="text-slate-900 dark:text-white font-medium">
-          {formatCurrency(value, payment.currency)}
+          {formatCurrency(Number(value || 0), payment.currency)}
         </span>
       ),
     },
@@ -121,24 +121,27 @@ export default function AdminPaymentsPage() {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          {value === "success" && (
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-          )}
-          {value === "pending" && <Clock className="h-4 w-4 text-amber-600" />}
-          {value === "failed" && <XCircle className="h-4 w-4 text-rose-600" />}
-          <Badge className={getStatusColor(value)}>
-            {value.charAt(0).toUpperCase() + value.slice(1)}
-          </Badge>
-        </div>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <div className="flex items-center gap-2">
+            {str === "success" && (
+              <CheckCircle className="h-4 w-4 text-emerald-600" />
+            )}
+            {str === "pending" && <Clock className="h-4 w-4 text-amber-600" />}
+            {str === "failed" && <XCircle className="h-4 w-4 text-rose-600" />}
+            <Badge className={getStatusColor(str)}>
+              {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+            </Badge>
+          </div>
+        );
+      },
     },
     {
       key: "paymentMethod",
       header: "Method",
       render: (value) => (
-        <span className="text-slate-700 dark:text-slate-300">{value}</span>
+        <span className="text-slate-700 dark:text-slate-300">{String(value || "")}</span>
       ),
     },
     {
@@ -147,14 +150,14 @@ export default function AdminPaymentsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
-          {formatRelativeTime(value)}
+          {value ? formatRelativeTime(String(value)) : "—"}
         </span>
       ),
     },
   ];
 
   // Action menu items
-  const getActionMenuItems = (payment: Payment): ActionMenuItem[] => [
+  const getActionMenuItems = (payment: Payment): ActionMenuItem<Payment>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,
@@ -165,7 +168,7 @@ export default function AdminPaymentsPage() {
           {
             label: "Download Invoice",
             icon: <Download className="h-4 w-4" />,
-            onClick: (p) => console.log("Download invoice", p.invoiceUrl),
+            onClick: (p: Payment) => console.log("Download invoice", p.invoiceUrl),
           },
         ]
       : []),
@@ -174,7 +177,7 @@ export default function AdminPaymentsPage() {
           {
             label: "Retry Payment",
             icon: <RefreshCw className="h-4 w-4" />,
-            onClick: (p) => console.log("Retry payment", p.id),
+            onClick: (p: Payment) => console.log("Retry payment", p.id),
           },
         ]
       : []),

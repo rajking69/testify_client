@@ -1,3 +1,11 @@
+import dns from "node:dns";
+try {
+  dns.setDefaultResultOrder("ipv4first");
+  dns.setServers(["8.8.8.8", "1.1.1.1", "1.0.0.1"]);
+} catch {
+  // Ignore DNS config failure
+}
+
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
@@ -5,8 +13,8 @@ import { emailOTP } from "better-auth/plugins";
 import { Resend } from "resend";
 import { authConfig } from "./auth-types";
 
-const mongoUri = process.env.MONGODB_URI as string;
-const mongoDbName = process.env.MONGODB_DB_NAME as string;
+const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/testify";
+const mongoDbName = process.env.MONGODB_DB_NAME || "testify";
 
 const client = new MongoClient(mongoUri);
 const db = client.db(mongoDbName);
@@ -17,11 +25,30 @@ const resend = process.env.RESEND_API_KEY
   : null;
 const fromEmail = process.env.RESEND_FROM_EMAIL as string;
 
+const authBaseURL =
+  process.env.BETTER_AUTH_URL ||
+  process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
+  "http://localhost:3000";
+
 export const auth = betterAuth({
   database: mongodbAdapter(db, { client }),
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  trustedOrigins: [process.env.NEXT_PUBLIC_BETTER_AUTH_URL as string],
+  baseURL: authBaseURL,
+  trustedOrigins: [
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5000",
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
+    process.env.BETTER_AUTH_URL,
+    process.env.FRONTEND_URL,
+  ].filter(Boolean) as string[],
   secret: process.env.BETTER_AUTH_SECRET,
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github"],
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },

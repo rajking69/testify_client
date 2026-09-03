@@ -37,7 +37,7 @@ interface PracticeContextType {
 
   // Timer state
   timeRemaining: number;
-  setTimeRemaining: (time: number) => void;
+  setTimeRemaining: React.Dispatch<React.SetStateAction<number>>;
   isTimerRunning: boolean;
   setIsTimerRunning: (running: boolean) => void;
 

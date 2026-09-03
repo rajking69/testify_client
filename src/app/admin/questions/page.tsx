@@ -120,38 +120,45 @@ export default function AdminQuestionsPage() {
       key: "difficulty",
       header: "Difficulty",
       sortable: true,
-      render: (value) => (
-        <Badge
-          className={cn(
-            value === "easy" &&
-              "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-            value === "medium" &&
-              "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
-            value === "hard" &&
-              "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
-          )}
-        >
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const valStr = String(value || "");
+        return (
+          <Badge
+            variant="outline"
+            className={cn(
+              valStr === "easy" &&
+                "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
+              valStr === "medium" &&
+                "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
+              valStr === "hard" &&
+                "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
+            )}
+          >
+            {valStr ? valStr.charAt(0).toUpperCase() + valStr.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "tags",
       header: "Tags",
-      render: (value) => (
-        <div className="flex flex-wrap gap-1">
-          {value.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {value.length > 2 && (
-            <Badge variant="outline" className="text-xs">
-              +{value.length - 2}
-            </Badge>
-          )}
-        </div>
-      ),
+      render: (value) => {
+        const tags = Array.isArray(value) ? value : [];
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 2).map((tag: string) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+            {tags.length > 2 && (
+              <Badge variant="outline" className="text-xs">
+                +{tags.length - 2}
+              </Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "usageCount",
@@ -160,7 +167,7 @@ export default function AdminQuestionsPage() {
       render: (value) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <TrendingUp className="h-3 w-3" />
-          {value}
+          {String(value ?? 0)}
         </div>
       ),
     },
@@ -170,14 +177,14 @@ export default function AdminQuestionsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
-          {formatRelativeTime(value)}
+          {value ? formatRelativeTime(String(value)) : "-"}
         </span>
       ),
     },
   ];
 
   // Action menu items
-  const getActionMenuItems = (question: Question): ActionMenuItem[] => [
+  const getActionMenuItems = (question: Question): ActionMenuItem<Question>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,

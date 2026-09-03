@@ -98,22 +98,22 @@ export default function AdminExamsPage() {
       header: "Created By",
       sortable: true,
       render: (value) => (
-        <span className="text-slate-700 dark:text-slate-300">{value}</span>
+        <span className="text-slate-700 dark:text-slate-300">{String(value || "")}</span>
       ),
     },
     {
       key: "schedule",
       header: "Schedule",
-      render: (value) => (
+      render: (_, exam) => (
         <div className="text-slate-700 dark:text-slate-300">
           <div className="flex items-center gap-1 text-xs">
             <Calendar className="h-3 w-3" />
-            {new Date(value.startWindow).toLocaleDateString()}
+            {new Date(exam.schedule.startWindow).toLocaleDateString()}
           </div>
           <div className="flex items-center gap-1 text-xs mt-1">
             <Clock className="h-3 w-3" />
-            {new Date(value.startWindow).toLocaleTimeString()} -{" "}
-            {new Date(value.endWindow).toLocaleTimeString()}
+            {new Date(exam.schedule.startWindow).toLocaleTimeString()} -{" "}
+            {new Date(exam.schedule.endWindow).toLocaleTimeString()}
           </div>
         </div>
       ),
@@ -125,7 +125,7 @@ export default function AdminExamsPage() {
       render: (value) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <Clock className="h-3 w-3" />
-          {value} min
+          {String(value || 0)} min
         </div>
       ),
     },
@@ -133,7 +133,7 @@ export default function AdminExamsPage() {
       key: "enrolledCount",
       header: "Enrolled",
       sortable: true,
-      render: (value, exam) => (
+      render: (_, exam) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <Users className="h-3 w-3" />
           {exam.enrolledCount} / {exam.completedCount}
@@ -144,16 +144,19 @@ export default function AdminExamsPage() {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (value) => (
-        <Badge className={getStatusColor(value)}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <Badge className={getStatusColor(str)}>
+            {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
   ];
 
   // Action menu items
-  const getActionMenuItems = (exam: Exam): ActionMenuItem[] => [
+  const getActionMenuItems = (exam: Exam): ActionMenuItem<Exam>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,

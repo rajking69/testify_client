@@ -125,8 +125,7 @@ export function AdminTable<T extends object>({
                 value={filters?.status || ""}
                 onChange={(e) =>
                   onFilterChange?.({
-                    status: e.target.value as
-                      "active" | "deactivated" | "suspended" | "",
+                    status: (e.target.value as FilterState["status"]) || undefined,
                   })
                 }
               >
@@ -147,8 +146,7 @@ export function AdminTable<T extends object>({
                 value={filters?.role || ""}
                 onChange={(e) =>
                   onFilterChange?.({
-                    role: e.target.value as
-                      "admin" | "teacher" | "student" | "",
+                    role: (e.target.value as FilterState["role"]) || undefined,
                   })
                 }
               >
@@ -303,14 +301,14 @@ export function AdminTable<T extends object>({
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-slate-600 dark:text-slate-400">
             Showing {formatNumber(paginationInfo.startIndex)} to{" "}
-            {formatNumber(paginationInfo.endIndex)} of {formatNumber(total)}{" "}
+            {formatNumber(paginationInfo.endIndex ?? 0)} of {formatNumber(total ?? 0)}{" "}
             results
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              disabled={!paginationInfo.hasPrevPage}
+              disabled={!paginationInfo.hasNextPage}
               onClick={() =>
                 onFilterChange?.({ page: (filters?.page || 1) - 1 })
               }
@@ -326,7 +324,7 @@ export function AdminTable<T extends object>({
                   return (
                     <Button
                       key={pageNum}
-                      variant={isActive ? "default" : "outline"}
+                      variant={isActive ? "primary" : "outline"}
                       size="sm"
                       className="w-8 h-8 p-0"
                       onClick={() => onFilterChange?.({ page: pageNum })}
@@ -355,7 +353,7 @@ export function AdminTable<T extends object>({
 }
 
 // Action Menu Component
-function ActionMenu<T>({ items, data }: { items: ActionMenuItem[]; data: T }) {
+function ActionMenu<T>({ items, data }: { items: ActionMenuItem<T>[]; data: T }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -383,7 +381,7 @@ function ActionMenu<T>({ items, data }: { items: ActionMenuItem[]; data: T }) {
                 )}
                 <button
                   onClick={() => {
-                    item.onClick(data);
+                    item.onClick?.(data);
                     setIsOpen(false);
                   }}
                   disabled={item.disabled}

@@ -102,7 +102,7 @@ export default function LoginPage() {
     try {
       await socialSignIn({
         provider: "google",
-        callbackURL: process.env.FRONTEND_URL
+        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -117,7 +117,7 @@ export default function LoginPage() {
     try {
       await socialSignIn({
         provider: "github",
-        callbackURL: process.env.FRONTEND_URL
+        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
       });
     } catch (err: unknown) {
       const errorMessage =

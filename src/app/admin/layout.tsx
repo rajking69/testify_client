@@ -75,7 +75,9 @@ export default function AdminLayout({
 
         {/* Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {children}
+          <React.Suspense fallback={<div className="p-8 text-center text-slate-500 dark:text-slate-400">Loading admin dashboard...</div>}>
+            {children}
+          </React.Suspense>
         </main>
       </div>
 

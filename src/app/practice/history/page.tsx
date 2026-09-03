@@ -17,7 +17,7 @@ import {
   Home,
 } from "lucide-react";
 import { usePractice } from "@/lib/practice/practice-context";
-import { PracticeMode } from "@/lib/practice/practice-types";
+import { PracticeMode, Difficulty } from "@/lib/practice/practice-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -65,7 +65,7 @@ export default function PracticeHistoryPage() {
       mode: historyItem.mode,
       subject: historyItem.subject,
       topics: [],
-      difficulty: ["easy", "medium", "hard"],
+      difficulty: ["easy", "medium", "hard"] as Difficulty[],
       questionCount: 10,
     };
 

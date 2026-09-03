@@ -69,27 +69,33 @@ export default function AdminSubscriptionsPage() {
       key: "tier",
       header: "Plan",
       sortable: true,
-      render: (value) => (
-        <Badge
-          className={cn(
-            value === "free" && "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/60 dark:text-slate-300 dark:border-slate-800",
-            value === "pro" && "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
-            value === "institutional" && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
-          )}
-        >
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <Badge
+            className={cn(
+              str === "free" && "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/60 dark:text-slate-300 dark:border-slate-800",
+              str === "pro" && "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
+              str === "institutional" && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
+            )}
+          >
+            {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (value) => (
-        <Badge className={getStatusColor(value)}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <Badge className={getStatusColor(str)}>
+            {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "amount",
@@ -97,7 +103,7 @@ export default function AdminSubscriptionsPage() {
       sortable: true,
       render: (value, sub) => (
         <span className="text-slate-700 dark:text-slate-300 font-medium">
-          {formatCurrency(value, sub.currency)}
+          {formatCurrency(Number(value || 0), sub.currency)}
         </span>
       ),
     },
@@ -108,7 +114,7 @@ export default function AdminSubscriptionsPage() {
       render: (value) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <Calendar className="h-3 w-3" />
-          {new Date(value).toLocaleDateString()}
+          {new Date(String(value)).toLocaleDateString()}
         </div>
       ),
     },
@@ -119,7 +125,7 @@ export default function AdminSubscriptionsPage() {
       render: (value) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <Calendar className="h-3 w-3" />
-          {new Date(value).toLocaleDateString()}
+          {new Date(String(value)).toLocaleDateString()}
         </div>
       ),
     },
@@ -135,7 +141,7 @@ export default function AdminSubscriptionsPage() {
   ];
 
   // Action menu items
-  const getActionMenuItems = (subscription: Subscription): ActionMenuItem[] => [
+  const getActionMenuItems = (subscription: Subscription): ActionMenuItem<Subscription>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,

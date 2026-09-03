@@ -1,7 +1,11 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 @plugin "daisyui";
 
-:root[data-theme="light"] {
+:root,
+:root[data-theme="light"],
+.light {
   /* 1. BRAND & SEMANTIC COLOR PALETTE */
   --color-primary: #2563eb; /* Blue 600 - Primary Brand */
   --color-primary-hover: #1d4ed8; /* Blue 700 - Active/Hover state */
@@ -64,7 +68,8 @@
     0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+.dark {
   --color-primary: #3b82f6;
   --color-primary-hover: #60a5fa;
   --color-primary-light: #1e3a8a;

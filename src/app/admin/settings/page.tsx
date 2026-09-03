@@ -59,7 +59,7 @@ export default function AdminSettingsPage() {
               { value: "true", label: "Enabled" },
               { value: "false", label: "Disabled" },
             ]}
-            onChange={(value) => updateConfig(config.id, value)}
+            onChange={(e) => updateConfig(config.id, e.target.value)}
           />
         );
       case "number":

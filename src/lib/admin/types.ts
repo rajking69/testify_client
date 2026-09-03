@@ -100,6 +100,7 @@ export interface Payment {
   subscriptionId: string;
   userId: string;
   userName: string;
+  userEmail?: string;
   amount: number;
   currency: string;
   status: PaymentStatus;
@@ -162,6 +163,8 @@ export interface FilterState {
   role?: UserRole;
   tier?: SubscriptionTier;
   category?: FeatureCategory;
+  type?: string;
+  difficulty?: string;
   dateRange?: {
     from: string;
     to: string;

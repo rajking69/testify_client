@@ -69,7 +69,7 @@ export default function PracticeSessionPage() {
 
     if (isTimerRunning && timeRemaining > 0) {
       interval = setInterval(() => {
-        setTimeRemaining((prev) => {
+        setTimeRemaining((prev: number) => {
           if (prev <= 1) {
             setIsTimerRunning(false);
             return 0;

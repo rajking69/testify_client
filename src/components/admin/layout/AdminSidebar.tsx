@@ -15,12 +15,14 @@ import {
   Lock,
   ChevronLeft,
   ChevronRight,
-  GraduationCap,
   FileText,
   Zap,
+  LogOut,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/admin/utils";
 import { authClient } from "@/lib/auth-client";
+import { TestifyLogoIcon } from "@/components/ui/Logo";
 
 interface NavItem {
   label: string;
@@ -108,7 +110,7 @@ export function AdminSidebar({
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
@@ -116,35 +118,30 @@ export function AdminSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out lg:sticky max-h-screen",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white/95 dark:bg-[#060B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out lg:static",
           isCollapsed ? "w-20" : "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100 dark:border-slate-900">
-          {!isCollapsed && (
-            <Link
-              href="/"
-              className="flex items-center gap-3 overflow-hidden"
-            >
-              <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
-                <ShieldAlert className="h-6 w-6" />
-              </div>
+        <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100 dark:border-slate-900/80">
+          <Link href="/admin/dashboard" className="flex items-center gap-3 overflow-hidden group">
+            <TestifyLogoIcon size={34} />
+            {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-lg font-bold font-display tracking-tight text-slate-900 dark:text-white">
+                <span className="text-lg font-bold font-display tracking-tight text-[#0B2238] dark:text-white group-hover:text-[#5B67F7] transition-colors">
                   Testify
                 </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                  Admin Portal
+                <span className="text-[10px] uppercase font-bold tracking-wider text-purple-600 dark:text-purple-400">
+                  Admin Command
                 </span>
               </div>
-            </Link>
-          )}
+            )}
+          </Link>
 
           <button
             onClick={onToggleCollapse}
-            className="hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
+            className="hidden lg:flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isCollapsed ? (
@@ -154,6 +151,18 @@ export function AdminSidebar({
             )}
           </button>
         </div>
+
+        {/* Workspace Badge */}
+        {!isCollapsed && (
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-900/80 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-display">
+              Management
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+              <ShieldAlert className="h-3 w-3" /> Admin
+            </span>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
@@ -166,10 +175,10 @@ export function AdminSidebar({
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative",
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold transition-all duration-200 group relative",
                   isActive
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900",
+                    ? "bg-purple-50 text-purple-700 border border-purple-200 shadow-sm dark:bg-[#5B67F7]/15 dark:text-purple-300 dark:border-purple-500/40"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white"
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
@@ -177,8 +186,8 @@ export function AdminSidebar({
                   className={cn(
                     "transition-transform duration-200 group-hover:scale-110",
                     isActive
-                      ? "text-white"
-                      : "text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400",
+                      ? "text-[#5B67F7] dark:text-purple-300"
+                      : "text-slate-400 dark:text-slate-500 group-hover:text-[#5B67F7] dark:group-hover:text-purple-400"
                   )}
                 >
                   {item.icon}
@@ -188,29 +197,27 @@ export function AdminSidebar({
                     {item.label}
                   </span>
                 )}
-                {item.badge && !isCollapsed && (
-                  <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 rounded-full">
-                    {item.badge}
-                  </span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#5B67F7] dark:bg-purple-400 shrink-0" />
                 )}
               </Link>
             );
           })}
         </nav>
 
-        {/* User Section */}
-        <div className="p-3 border-t border-slate-100 dark:border-slate-900">
+        {/* Footer */}
+        <div className="p-3 border-t border-slate-100 dark:border-slate-900/80 bg-slate-50/40 dark:bg-slate-950/40">
           {!isCollapsed && user && (
-            <div className="mb-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                {user?.name.charAt(0).toUpperCase()}
+            <div className="mb-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#152234] to-[#5B67F7] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
+                {user.name ? user.name.charAt(0).toUpperCase() : "A"}
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-bold font-display text-slate-900 dark:text-white truncate">
-                  {user?.role}
+                <span className="text-xs font-bold font-display text-[#0B2238] dark:text-white truncate">
+                  {user.name || "Admin"}
                 </span>
-                <span className="text-[11px] text-slate-400 truncate">
-                  {user?.email}
+                <span className="text-[10px] text-slate-400 truncate">
+                  {user.email}
                 </span>
               </div>
             </div>
@@ -219,12 +226,12 @@ export function AdminSidebar({
           <button
             onClick={handleLogout}
             className={cn(
-              "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors",
-              isCollapsed && "justify-center px-0",
+              "w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors cursor-pointer",
+              isCollapsed && "justify-center px-0"
             )}
             title="Sign Out"
           >
-            <GraduationCap className="h-5 w-5 shrink-0" />
+            <LogOut className="h-4 w-4 shrink-0" />
             {!isCollapsed && <span>Sign Out</span>}
           </button>
         </div>

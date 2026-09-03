@@ -127,40 +127,46 @@ export default function AdminUsersPage() {
       key: "role",
       header: "Role",
       sortable: true,
-      render: (value) => (
-        <Badge
-          className={cn(
-            value === "admin" &&
-              "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
-            value === "teacher" &&
-              "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
-            value === "student" &&
-              "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800",
-          )}
-        >
-          {value === "admin" && <ShieldAlert className="h-3 w-3 mr-1" />}
-          {value === "teacher" && <UserCheck className="h-3 w-3 mr-1" />}
-          {value === "student" && <GraduationCap className="h-3 w-3 mr-1" />}
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const valStr = String(value || "");
+        return (
+          <Badge
+            className={cn(
+              valStr === "admin" &&
+                "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
+              valStr === "teacher" &&
+                "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
+              valStr === "student" &&
+                "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800",
+            )}
+          >
+            {valStr === "admin" && <ShieldAlert className="h-3 w-3 mr-1" />}
+            {valStr === "teacher" && <UserCheck className="h-3 w-3 mr-1" />}
+            {valStr === "student" && <GraduationCap className="h-3 w-3 mr-1" />}
+            {valStr ? valStr.charAt(0).toUpperCase() + valStr.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (value) => (
-        <Badge className={getStatusColor(value)}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const valStr = String(value || "");
+        return (
+          <Badge className={getStatusColor(valStr)}>
+            {valStr ? valStr.charAt(0).toUpperCase() + valStr.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "department",
       header: "Department",
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
-          {value || "—"}
+          {String(value || "—")}
         </span>
       ),
     },
@@ -170,7 +176,7 @@ export default function AdminUsersPage() {
       sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
-          {formatRelativeTime(value)}
+          {value ? formatRelativeTime(String(value)) : "—"}
         </span>
       ),
     },
@@ -180,7 +186,7 @@ export default function AdminUsersPage() {
       sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
-          {value ? formatRelativeTime(value) : "Never"}
+          {value ? formatRelativeTime(String(value)) : "Never"}
         </span>
       ),
     },

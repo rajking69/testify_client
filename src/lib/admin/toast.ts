@@ -57,9 +57,10 @@ export async function withPromiseToast<T>(
     error: string;
   }
 ): Promise<T> {
-  return toast.promise(promise, {
+  toast.promise(promise, {
     loading,
     success,
     error,
   });
+  return promise;
 }
