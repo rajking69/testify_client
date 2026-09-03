@@ -7,17 +7,18 @@ try {
 }
 
 import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { database, mongoClient } from "./mongodb";
+import { userAdditionalFields } from "./user-schema";
 import { emailOTP } from "better-auth/plugins";
 import { Resend } from "resend";
 import { authConfig } from "./auth-types";
 
-const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/testify";
-const mongoDbName = process.env.MONGODB_DB_NAME || "testify";
+const authSecret = process.env.BETTER_AUTH_SECRET;
 
-const client = new MongoClient(mongoUri);
-const db = client.db(mongoDbName);
+if (!authSecret) {
+  throw new Error("Missing BETTER_AUTH_SECRET. Add it to .env.local before starting the server.");
+}
 
 // Initialize Resend if API key is available
 const resend = process.env.RESEND_API_KEY
@@ -30,7 +31,8 @@ const authBaseURL =
   "http://localhost:3000";
 
 export const auth = betterAuth({
-  database: mongodbAdapter(db, { client }),
+  database: mongodbAdapter(database, { client: mongoClient }),
+  secret: authSecret,
   baseURL: authBaseURL,
   trustedOrigins: [
     "http://localhost:3000",
@@ -38,7 +40,6 @@ export const auth = betterAuth({
     process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     process.env.FRONTEND_URL,
   ].filter(Boolean) as string[],
-  secret: process.env.BETTER_AUTH_SECRET,
   account: {
     accountLinking: {
       enabled: true,
@@ -59,6 +60,12 @@ export const auth = betterAuth({
     },
   },
   ...authConfig,
+  user: {
+    additionalFields: {
+      ...authConfig.user.additionalFields,
+      ...userAdditionalFields,
+    },
+  },
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {

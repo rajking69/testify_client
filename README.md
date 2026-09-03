@@ -16,6 +16,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Database Setup
+
+Copy `.env.example` to `.env.local` and replace the placeholders with your MongoDB Atlas connection details and a long random Better Auth secret:
+
+```bash
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+The authentication API is available at `/api/auth/[...all]`. Keep `.env.local` private; it is ignored by Git.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
