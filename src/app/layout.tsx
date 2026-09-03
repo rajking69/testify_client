@@ -6,7 +6,6 @@ try {
 } catch {
   // Ignore DNS config failure if unsupported
 }
-
 import type { Metadata } from "next";
 import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -46,7 +45,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-300">
         <ThemeProvider
           attribute="data-theme"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >

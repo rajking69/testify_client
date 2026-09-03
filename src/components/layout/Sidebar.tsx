@@ -19,6 +19,7 @@ import {
   Clock,
   Users,
   Settings,
+  Target,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { TestifyLogoIcon } from "@/components/ui/Logo";
@@ -44,6 +45,11 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Dashboard",
       href: "/teacher/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
+    },
+    {
+      label: "Practice Mode",
+      href: "/practice",
+      icon: <Target className="h-5 w-5" />,
     },
     {
       label: "Question Bank",
@@ -83,6 +89,11 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
+      label: "Practice Mode",
+      href: "/practice",
+      icon: <Target className="h-5 w-5" />,
+    },
+    {
       label: "User Management",
       href: "/admin/users",
       icon: <Users className="h-5 w-5" />,
@@ -103,6 +114,11 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Dashboard",
       href: "/student/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
+    },
+    {
+      label: "Practice Mode",
+      href: "/practice",
+      icon: <Target className="h-5 w-5" />,
     },
     {
       label: "Available Exams",
