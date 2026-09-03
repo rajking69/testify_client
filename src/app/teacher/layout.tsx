@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
-import { useSession } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { ShieldAlert, ArrowLeft, GraduationCap } from "lucide-react";
+import Link from "next/link";
 
 export default function TeacherLayout({
   children,
@@ -14,9 +14,9 @@ export default function TeacherLayout({
 }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending } = authClient.useSession();
 
-  const userRole = (session?.user as { role?: string })?.role;
+  const userRole = session?.user?.role;
 
   // Unauthenticated visitors cannot access teacher dashboard
   if (!isPending && !session) {
@@ -51,8 +51,8 @@ export default function TeacherLayout({
     );
   }
 
-  // Student accounts cannot access the teacher exam builder & dashboard
-  if (!isPending && session && userRole === "student") {
+  // Non-teachers cannot access teacher workspace
+  if (!isPending && session && userRole !== "teacher" && userRole !== "admin") {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-3xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 p-8 shadow-xl text-center space-y-4">
@@ -63,20 +63,20 @@ export default function TeacherLayout({
             Teacher Workspace Restricted
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            You are currently signed in as a <strong className="text-indigo-600 dark:text-indigo-400">Student</strong>. Student accounts cannot access, create, or manage teacher dashboards and question banks.
+            You are currently signed in as a <strong className="text-indigo-600 dark:text-indigo-400 capitalize">{userRole || "User"}</strong>. Only teacher and admin accounts can access teacher dashboards.
           </p>
           <div className="pt-2 flex flex-col gap-2">
             <Link
-              href="/"
+              href={`/${userRole || "student"}/dashboard`}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-semibold text-xs px-5 py-2.5 shadow-sm hover:bg-indigo-700 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" /> Go to Student Home / Exams
+              <ArrowLeft className="h-4 w-4" /> Go to Your Dashboard
             </Link>
             <Link
               href="/auth/login"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
-              <GraduationCap className="h-4 w-4" /> Switch to Teacher Account
+              <GraduationCap className="h-4 w-4" /> Switch Account
             </Link>
           </div>
         </div>
@@ -84,6 +84,7 @@ export default function TeacherLayout({
     );
   }
 
+  // Teachers get sidebar + topbar layout
   return (
     <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 flex flex-col lg:flex-row text-slate-900 dark:text-slate-100">
       {/* Sidebar Navigation */}
@@ -101,7 +102,9 @@ export default function TeacherLayout({
 
         {/* Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {children}
+          <React.Suspense fallback={<div className="p-8 text-center text-slate-500 dark:text-slate-400">Loading teacher dashboard...</div>}>
+            {children}
+          </React.Suspense>
         </main>
       </div>
     </div>
