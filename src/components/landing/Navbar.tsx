@@ -15,6 +15,7 @@ import {
   UserCheck,
   ShieldAlert,
   User,
+  Target,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -75,6 +76,13 @@ export default function Navbar() {
               className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
             >
               Why Testify
+            </Link>
+            <Link
+              href="/practice"
+              className="flex items-center gap-1.5 hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
+            >
+              <Target className="h-3.5 w-3.5" />
+              Practice
             </Link>
             <Link
               href="#security"
@@ -303,6 +311,14 @@ export default function Navbar() {
             className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
           >
             Why Testify
+          </Link>
+          <Link
+            href="/practice"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
+          >
+            <Target className="h-3.5 w-3.5" />
+            Practice Mode
           </Link>
           <Link
             href="#security"

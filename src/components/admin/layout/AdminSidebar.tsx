@@ -120,7 +120,7 @@ export function AdminSidebar({
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col bg-white/95 dark:bg-[#060B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out lg:static",
           isCollapsed ? "w-20" : "w-64",
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Header */}
@@ -167,7 +167,8 @@ export function AdminSidebar({
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+            const isActive =
+              pathname === item.href || pathname?.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
@@ -192,7 +193,9 @@ export function AdminSidebar({
                   {item.icon}
                 </div>
                 {!isCollapsed && (
-                  <span className="truncate flex-1 font-display">{item.label}</span>
+                  <span className="truncate flex-1 font-display">
+                    {item.label}
+                  </span>
                 )}
                 {isActive && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#5B67F7] dark:bg-purple-400 shrink-0" />

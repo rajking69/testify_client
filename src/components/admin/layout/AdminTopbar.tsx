@@ -34,9 +34,27 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
   };
 
   const notifications = [
-    { id: 1, title: "New instructor registered", message: "Dr. Sarah Jenkins created an account", time: "15m ago", unread: true },
-    { id: 2, title: "Platform Health Check", message: "Automated database backup completed", time: "1h ago", unread: true },
-    { id: 3, title: "Subscription Renewed", message: "Enterprise Tier renewed by Apex Academy", time: "4h ago", unread: false },
+    {
+      id: 1,
+      title: "New user registration",
+      message: "5 new users registered today",
+      time: "2h ago",
+      unread: true,
+    },
+    {
+      id: 2,
+      title: "System alert",
+      message: "High CPU usage detected",
+      time: "4h ago",
+      unread: true,
+    },
+    {
+      id: 3,
+      title: "Payment received",
+      message: "New subscription payment from Lisa Anderson",
+      time: "6h ago",
+      unread: false,
+    },
   ];
 
   return (
@@ -150,7 +168,6 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>
-
           {showProfileMenu && (
             <>
               <div

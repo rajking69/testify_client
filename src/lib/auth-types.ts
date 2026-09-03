@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { roles } from "./role-schema";
 
 // Shared auth type definition for client-side type inference
 export const authConfig = {
