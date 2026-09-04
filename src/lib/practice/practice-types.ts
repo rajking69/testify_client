@@ -7,12 +7,15 @@ export interface Question {
   subject: string;
   topic: string;
   difficulty: Difficulty;
-  questionType: QuestionType;
+  questionType?: QuestionType;
   questionText: string;
+  question?: string;
   options?: string[];
   correctAnswer: string | number;
+  correctOptionIndex?: number;
+  type?: string;
   explanation: string;
-  isBookmarked: boolean;
+  isBookmarked?: boolean;
 }
 
 export interface PracticeSessionConfig {
