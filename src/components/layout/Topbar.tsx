@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -8,10 +8,7 @@ import {
   Home,
   LogOut,
   ChevronDown,
-  Bell,
-  User,
   Shield,
-  Search,
   Target,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -40,19 +37,31 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
             return;
           }
         }
+        const general = localStorage.getItem("testify_custom_profile");
+        if (general) {
+          const parsed = JSON.parse(general);
+          if (!userEmail || !parsed.email || parsed.email === userEmail) {
+            setCustomProfile(parsed);
+            return;
+          }
+        }
         setCustomProfile({});
       } catch {}
     };
     syncProfile();
 
     window.addEventListener("testify_profile_updated", syncProfile);
-    return () => window.removeEventListener("testify_profile_updated", syncProfile);
+    window.addEventListener("storage", syncProfile);
+    return () => {
+      window.removeEventListener("testify_profile_updated", syncProfile);
+      window.removeEventListener("storage", syncProfile);
+    };
   }, [user?.email]);
 
   const activeName = customProfile.name || user?.name;
   const activeImage = customProfile.image || user?.image;
 
-  const userRole = user?.role || "teacher";
+  const userRole = (user as { role?: string })?.role || "student";
   const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
   const roleMeta = {
@@ -70,7 +79,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
     },
   };
 
-  const config = roleMeta[userRole as keyof typeof roleMeta] || roleMeta.teacher;
+  const config = roleMeta[userRole as keyof typeof roleMeta] || roleMeta.student;
 
   const getPageTitle = () => {
     if (!pathname) return `${roleDisplay} Dashboard`;
@@ -144,7 +153,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
               <img
                 src={activeImage}
                 alt={activeName || "User"}
-                className="h-8 w-8 rounded-xl object-cover border border-blue-300 dark:border-blue-700 shadow-2xs"
+                className="h-8 w-8 rounded-xl object-cover border border-cyan-500/30 shadow-2xs"
               />
             ) : (
               <div
@@ -170,46 +179,27 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
               <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-2 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-bold font-display text-[#0B2238] dark:text-white truncate">
-                    {user?.name || `${roleDisplay} Profile`}
+                    {activeName || `${roleDisplay} Profile`}
                   </p>
                   <p className="text-[11px] text-slate-400 truncate">
                     {user?.email || `${userRole}@testify.com`}
                   </p>
                 </div>
-                <div className="pt-1">
+                <div className="pt-1 space-y-0.5">
                   <Link
                     href={`/${userRole}/dashboard`}
                     onClick={() => setShowDropdown(false)}
                     className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Shield className="h-4 w-4 text-slate-400" />
-                    Dashboard
+                    <span>Dashboard</span>
                   </Link>
-                  <Link
-                    href="/practice"
-                    onClick={() => setShowDropdown(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <Target className="h-4 w-4 text-slate-400" />
-                    Practice Mode
-                  </Link>
-                  <Link
-                    href="/"
-                    onClick={() => setShowDropdown(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <Home className="h-4 w-4 text-slate-400" />
-                    Public Landing Page
-                  </Link>
-                </div>
-
-                <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
-                    Sign Out
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>

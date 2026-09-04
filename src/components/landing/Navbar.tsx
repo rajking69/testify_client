@@ -1,22 +1,19 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
-  Search,
   KeyRound,
   ArrowRight,
   Menu,
   X,
   ChevronDown,
   LogOut,
-  Shield,
   GraduationCap,
   UserCheck,
   ShieldAlert,
-  User,
   Target,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -25,6 +22,8 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 export default function Navbar() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
+  const user = session?.user;
+  const [customProfile, setCustomProfile] = useState<{ name?: string; image?: string }>({});
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
@@ -44,9 +43,44 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const syncProfile = () => {
+      try {
+        const stored = localStorage.getItem("testify_custom_profile");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (!user?.email || !parsed.email || parsed.email === user.email) {
+            setCustomProfile(parsed);
+            return;
+          }
+        }
+        setCustomProfile({});
+      } catch {}
+    };
+    syncProfile();
+
+    window.addEventListener("testify_profile_updated", syncProfile);
+    window.addEventListener("storage", syncProfile);
+    return () => {
+      window.removeEventListener("testify_profile_updated", syncProfile);
+      window.removeEventListener("storage", syncProfile);
+    };
+  }, [user?.email]);
+
+  const activeName = customProfile.name || user?.name;
+  const activeImage = customProfile.image || user?.image;
+  const userRole = ((user as { role?: string })?.role) || "student";
+  const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+
   const handleLogout = async () => {
     await authClient.signOut();
     router.push("/");
+  };
+
+  const getDashboardIcon = () => {
+    if (userRole === "teacher") return <UserCheck className="h-4 w-4 text-indigo-500" />;
+    if (userRole === "admin") return <ShieldAlert className="h-4 w-4 text-purple-500" />;
+    return <GraduationCap className="h-4 w-4 text-cyan-500" />;
   };
 
   return (
@@ -93,7 +127,7 @@ export default function Navbar() {
               Security
             </Link>
 
-            {/* 3 Roles Dropdown Menu (Student, Teacher, Admin) */}
+            {/* Role Portals Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowRolesDropdown((prev) => !prev)}
@@ -179,7 +213,7 @@ export default function Navbar() {
 
         {/* Right: Search, Theme Toggle & Actions */}
         <div className="hidden sm:flex items-center gap-3">
-          {/* Quick Room Code Join Bar */}
+          {/* Quick Room Code / Search Bar */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -189,52 +223,67 @@ export default function Navbar() {
                 router.push(`/exam/${encodeURIComponent(code.toUpperCase())}`);
               }
             }}
-            className="relative flex items-center"
+            className="relative flex items-center group"
           >
-            <KeyRound
-              className={`absolute left-3 h-3.5 w-3.5 pointer-events-none ${isScrolled ? "text-[#00A3C4] dark:text-cyan-400" : "text-cyan-300"}`}
-            />
-            <input
-              name="roomCode"
-              type="text"
-              placeholder={isLoggedIn ? "Enter Room Code..." : "Room Join Code..."}
-              className={`h-8 w-36 lg:w-48 rounded-full border pl-8 pr-7 text-xs font-mono uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#00A3C4] transition-all shadow-2xs ${
-                isScrolled
-                  ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
-                  : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white placeholder-slate-200 backdrop-blur-xs"
-              }`}
-            />
-            <button
-              type="submit"
-              className={`absolute right-2 p-0.5 rounded-full hover:scale-110 transition-all cursor-pointer ${
-                isScrolled ? "text-[#00A3C4] hover:text-[#008BB0]" : "text-cyan-300 hover:text-white"
-              }`}
-              title="Join Exam Room"
-            >
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+            <div className="relative flex items-center">
+              <KeyRound
+                className={`absolute left-3.5 h-3.5 w-3.5 pointer-events-none transition-colors ${
+                  isScrolled
+                    ? "text-slate-400 group-focus-within:text-[#00A3C4]"
+                    : "text-slate-300 group-focus-within:text-cyan-300"
+                }`}
+              />
+              <input
+                name="roomCode"
+                type="text"
+                placeholder="Enter Room Code..."
+                className={`w-44 lg:w-48 rounded-full pl-9 pr-8 py-1.5 text-xs font-medium uppercase tracking-wider outline-hidden transition-all duration-300 focus:w-56 ${
+                  isScrolled
+                    ? "bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 placeholder:normal-case placeholder:tracking-normal focus:border-[#00A3C4] focus:ring-2 focus:ring-[#00A3C4]/20"
+                    : "bg-white/15 dark:bg-slate-900/60 border border-white/25 dark:border-slate-700/60 text-white placeholder:text-slate-300 placeholder:normal-case placeholder:tracking-normal focus:border-white focus:bg-white/25 focus:ring-2 focus:ring-white/20 backdrop-blur-xs"
+                }`}
+              />
+              <button
+                type="submit"
+                title="Join Exam Room"
+                className={`absolute right-1.5 p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer ${
+                  isScrolled ? "text-slate-500 hover:text-[#00A3C4]" : "text-white/80 hover:text-white"
+                }`}
+              >
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
           </form>
 
-          {/* Animated Theme Toggle */}
+          {/* Theme Toggle */}
           <ThemeToggle />
 
+          {/* Auth State Button */}
           {isLoggedIn ? (
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu((prev) => !prev)}
-                className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer shadow-2xs ${
+                className={`flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full border text-xs font-bold transition-all cursor-pointer shadow-xs ${
                   isScrolled
-                    ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
+                    ? "bg-slate-100/90 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-200/60"
                     : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white hover:bg-white/30 backdrop-blur-xs"
                 }`}
               >
-                <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#00A3C4] to-[#0B2238] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                  {session.user?.name
-                    ? session.user.name.charAt(0).toUpperCase()
-                    : "U"}
-                </div>
+                {activeImage ? (
+                  <img
+                    src={activeImage}
+                    alt={activeName || "User"}
+                    className="h-6 w-6 rounded-full object-cover shadow-xs ring-1 ring-white/20"
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#00A3C4] to-[#0B2238] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                    {activeName
+                      ? activeName.charAt(0).toUpperCase()
+                      : "U"}
+                  </div>
+                )}
                 <span className="max-w-[100px] truncate">
-                  {session.user?.name || "Account"}
+                  {activeName || "Account"}
                 </span>
                 <ChevronDown
                   className={`h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`}
@@ -242,32 +291,64 @@ export default function Navbar() {
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
-                  <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{session.user?.name}</p>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-                        {((session.user as { role?: string })?.role) || "User"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{session.user?.email}</p>
-                  </div>
-                  <Link
-                    href={`/${((session.user as { role?: string })?.role) || "student"}/dashboard`}
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
                     onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <Shield className="h-4 w-4 text-[#00A3C4]" />
-                    Dashboard
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </button>
-                </div>
+                  />
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
+                    {/* Header profile info */}
+                    <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        {activeImage ? (
+                          <img
+                            src={activeImage}
+                            alt={activeName || "User"}
+                            className="h-9 w-9 rounded-full object-cover border border-cyan-500/30"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#00A3C4] to-[#0B2238] text-white flex items-center justify-center text-sm font-bold shadow-xs">
+                            {activeName
+                              ? activeName.charAt(0).toUpperCase()
+                              : "U"}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                              {activeName || "User"}
+                            </p>
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border border-cyan-200/50 dark:border-cyan-800/50">
+                              {userRole}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {user?.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Only Dashboard & Sign Out */}
+                    <div className="py-1 space-y-0.5">
+                      <Link
+                        href={`/${userRole}/dashboard`}
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {getDashboardIcon()}
+                        <span>{roleDisplay} Dashboard</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           ) : (
@@ -312,6 +393,35 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       {isOpen && (
         <div className="lg:hidden border-t border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl px-4 py-4 space-y-3 shadow-xl">
+          {isLoggedIn && (
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 mb-2">
+              {activeImage ? (
+                <img
+                  src={activeImage}
+                  alt={activeName || "User"}
+                  className="h-10 w-10 rounded-full object-cover border border-cyan-500/30"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#00A3C4] to-[#0B2238] text-white flex items-center justify-center text-sm font-bold shadow-xs">
+                  {activeName ? activeName.charAt(0).toUpperCase() : "U"}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                    {activeName || "User"}
+                  </p>
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border border-cyan-200/50 dark:border-cyan-800/50">
+                    {userRole}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+          )}
+
           <Link
             href="#features"
             onClick={() => setIsOpen(false)}
@@ -342,53 +452,45 @@ export default function Navbar() {
             Security
           </Link>
 
-          {/* Role Portals Mobile */}
-          <div className="pt-2 pb-1 border-y border-slate-100 dark:border-slate-800 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              Role Portals
-            </span>
-            <Link
-              href="/student/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
-            >
-              <GraduationCap className="h-3.5 w-3.5 text-[#00A3C4]" /> Student
-              Portal
-            </Link>
-            <Link
-              href="/teacher/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
-            >
-              <UserCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />{" "}
-              Teacher Portal
-            </Link>
-            <Link
-              href="/admin/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
-            >
-              <ShieldAlert className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />{" "}
-              Admin Portal
-            </Link>
-          </div>
-
-          <div className="pt-2 flex flex-col gap-2">
-            <Link
-              href="/auth/login"
-              onClick={() => setIsOpen(false)}
-              className="text-center py-2 text-xs font-bold text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-full bg-white/70"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/auth/register"
-              onClick={() => setIsOpen(false)}
-              className="text-center py-2 rounded-full bg-[#00A3C4] text-[#0B2238] text-xs font-bold shadow-sm"
-            >
-              Create free account
-            </Link>
-          </div>
+          {isLoggedIn ? (
+            <div className="pt-2 flex flex-col gap-2">
+              <Link
+                href={`/${userRole}/dashboard`}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-full bg-white/70 dark:bg-slate-900"
+              >
+                {getDashboardIcon()}
+                <span>{roleDisplay} Dashboard</span>
+              </Link>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  handleLogout();
+                }}
+                className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-full bg-rose-50/50 dark:bg-rose-950/30 cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2 flex flex-col gap-2">
+              <Link
+                href="/auth/login"
+                onClick={() => setIsOpen(false)}
+                className="text-center py-2 text-xs font-bold text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-full bg-white/70"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/auth/register"
+                onClick={() => setIsOpen(false)}
+                className="text-center py-2 rounded-full bg-[#00A3C4] text-[#0B2238] text-xs font-bold shadow-sm"
+              >
+                Create free account
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </header>

@@ -1,9 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { authClient } from "@/lib/auth-client";
-import { examService } from "@/services/exam.service";
-import { purchaseService } from "@/services/purchase.service";
+import React, { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,108 +14,30 @@ import {
   UserCheck,
   ShieldAlert,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
 
 export default function TestifyHero() {
   const [activeRoleView, setActiveRoleView] = useState<"teacher" | "student" | "admin">("teacher");
-  const { data: session } = authClient.useSession();
-
-  const [heroData, setHeroData] = useState({
-    teacherTitle: "{heroData.teacherTitle}",
-    teacherQCount: 48,
-    teacherSubmissions: 32,
-    teacherQNumber: 1,
-    teacherQTopic: "Data Structures",
-    teacherQMarks: "{heroData.teacherQMarks}",
-    teacherQText: "{heroData.teacherQText}",
-    teacherQAnswer: "Stack (LIFO)",
-    studentCandidate: "Alex Morgan (ID: ST-8921)",
-    studentExamTitle: "Student Exam Room",
-    studentQNum: 14,
-    studentTotalQ: 40,
-    studentAnswered: 14,
-    adminStudents: "{heroData.adminStudents}",
-    adminTeachers: "{heroData.adminTeachers}",
-    adminLiveExams: "{heroData.adminLiveExams}",
-    adminIntegrity: "{heroData.adminIntegrity}",
-  });
-
-  useEffect(() => {
-    const syncReal = async () => {
-      try {
-        const storedTeacher = localStorage.getItem("testify_teacher_exams");
-        let tList = storedTeacher ? JSON.parse(storedTeacher) : [];
-        try {
-          const apiRes = await examService.getAllExams();
-          if (apiRes?.data?.length > 0) {
-            apiRes.data.forEach((ae: any) => {
-              if (!tList.some((t: any) => String(t.id) === String(ae._id))) {
-                tList.push({ id: ae._id, title: ae.title, questions: ae.questions || [] });
-              }
-            });
-          }
-        } catch {}
-
-        const activeExam = tList[0];
-        const subs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
-        const studentName = session?.user?.name || "Alex Morgan";
-        const studentEmail = session?.user?.email || "student@testify.edu";
-
-        const q0 = activeExam?.questions?.[0];
-
-        setHeroData({
-          teacherTitle: activeExam?.title || "Computer Science Midterm",
-          teacherQCount: Math.max(activeExam?.questions?.length || 48, 1),
-          teacherSubmissions: subs.length > 0 ? subs.length : 32,
-          teacherQNumber: 1,
-          teacherQTopic: q0?.topic || "Data Structures",
-          teacherQMarks: q0?.marks ? `${q0.marks}.0 Marks` : "2.0 Marks",
-          teacherQText: q0?.questionText || q0?.question || "Which data structure operates on a Last-In, First-Out (LIFO) order?",
-          teacherQAnswer: q0?.correctAnswer !== undefined ? String(q0.correctAnswer) : "Stack (LIFO)",
-          studentCandidate: `${studentName} (${studentEmail})`,
-          studentExamTitle: activeExam?.title || "Student Exam Room",
-          studentQNum: 1,
-          studentTotalQ: Math.max(activeExam?.questions?.length || 40, 10),
-          studentAnswered: subs.length > 0 ? subs.length : 14,
-          adminStudents: subs.length > 0 ? String(subs.length + 4200) : "4,250",
-          adminTeachers: tList.length > 0 ? String(tList.length + 175) : "180",
-          adminLiveExams: `${Math.max(tList.length, 12)} Live`,
-          adminIntegrity: "99.4%",
-        });
-      } catch {}
-    };
-
-    syncReal();
-    window.addEventListener("testify_exam_submitted", syncReal);
-    window.addEventListener("testify_teacher_exams_updated", syncReal);
-    window.addEventListener("storage", syncReal);
-    window.addEventListener("focus", syncReal);
-    return () => {
-      window.removeEventListener("testify_exam_submitted", syncReal);
-      window.removeEventListener("testify_teacher_exams_updated", syncReal);
-      window.removeEventListener("storage", syncReal);
-      window.removeEventListener("focus", syncReal);
-    };
-  }, [session?.user?.name, session?.user?.email]);
 
   return (
-    <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#F5F9FC]/60 via-[#EEF5FA]/50 to-[#F8FBFE]/60 dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 pt-20 sm:pt-24 pb-16 lg:pt-28 lg:pb-24 transition-colors duration-300">
+    <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#F5F9FC]/60 via-[#EEF5FA]/50 to-[#F8FBFE]/60 dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 pt-28 sm:pt-32 lg:pt-36 pb-28 sm:pb-32 lg:pb-36 min-h-[95vh] sm:min-h-screen flex flex-col justify-center transition-colors duration-300 transition-colors duration-300">
       {/* Moving Vibrant Gradient Orbs & Tech Grid */}
       <AnimatedBackground variant="hero" />
 
       {/* Top Asymmetrical Curved Graphic matching reference */}
-      <div className="absolute top-0 right-0 w-[55%] h-24 lg:h-32 bg-gradient-to-l from-[#F9B233] to-[#F59E0B] -z-0 rounded-bl-[100px] lg:rounded-bl-[140px] opacity-90 dark:opacity-40 shadow-md" />
-      <div className="absolute top-0 right-0 w-[45%] h-20 lg:h-28 bg-[#0B2238] dark:bg-slate-950/80 -z-0 rounded-bl-[90px] lg:rounded-bl-[120px] shadow-lg" />
+      <div className="absolute top-0 right-0 w-[55%] h-28 sm:h-32 lg:h-36 bg-gradient-to-l from-[#F9B233] to-[#F59E0B] -z-0 rounded-bl-[100px] lg:rounded-bl-[140px] opacity-90 dark:opacity-40 shadow-md" />
+      <div className="absolute top-0 right-0 w-[45%] h-24 sm:h-28 lg:h-32 bg-[#0B2238] dark:bg-slate-950/80 -z-0 rounded-bl-[90px] lg:rounded-bl-[120px] shadow-lg" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 z-10 pt-4 lg:pt-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left Column: Headline & Action tailored to 3 Roles */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="lg:col-span-6 space-y-6 text-left"
+            className="lg:col-span-6 space-y-7 text-left"
           >
             {/* 3 Roles Quick Selector Pills with Vibrant Glowing Border */}
             <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border border-cyan-200/80 dark:border-slate-800 shadow-md shadow-cyan-500/10">
@@ -165,7 +84,7 @@ export default function TestifyHero() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="block text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#0B2238] dark:text-slate-100 tracking-tight font-serif italic opacity-95"
+                className="block text-xl sm:text-2xl lg:text-3xl font-semibold text-[#0B2238] dark:text-slate-100 tracking-tight font-serif italic opacity-95"
               >
                 Simple and Powerful
               </motion.span>
@@ -173,7 +92,7 @@ export default function TestifyHero() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold font-display tracking-tight leading-[1.08] bg-gradient-to-r from-[#0B2238] via-[#0284C7] to-[#00A3C4] dark:from-white dark:via-cyan-300 dark:to-blue-400 bg-clip-text text-transparent drop-shadow-xs"
+                className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight leading-[1.1] bg-gradient-to-r from-[#0B2238] via-[#0284C7] to-[#00A3C4] dark:from-white dark:via-cyan-300 dark:to-blue-400 bg-clip-text text-transparent drop-shadow-xs"
               >
                 Online Exams
               </motion.h1>
@@ -183,7 +102,7 @@ export default function TestifyHero() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-base sm:text-lg text-slate-700 dark:text-slate-300 leading-relaxed max-w-xl font-sans"
+              className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl font-sans"
             >
               An AI-powered assessment ecosystem connecting <strong className="text-[#0284C7] dark:text-cyan-400">Students</strong>, <strong className="text-[#0B2238] dark:text-blue-400">Teachers</strong>, and <strong className="text-[#D97706] dark:text-amber-400">Admins</strong> for secure, automated, and intelligent examinations.
             </motion.p>
@@ -198,7 +117,7 @@ export default function TestifyHero() {
               <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#0B2238] to-[#153E65] dark:from-blue-600 dark:to-indigo-600 hover:from-[#112F4C] hover:to-[#1B4D7D] dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-semibold text-sm px-7 py-3 shadow-lg shadow-blue-900/20 dark:shadow-blue-500/20 transition-all"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#0B2238] to-[#153E65] dark:from-blue-600 dark:to-indigo-600 hover:from-[#112F4C] hover:to-[#1B4D7D] dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-bold text-xs sm:text-sm px-6 py-3 shadow-md shadow-blue-900/20 dark:shadow-blue-500/20 transition-all whitespace-nowrap"
                 >
                   Create free account
                 </Link>
@@ -212,7 +131,7 @@ export default function TestifyHero() {
                       ? "/admin/dashboard"
                       : "/auth/login"
                   }
-                  className="inline-flex items-center justify-center rounded-full border-2 border-cyan-200/90 dark:border-slate-700 bg-white/95 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-800 text-[#0B2238] dark:text-slate-100 font-bold text-sm px-6 py-3 shadow-sm hover:shadow-md transition-all"
+                  className="inline-flex items-center justify-center rounded-full border-2 border-cyan-200/90 dark:border-slate-700 bg-white/95 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-800 text-[#0B2238] dark:text-slate-100 font-bold text-xs sm:text-sm px-5 py-3 shadow-sm hover:shadow-md transition-all whitespace-nowrap"
                 >
                   Open {activeRoleView.charAt(0).toUpperCase() + activeRoleView.slice(1)} Portal <ArrowRight className="ml-1.5 h-4 w-4 text-[#00A3C4]" />
                 </Link>
@@ -282,10 +201,10 @@ export default function TestifyHero() {
                         <div className="space-y-1">
                           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Teacher Controls</p>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#0B2238] dark:bg-blue-600 text-white font-semibold shadow-xs">
-                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank ({heroData.teacherQCount} Questions)
+                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank (48 Questions)
                           </div>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
-                            <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitor ({heroData.teacherSubmissions})
+                            <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitor (32)
                           </div>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
                             <Clock className="h-3.5 w-3.5 text-amber-500" /> Exam Scheduling
@@ -313,20 +232,20 @@ export default function TestifyHero() {
 
                         <div className="p-3 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-[#FCFDFE] to-[#F3F8FC] dark:from-slate-800/90 dark:to-slate-900/90 space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Question {heroData.teacherQNumber}: {heroData.teacherQTopic}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Question 1: Data Structures</span>
                             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">2.0 Marks</span>
                           </div>
                           <p className="text-slate-700 dark:text-slate-300 text-[11px]">
                             Which data structure operates on a Last-In, First-Out (LIFO) order?
                           </p>
                           <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[10px] text-blue-900 dark:text-blue-200 font-semibold flex items-center justify-between">
-                            <span>Answer: {heroData.teacherQAnswer}</span>
+                            <span>Answer: Stack (LIFO)</span>
                             <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-[10px]">
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">{heroData.teacherSubmissions} Submissions • 0 Violations</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">32 Submissions • 0 Violations</span>
                           <span className="text-emerald-700 dark:text-emerald-400 font-bold">100% Integrity Score</span>
                         </div>
                       </div>
@@ -346,7 +265,7 @@ export default function TestifyHero() {
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <div>
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm">Student Exam Room</h4>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Candidate: {heroData.studentCandidate}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Candidate: Alex Morgan (ID: ST-8921)</p>
                         </div>
                         <span className="bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-bold px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-800 text-[11px]">
                           ⏱ 28:45 Remaining
@@ -354,7 +273,7 @@ export default function TestifyHero() {
                       </div>
 
                       <div className="p-3.5 rounded-xl border border-amber-100 dark:border-amber-900/40 bg-gradient-to-br from-[#FFFDF9] to-[#FFF8F0] dark:from-slate-800/90 dark:to-slate-900/90 space-y-2">
-                        <span className="font-bold text-slate-900 dark:text-white text-[11px]">Question {heroData.studentQNum} of {heroData.studentTotalQ}</span>
+                        <span className="font-bold text-slate-900 dark:text-white text-[11px]">Question 14 of 40</span>
                         <p className="text-slate-700 dark:text-slate-300 text-[11px]">
                           Explain the primary difference between synchronous and asynchronous execution in JavaScript.
                         </p>
@@ -364,7 +283,7 @@ export default function TestifyHero() {
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-1">
-                        <span>Questions Answered: <strong className="text-slate-900 dark:text-white">{heroData.studentAnswered} / {heroData.studentTotalQ}</strong></span>
+                        <span>Questions Answered: <strong className="text-slate-900 dark:text-white">14 / 40</strong></span>
                         <button className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#00A3C4] to-[#008BB0] dark:from-cyan-500 dark:to-blue-600 text-[#0B2238] dark:text-white font-bold shadow-xs">
                           Next Question →
                         </button>
@@ -420,6 +339,27 @@ export default function TestifyHero() {
             </div>
           </motion.div>
         </div>
+        {/* Animated Bottom Scroll Cue */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="flex flex-col items-center justify-center pt-16 sm:pt-24 pb-4 text-slate-400 dark:text-slate-500 text-xs font-medium gap-1.5 cursor-pointer select-none group"
+          onClick={() => {
+            const target = document.getElementById("explore-exams") || document.getElementById("features");
+            target?.scrollIntoView({ behavior: "smooth" });
+          }}
+        >
+          <span className="tracking-widest uppercase text-[10px] font-bold text-slate-400 group-hover:text-[#00A3C4] dark:text-slate-500 dark:group-hover:text-cyan-400 transition-colors">
+            Scroll to Explore
+          </span>
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+          >
+            <ChevronDown className="h-4 w-4 text-[#00A3C4] dark:text-cyan-400 group-hover:translate-y-0.5 transition-transform" />
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );
