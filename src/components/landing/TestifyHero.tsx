@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { authClient } from "@/lib/auth-client";
+import { examService } from "@/services/exam.service";
+import { purchaseService } from "@/services/purchase.service";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,6 +22,85 @@ import { AnimatedBackground } from "./AnimatedBackground";
 
 export default function TestifyHero() {
   const [activeRoleView, setActiveRoleView] = useState<"teacher" | "student" | "admin">("teacher");
+  const { data: session } = authClient.useSession();
+
+  const [heroData, setHeroData] = useState({
+    teacherTitle: "{heroData.teacherTitle}",
+    teacherQCount: 48,
+    teacherSubmissions: 32,
+    teacherQNumber: 1,
+    teacherQTopic: "Data Structures",
+    teacherQMarks: "{heroData.teacherQMarks}",
+    teacherQText: "{heroData.teacherQText}",
+    teacherQAnswer: "Stack (LIFO)",
+    studentCandidate: "Alex Morgan (ID: ST-8921)",
+    studentExamTitle: "Student Exam Room",
+    studentQNum: 14,
+    studentTotalQ: 40,
+    studentAnswered: 14,
+    adminStudents: "{heroData.adminStudents}",
+    adminTeachers: "{heroData.adminTeachers}",
+    adminLiveExams: "{heroData.adminLiveExams}",
+    adminIntegrity: "{heroData.adminIntegrity}",
+  });
+
+  useEffect(() => {
+    const syncReal = async () => {
+      try {
+        const storedTeacher = localStorage.getItem("testify_teacher_exams");
+        let tList = storedTeacher ? JSON.parse(storedTeacher) : [];
+        try {
+          const apiRes = await examService.getAllExams();
+          if (apiRes?.data?.length > 0) {
+            apiRes.data.forEach((ae: any) => {
+              if (!tList.some((t: any) => String(t.id) === String(ae._id))) {
+                tList.push({ id: ae._id, title: ae.title, questions: ae.questions || [] });
+              }
+            });
+          }
+        } catch {}
+
+        const activeExam = tList[0];
+        const subs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+        const studentName = session?.user?.name || "Alex Morgan";
+        const studentEmail = session?.user?.email || "student@testify.edu";
+
+        const q0 = activeExam?.questions?.[0];
+
+        setHeroData({
+          teacherTitle: activeExam?.title || "Computer Science Midterm",
+          teacherQCount: Math.max(activeExam?.questions?.length || 48, 1),
+          teacherSubmissions: subs.length > 0 ? subs.length : 32,
+          teacherQNumber: 1,
+          teacherQTopic: q0?.topic || "Data Structures",
+          teacherQMarks: q0?.marks ? `${q0.marks}.0 Marks` : "2.0 Marks",
+          teacherQText: q0?.questionText || q0?.question || "Which data structure operates on a Last-In, First-Out (LIFO) order?",
+          teacherQAnswer: q0?.correctAnswer !== undefined ? String(q0.correctAnswer) : "Stack (LIFO)",
+          studentCandidate: `${studentName} (${studentEmail})`,
+          studentExamTitle: activeExam?.title || "Student Exam Room",
+          studentQNum: 1,
+          studentTotalQ: Math.max(activeExam?.questions?.length || 40, 10),
+          studentAnswered: subs.length > 0 ? subs.length : 14,
+          adminStudents: subs.length > 0 ? String(subs.length + 4200) : "4,250",
+          adminTeachers: tList.length > 0 ? String(tList.length + 175) : "180",
+          adminLiveExams: `${Math.max(tList.length, 12)} Live`,
+          adminIntegrity: "99.4%",
+        });
+      } catch {}
+    };
+
+    syncReal();
+    window.addEventListener("testify_exam_submitted", syncReal);
+    window.addEventListener("testify_teacher_exams_updated", syncReal);
+    window.addEventListener("storage", syncReal);
+    window.addEventListener("focus", syncReal);
+    return () => {
+      window.removeEventListener("testify_exam_submitted", syncReal);
+      window.removeEventListener("testify_teacher_exams_updated", syncReal);
+      window.removeEventListener("storage", syncReal);
+      window.removeEventListener("focus", syncReal);
+    };
+  }, [session?.user?.name, session?.user?.email]);
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#F5F9FC]/60 via-[#EEF5FA]/50 to-[#F8FBFE]/60 dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 pt-20 sm:pt-24 pb-16 lg:pt-28 lg:pb-24 transition-colors duration-300">
@@ -200,10 +282,10 @@ export default function TestifyHero() {
                         <div className="space-y-1">
                           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Teacher Controls</p>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#0B2238] dark:bg-blue-600 text-white font-semibold shadow-xs">
-                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank (48 Questions)
+                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank ({heroData.teacherQCount} Questions)
                           </div>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
-                            <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitor (32)
+                            <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitor ({heroData.teacherSubmissions})
                           </div>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
                             <Clock className="h-3.5 w-3.5 text-amber-500" /> Exam Scheduling
@@ -231,20 +313,20 @@ export default function TestifyHero() {
 
                         <div className="p-3 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-[#FCFDFE] to-[#F3F8FC] dark:from-slate-800/90 dark:to-slate-900/90 space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Question 1: Data Structures</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Question {heroData.teacherQNumber}: {heroData.teacherQTopic}</span>
                             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">2.0 Marks</span>
                           </div>
                           <p className="text-slate-700 dark:text-slate-300 text-[11px]">
                             Which data structure operates on a Last-In, First-Out (LIFO) order?
                           </p>
                           <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[10px] text-blue-900 dark:text-blue-200 font-semibold flex items-center justify-between">
-                            <span>Answer: Stack (LIFO)</span>
+                            <span>Answer: {heroData.teacherQAnswer}</span>
                             <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-[10px]">
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">32 Submissions • 0 Violations</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">{heroData.teacherSubmissions} Submissions • 0 Violations</span>
                           <span className="text-emerald-700 dark:text-emerald-400 font-bold">100% Integrity Score</span>
                         </div>
                       </div>
@@ -264,7 +346,7 @@ export default function TestifyHero() {
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <div>
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm">Student Exam Room</h4>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Candidate: Alex Morgan (ID: ST-8921)</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Candidate: {heroData.studentCandidate}</p>
                         </div>
                         <span className="bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-bold px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-800 text-[11px]">
                           ⏱ 28:45 Remaining
@@ -272,7 +354,7 @@ export default function TestifyHero() {
                       </div>
 
                       <div className="p-3.5 rounded-xl border border-amber-100 dark:border-amber-900/40 bg-gradient-to-br from-[#FFFDF9] to-[#FFF8F0] dark:from-slate-800/90 dark:to-slate-900/90 space-y-2">
-                        <span className="font-bold text-slate-900 dark:text-white text-[11px]">Question 14 of 40</span>
+                        <span className="font-bold text-slate-900 dark:text-white text-[11px]">Question {heroData.studentQNum} of {heroData.studentTotalQ}</span>
                         <p className="text-slate-700 dark:text-slate-300 text-[11px]">
                           Explain the primary difference between synchronous and asynchronous execution in JavaScript.
                         </p>
@@ -282,7 +364,7 @@ export default function TestifyHero() {
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-1">
-                        <span>Questions Answered: <strong className="text-slate-900 dark:text-white">14 / 40</strong></span>
+                        <span>Questions Answered: <strong className="text-slate-900 dark:text-white">{heroData.studentAnswered} / {heroData.studentTotalQ}</strong></span>
                         <button className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#00A3C4] to-[#008BB0] dark:from-cyan-500 dark:to-blue-600 text-[#0B2238] dark:text-white font-bold shadow-xs">
                           Next Question →
                         </button>
