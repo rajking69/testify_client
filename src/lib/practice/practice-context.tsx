@@ -202,8 +202,28 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
 
     currentSession.forEach((question) => {
       const userAnswer = userAnswers[question.id];
-      if (userAnswer === question.correctAnswer) {
-        correctAnswers++;
+      if (userAnswer !== undefined && userAnswer !== null) {
+        const directMatch =
+          userAnswer === question.correctAnswer ||
+          String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
+          (question.correctOptionIndex !== undefined && Number(userAnswer) === Number(question.correctOptionIndex));
+
+        const optionTextMatch =
+          Array.isArray(question.options) &&
+          typeof userAnswer === 'number' &&
+          question.options[userAnswer] !== undefined &&
+          String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase();
+
+        const stringOptionMatch =
+          Array.isArray(question.options) &&
+          typeof userAnswer === 'string' &&
+          question.correctOptionIndex !== undefined &&
+          question.options[question.correctOptionIndex] !== undefined &&
+          String(userAnswer).trim().toLowerCase() === String(question.options[question.correctOptionIndex]).trim().toLowerCase();
+
+        if (directMatch || optionTextMatch || stringOptionMatch) {
+          correctAnswers++;
+        }
       }
     });
 
