@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, use } from "react";
 import { motion } from "framer-motion";
 import {
   changePassword,
@@ -23,13 +23,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-export default function ProfilePage({ params }: { params: { role: string } }) {
+export default function ProfilePage({ params }: { params: Promise<{ role: string }> }) {
+  const resolvedParams = use(params);
+  const role = resolvedParams.role;
   const router = useRouter();
   const { data: session, isPending, refetch } = useSession();
   const user = session?.user;
 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [name, setName] = useState(user?.name || "");
+  const [image, setImage] = useState(user?.image || "");
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -48,7 +51,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
   }>({});
 
   const roleDisplay =
-    params.role.charAt(0).toUpperCase() + params.role.slice(1);
+    role.charAt(0).toUpperCase() + role.slice(1);
 
   // Role-specific styling configuration
   const roleConfig = {
@@ -112,13 +115,14 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
   };
 
   const config =
-    roleConfig[params.role as keyof typeof roleConfig] || roleConfig.student;
+    roleConfig[role as keyof typeof roleConfig] || roleConfig.student;
 
   const handleUpdateProfile = async () => {
     setIsUpdatingProfile(true);
     try {
       const { error } = await updateUser({
         name: name,
+        image: image,
       });
 
       if (error) {
@@ -195,7 +199,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
     try {
       await linkSocialAccount({
         provider,
-        callbackURL: `/profile/${params.role}`,
+        callbackURL: `/profile/${role}`,
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -228,7 +232,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
         transition={{ duration: 0.6 }}
       >
         <Link
-          href={`/${params.role}/dashboard`}
+          href={`/${role}/dashboard`}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-[#0092E3] dark:hover:text-cyan-400 transition-colors mb-4 group"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
@@ -238,11 +242,11 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
           {roleDisplay} Profile Settings
         </h1>
         <p className="text-slate-600 dark:text-slate-300 mt-2 leading-relaxed max-w-2xl">
-          {params.role === "teacher" &&
+          {role === "teacher" &&
             "Manage your account settings and preferences"}
-          {params.role === "admin" &&
+          {role === "admin" &&
             "Manage your admin account settings and platform preferences"}
-          {params.role === "student" &&
+          {role === "student" &&
             "Manage your student account settings and learning preferences"}
         </p>
       </motion.div>
@@ -257,11 +261,19 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
           className={`p-6 rounded-2xl border shadow-xs hover:shadow-xl transition-all duration-200 ${config.cardColor}`}
         >
           <div className="flex flex-col items-center text-center space-y-4">
-            <div
-              className={`w-20 h-20 rounded-full bg-gradient-to-tr ${config.gradient} flex items-center justify-center text-white text-2xl font-bold shadow-lg`}
-            >
-              {user.name ? user.name.charAt(0).toUpperCase() : config.initial}
-            </div>
+            {user.image || image ? (
+              <img
+                src={image || user.image || ""}
+                alt={user.name || "Profile"}
+                className="w-20 h-20 rounded-full object-cover border-2 border-indigo-500 shadow-lg"
+              />
+            ) : (
+              <div
+                className={`w-20 h-20 rounded-full bg-gradient-to-tr ${config.gradient} flex items-center justify-center text-white text-2xl font-bold shadow-lg`}
+              >
+                {user.name ? user.name.charAt(0).toUpperCase() : config.initial}
+              </div>
+            )}
             <div className="space-y-2">
               <h2 className="text-xl font-bold font-display text-[#152234] dark:text-white">
                 {user.name || roleDisplay}
@@ -273,7 +285,7 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${config.badgeColor}`}
               >
                 <Shield className="h-3.5 w-3.5" />
-                <span className="capitalize">{params.role}</span>
+                <span className="capitalize">{role}</span>
               </span>
             </div>
           </div>
@@ -301,28 +313,45 @@ export default function ProfilePage({ params }: { params: { role: string } }) {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Full Name
                   </label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                      <User className="h-4 w-4 text-slate-400" />
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white font-medium focus:outline-none placeholder-slate-400"
-                        placeholder="Enter your name"
-                      />
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={handleUpdateProfile}
-                      disabled={isUpdatingProfile || name === user?.name}
-                      className={`px-4 py-2.5 rounded-xl ${config.btnBg} ${config.btnHover} text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 disabled:opacity-50`}
-                    >
-                      <Save className="h-4 w-4" />
-                      <span>{isUpdatingProfile ? "Saving..." : "Save"}</span>
-                    </motion.button>
+                  <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                    <User className="h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white font-medium focus:outline-none placeholder-slate-400"
+                      placeholder="Enter your name"
+                    />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Profile Picture / Avatar URL
+                  </label>
+                  <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                    <User className="h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white font-medium focus:outline-none placeholder-slate-400"
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 text-right">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={handleUpdateProfile}
+                    disabled={isUpdatingProfile || (name === user?.name && image === (user?.image || ""))}
+                    className={`px-5 py-2.5 rounded-xl ${config.btnBg} ${config.btnHover} text-white font-bold text-xs shadow-sm transition-all inline-flex items-center gap-2 disabled:opacity-50`}
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>{isUpdatingProfile ? "Saving Profile..." : "Save Profile Changes"}</span>
+                  </motion.button>
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
