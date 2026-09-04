@@ -14,6 +14,7 @@ import {
   UserCheck,
   ShieldAlert,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
 
@@ -338,6 +339,27 @@ export default function TestifyHero() {
             </div>
           </motion.div>
         </div>
+        {/* Animated Bottom Scroll Cue */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="flex flex-col items-center justify-center pt-10 sm:pt-14 pb-2 text-slate-400 dark:text-slate-500 text-xs font-medium gap-1.5 cursor-pointer select-none group"
+          onClick={() => {
+            const target = document.getElementById("explore-exams") || document.getElementById("features");
+            target?.scrollIntoView({ behavior: "smooth" });
+          }}
+        >
+          <span className="tracking-widest uppercase text-[10px] font-bold text-slate-400 group-hover:text-[#00A3C4] dark:text-slate-500 dark:group-hover:text-cyan-400 transition-colors">
+            Scroll to Explore
+          </span>
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+          >
+            <ChevronDown className="h-4 w-4 text-[#00A3C4] dark:text-cyan-400 group-hover:translate-y-0.5 transition-transform" />
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );
