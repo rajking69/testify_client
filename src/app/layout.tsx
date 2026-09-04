@@ -1,13 +1,5 @@
-import dns from "node:dns";
-// Configure DNS resolution fallback for MongoDB Atlas SRV records
-try {
-  dns.setDefaultResultOrder("ipv4first");
-  dns.setServers(["8.8.8.8", "1.1.1.1"]);
-} catch {
-  // Ignore DNS config failure if unsupported
-}
-
 import type { Metadata } from "next";
+
 import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";

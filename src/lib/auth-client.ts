@@ -5,7 +5,7 @@ import { authConfig } from "./auth-types";
 
 // Create typed auth client with inferred additional fields
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL as string,
+  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:5000",
   plugins: [inferAdditionalFields<typeof authConfig>(), emailOTPClient()],
 });
 

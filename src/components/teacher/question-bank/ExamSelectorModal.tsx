@@ -1,225 +1,265 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { questionService, QuestionItem } from "@/services/question.service";
-import { Layers, Shuffle, CheckCircle, AlertCircle } from "lucide-react";
+import { QuestionItem } from "@/services/question.service";
+import {
+  Layers,
+  BookOpen,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  Plus,
+  ExternalLink,
+} from "lucide-react";
+import Link from "next/link";
+
+interface ExamRecord {
+  id: string;
+  title: string;
+  subject: string;
+  duration: number;
+  totalMarks: number;
+  passMark: number;
+  status: string;
+  questions?: QuestionItem[];
+}
 
 interface ExamSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedIds: string[];
-  onExamQuestionsSelected: (questions: QuestionItem[]) => void;
+  allQuestions?: QuestionItem[];
+  onExamQuestionsSelected?: (questions: QuestionItem[]) => void;
 }
 
 export function ExamSelectorModal({
   isOpen,
   onClose,
   selectedIds,
+  allQuestions = [],
   onExamQuestionsSelected,
 }: ExamSelectorModalProps) {
-  const [mode, setMode] = useState<"manual" | "random">("manual");
-  const [randomCount, setRandomCount] = useState(10);
-  const [category, setCategory] = useState("");
-  const [difficulty, setDifficulty] = useState("");
-  const [questionType, setQuestionType] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const [examsList, setExamsList] = useState<ExamRecord[]>([]);
+  const [selectedExamId, setSelectedExamId] = useState<string>("");
+  const [actionSuccess, setActionSuccess] = useState<{
+    examId: string;
+    examTitle: string;
+    addedCount: number;
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
-  const MAX_QUESTIONS_PER_EXAM = 100;
+  useEffect(() => {
+    if (isOpen) {
+      setActionSuccess(null);
+      setErrorMessage("");
+      try {
+        const stored = localStorage.getItem("testify_teacher_exams");
+        if (stored) {
+          const list: ExamRecord[] = JSON.parse(stored);
+          setExamsList(list);
+          if (list.length > 0) {
+            setSelectedExamId(String(list[0].id));
+          }
+        } else {
+          setExamsList([]);
+        }
+      } catch {
+        setExamsList([]);
+      }
+    }
+  }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAddToExam = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    setSuccessMessage("");
 
-    if (mode === "manual") {
-      if (selectedIds.length === 0) {
-        setErrorMessage("Please select at least 1 question from the Question Bank list.");
-        return;
-      }
-      if (selectedIds.length > MAX_QUESTIONS_PER_EXAM) {
-        setErrorMessage(`Maximum allowed questions per exam is ${MAX_QUESTIONS_PER_EXAM}. You have selected ${selectedIds.length}.`);
-        return;
-      }
-    } else {
-      if (randomCount < 1 || randomCount > MAX_QUESTIONS_PER_EXAM) {
-        setErrorMessage(`Random question count must be between 1 and ${MAX_QUESTIONS_PER_EXAM}.`);
-        return;
-      }
+    if (selectedIds.length === 0) {
+      setErrorMessage("Please select at least 1 question using the checkboxes in the Question Bank.");
+      return;
+    }
+
+    if (!selectedExamId) {
+      setErrorMessage("Please select an exam from the dropdown or create a new one.");
+      return;
     }
 
     try {
-      setIsLoading(true);
-      const res = await questionService.selectQuestionsForExam({
-        mode,
-        questionIds: mode === "manual" ? selectedIds : undefined,
-        count: mode === "random" ? randomCount : undefined,
-        category: mode === "random" && category ? category : undefined,
-        difficulty: mode === "random" && difficulty ? difficulty : undefined,
-        questionType: mode === "random" && questionType ? questionType : undefined,
+      const stored = localStorage.getItem("testify_teacher_exams");
+      let list: ExamRecord[] = stored ? JSON.parse(stored) : [];
+
+      const targetExam = list.find((item) => String(item.id) === String(selectedExamId));
+      if (!targetExam) {
+        setErrorMessage("Selected exam could not be found.");
+        return;
+      }
+
+      // Find question objects corresponding to selectedIds
+      const selectedQuestions = allQuestions.filter((q) =>
+        selectedIds.includes(q._id)
+      );
+
+      const existingQuestions = targetExam.questions || [];
+      // Filter out duplicates
+      const newItems = selectedQuestions.filter(
+        (sq) => !existingQuestions.some((eq) => eq._id === sq._id)
+      );
+
+      const updatedQuestions = [...existingQuestions, ...newItems];
+      const updatedExam = {
+        ...targetExam,
+        questions: updatedQuestions,
+      };
+
+      const updatedList = list.map((item) =>
+        String(item.id) === String(selectedExamId) ? updatedExam : item
+      );
+
+      localStorage.setItem("testify_teacher_exams", JSON.stringify(updatedList));
+
+      setActionSuccess({
+        examId: String(targetExam.id),
+        examTitle: targetExam.title,
+        addedCount: newItems.length,
       });
 
-      setSuccessMessage(`Successfully fetched ${res.data.length} questions for exam creation.`);
-      onExamQuestionsSelected(res.data);
-      setTimeout(() => {
-        onClose();
-        setSuccessMessage("");
-      }, 1200);
-    } catch (err: unknown) {
-      setErrorMessage((err as Error).message || "Failed to select questions for exam.");
-    } finally {
-      setIsLoading(false);
+      if (onExamQuestionsSelected) {
+        onExamQuestionsSelected(selectedQuestions);
+      }
+    } catch (err) {
+      console.error("Error adding questions to exam:", err);
+      setErrorMessage("Failed to add questions to exam.");
     }
   };
 
-  const difficultyOptions = [
-    { value: "", label: "Any" },
-    { value: "EASY", label: "Easy" },
-    { value: "MEDIUM", label: "Medium" },
-    { value: "HARD", label: "Hard" },
-  ];
-
-  const typeOptions = [
-    { value: "", label: "Any" },
-    { value: "MCQ", label: "MCQ" },
-    { value: "TRUE_FALSE", label: "True / False" },
-    { value: "SHORT_ANSWER", label: "Short Answer" },
-    { value: "FILL_IN_THE_BLANK", label: "Fill in Blank" },
-  ];
+  const examOptions = examsList.map((exam) => ({
+    value: String(exam.id),
+    label: `${exam.title} (${exam.subject}) • ${exam.questions?.length || 0} Questions`,
+  }));
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Exam Question Selection Foundation"
-      description="Choose questions manually or generate a random set for an exam (Max 100 questions per exam)."
+      title="Add Selected Questions to Exam"
+      description={`Select the examination you want to attach these ${selectedIds.length} questions to.`}
       size="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {errorMessage && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{errorMessage}</span>
+      {actionSuccess ? (
+        <div className="space-y-4 pt-1 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="h-6 w-6" />
           </div>
-        )}
 
-        {successMessage && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
-            <CheckCircle className="h-4 w-4 shrink-0" />
-            <span>{successMessage}</span>
-          </div>
-        )}
-
-        {/* Mode Selector */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setMode("manual")}
-            className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
-              mode === "manual"
-                ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-bold"
-                : "border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-900"
-            }`}
-          >
-            <Layers className="h-5 w-5 mb-1 text-indigo-600" />
-            <span className="text-xs">Manual Selection</span>
-            <span className="text-[10px] text-slate-400 mt-0.5">({selectedIds.length} selected)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMode("random")}
-            className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
-              mode === "random"
-                ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-bold"
-                : "border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-900"
-            }`}
-          >
-            <Shuffle className="h-5 w-5 mb-1 text-indigo-600" />
-            <span className="text-xs">Random Selection</span>
-            <span className="text-[10px] text-slate-400 mt-0.5">Auto-pick by filter</span>
-          </button>
-        </div>
-
-        {mode === "manual" ? (
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Selected Questions:</span>
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedIds.length} / {MAX_QUESTIONS_PER_EXAM}</span>
-            </div>
-            <p className="text-xs text-slate-500">
-              {selectedIds.length === 0
-                ? "Please check questions in the table behind this modal to select them."
-                : `You have chosen ${selectedIds.length} specific questions for your upcoming exam.`}
+          <div>
+            <h4 className="text-base font-bold font-display text-slate-900 dark:text-white">
+              Questions Attached Successfully!
+            </h4>
+            <p className="text-xs text-slate-500 mt-1">
+              Added <strong>{actionSuccess.addedCount}</strong> questions to <strong>{actionSuccess.examTitle}</strong>.
             </p>
           </div>
-        ) : (
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-800 space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Number of Random Questions (1 - {MAX_QUESTIONS_PER_EXAM})
-              </label>
-              <Input
-                type="number"
-                min={1}
-                max={MAX_QUESTIONS_PER_EXAM}
-                value={randomCount}
-                onChange={(e) => setRandomCount(parseInt(e.target.value, 10) || 1)}
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+
+            <Link href={`/teacher/exams/${actionSuccess.examId}/setup`}>
+              <Button
+                size="sm"
+                className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold"
+                rightIcon={<ArrowRight className="h-4 w-4" />}
+              >
+                Open Exam Question Setup
+              </Button>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleAddToExam} className="space-y-4 pt-1">
+          {errorMessage && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Selected Questions Badge */}
+          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-cyan-950/40 border border-blue-200/70 dark:border-cyan-800 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-[#0092E3] dark:text-cyan-400" />
+              <span className="font-bold text-slate-700 dark:text-slate-300">
+                Selected Questions:
+              </span>
+            </div>
+            <span className="font-extrabold text-[#0092E3] dark:text-cyan-300">
+              {selectedIds.length} Items Selected
+            </span>
+          </div>
+
+          {/* Exam Selector Dropdown */}
+          {examsList.length > 0 ? (
+            <div className="space-y-1.5">
+              <Select
+                label="Target Examination"
+                value={selectedExamId}
+                placeholder="Choose target exam..."
+                options={examOptions}
+                onChange={(e) => setSelectedExamId(e.target.value)}
                 required
               />
+              <p className="text-[11px] text-slate-400">
+                The questions will be linked directly to this exam without creating duplicate database records.
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Category</label>
-                <Input
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Optional"
-                  className="text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Difficulty</label>
-                <Select
-                  options={difficultyOptions}
-                  placeholder=""
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Type</label>
-                <Select
-                  options={typeOptions}
-                  placeholder=""
-                  value={questionType}
-                  onChange={(e) => setQuestionType(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center space-y-2">
+              <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                No exams created yet.
+              </p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                Go to the Examinations page to create your first exam paper draft.
+              </p>
+              <Link href="/teacher/exams">
+                <Button
+                  size="sm"
+                  type="button"
+                  className="bg-[#0092E3] text-white font-bold text-xs"
+                  leftIcon={<Plus className="h-3.5 w-3.5" />}
+                >
+                  Create Examination
+                </Button>
+              </Link>
             </div>
+          )}
+
+          {/* Footer Actions */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="outline" size="sm" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={examsList.length === 0 || selectedIds.length === 0}
+              className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold"
+              leftIcon={<Layers className="h-4 w-4" />}
+            >
+              Add {selectedIds.length} Questions to Exam
+            </Button>
           </div>
-        )}
-
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button size="sm" type="submit" disabled={isLoading}>
-            {isLoading ? "Fetching..." : "Confirm Selection"}
-          </Button>
-        </div>
-      </form>
+        </form>
+      )}
     </Modal>
   );
 }

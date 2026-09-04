@@ -160,9 +160,17 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2 rounded-xl p-1 sm:p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
           >
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#152234] to-[#5B67F7] text-white flex items-center justify-center text-xs font-bold shadow-sm">
-              {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
-            </div>
+            {user?.image ? (
+              <img
+                src={user.image}
+                alt={user?.name || "Admin"}
+                className="h-8 w-8 rounded-xl object-cover border border-purple-300 dark:border-purple-700 shadow-2xs"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#152234] to-[#5B67F7] text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
+              </div>
+            )}
             <span className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200">
               {user?.name || "Admin"}
             </span>
@@ -184,14 +192,6 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
                   </p>
                 </div>
                 <div className="pt-1">
-                  <Link
-                    href="/profile/admin"
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <User className="h-4 w-4 text-[#5B67F7]" />
-                    Profile Settings
-                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"

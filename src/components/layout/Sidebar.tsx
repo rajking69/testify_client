@@ -55,7 +55,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     },
     {
       label: "Question Bank",
-      href: "/teacher/questions",
+      href: "/teacher/question-bank",
       icon: <HelpCircle className="h-5 w-5" />,
     },
     {
@@ -155,6 +155,26 @@ export function Sidebar({
   const { data: session } = authClient.useSession();
   const user = session?.user;
 
+  const [customProfile, setCustomProfile] = React.useState<{ name?: string; image?: string }>({});
+
+  React.useEffect(() => {
+    const syncProfile = () => {
+      try {
+        const stored = localStorage.getItem("testify_custom_profile");
+        if (stored) {
+          setCustomProfile(JSON.parse(stored));
+        }
+      } catch {}
+    };
+    syncProfile();
+
+    window.addEventListener("testify_profile_updated", syncProfile);
+    return () => window.removeEventListener("testify_profile_updated", syncProfile);
+  }, []);
+
+  const activeName = customProfile.name || user?.name;
+  const activeImage = customProfile.image || user?.image;
+
   const userRole = user?.role || "teacher";
   const navItems = roleNavItems[userRole] || roleNavItems.teacher;
 
@@ -197,7 +217,7 @@ export function Sidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white/95 dark:bg-[#060B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white/75 dark:bg-[#060B14]/75 backdrop-blur-2xl border-r border-slate-200/60 dark:border-slate-800/60 transition-all duration-300 ease-in-out lg:static ${
           isCollapsed ? "w-20" : "w-64"
         } ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
@@ -287,16 +307,24 @@ export function Sidebar({
         <div className="p-3 border-t border-slate-100 dark:border-slate-900/80 bg-slate-50/40 dark:bg-slate-950/40">
           {!isCollapsed && user && (
             <div className="mb-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
-              <div
-                className={`h-8 w-8 rounded-xl bg-gradient-to-tr ${currentRole.avatarGrad} text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs`}
-              >
-                {user.name
-                  ? user.name.charAt(0).toUpperCase()
-                  : currentRole.label.charAt(0)}
-              </div>
+              {activeImage ? (
+                <img
+                  src={activeImage}
+                  alt={activeName || "User"}
+                  className="h-8 w-8 rounded-xl object-cover border border-blue-300 dark:border-blue-700 shadow-2xs shrink-0"
+                />
+              ) : (
+                <div
+                  className={`h-8 w-8 rounded-xl bg-gradient-to-tr ${currentRole.avatarGrad} text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs`}
+                >
+                  {activeName
+                    ? activeName.charAt(0).toUpperCase()
+                    : currentRole.label.charAt(0)}
+                </div>
+              )}
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-xs font-bold font-display text-[#0B2238] dark:text-white truncate">
-                  {user.name || currentRole.label}
+                  {activeName || currentRole.label}
                 </span>
                 <span className="text-[10px] text-slate-400 truncate">
                   {user.email}

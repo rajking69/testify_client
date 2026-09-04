@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { purchaseService } from "@/services/purchase.service";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,15 +19,19 @@ import {
   Home,
 } from "lucide-react";
 import { usePractice } from "@/lib/practice/practice-context";
+import { questionBank } from "@/lib/practice/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 
-export default function PracticeSessionPage() {
+function PracticeSessionContent() {
+  const { data: session } = authClient.useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     currentSession,
+    setCurrentSession,
     currentQuestionIndex,
     setCurrentQuestionIndex,
     userAnswers,
@@ -41,17 +47,184 @@ export default function PracticeSessionPage() {
 
   const [showEndModal, setShowEndModal] = useState(false);
 
+  // Auto-initialize exam session from URL query parameters if not started
+  useEffect(() => {
+    if (currentSession && currentSession.length > 0) return;
+
+    const subjectParam = searchParams.get("subject");
+    const examIdParam = searchParams.get("examId");
+
+    let questionsToUse: any[] = [];
+    let examDurationSec = 600; // 10 mins default
+
+    // 1. Check if examId exists in teacher's created exams
+    if (examIdParam && typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("testify_teacher_exams");
+        if (stored) {
+          const list = JSON.parse(stored);
+          const found = list.find(
+            (e: any) =>
+              String(e.id) === examIdParam ||
+              e.joinCode?.toUpperCase() === examIdParam.toUpperCase() ||
+              e.accessToken === examIdParam
+          );
+          if (found) {
+            if (found.duration) {
+              examDurationSec = found.duration * 60;
+            }
+            if (found.questions && found.questions.length > 0) {
+              questionsToUse = found.questions.map((q: any, idx: number) => ({
+                id: q.id || `q-${idx}`,
+                subject: found.subject || "Computer Science",
+                topic: q.topic || "General",
+                type: q.type || "mcq",
+                difficulty: q.difficulty || "medium",
+                questionText: q.questionText || q.text || q.question || "Sample examination question",
+                question: q.questionText || q.text || q.question || "Sample examination question",
+                options: q.options || ["Option A", "Option B", "Option C", "Option D"],
+                correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
+                explanation: q.explanation || "Official answer explanation provided by instructor.",
+              }));
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Fallback to Question Bank by Subject
+    if (questionsToUse.length === 0) {
+      if (subjectParam) {
+        const matched = questionBank.filter(
+          (q) => q.subject.toLowerCase() === subjectParam.toLowerCase()
+        );
+        questionsToUse = matched.length > 0 ? matched : questionBank.slice(0, 10);
+      } else {
+        questionsToUse = questionBank.slice(0, 10);
+      }
+    }
+
+    if (questionsToUse.length > 0) {
+      setCurrentSession(questionsToUse);
+      setCurrentQuestionIndex(0);
+      setUserAnswers({});
+      setTimeRemaining(examDurationSec);
+      setIsTimerRunning(true);
+    }
+  }, [
+    currentSession,
+    searchParams,
+    setCurrentSession,
+    setCurrentQuestionIndex,
+    setUserAnswers,
+    setTimeRemaining,
+    setIsTimerRunning,
+  ]);
+
   // Derive selectedAnswer from userAnswers instead of using useEffect
   const selectedAnswer =
-    currentSession && currentSession[currentQuestionIndex]
+    currentSession && currentSession[currentQuestionIndex] && userAnswers[currentSession[currentQuestionIndex].id] !== undefined
       ? userAnswers[currentSession[currentQuestionIndex].id]
       : null;
 
   // Derive showExplanation - in normal mode, show when answer is selected
-  const showExplanation = config.mode === "normal" && selectedAnswer !== null;
+  const showExplanation = false; // Hidden during exam; revealed only on result page after completion
 
   const handleEndSession = () => {
-    endPracticeSession();
+    const result = endPracticeSession();
+
+    try {
+      const examIdParam = searchParams.get("examId");
+      const subjectParam = searchParams.get("subject") || (currentSession && currentSession[0]?.subject) || "Computer Science";
+
+      let examTitle = "Live Assessment Examination";
+      let examDuration = "30 mins";
+      let studentEmail = session?.user?.email || "";
+      let studentName = session?.user?.name || "Student Scholar";
+
+      const activeExamRaw = localStorage.getItem("testify_active_live_exam");
+      if (activeExamRaw) {
+        try {
+          const parsed = JSON.parse(activeExamRaw);
+          if (parsed.title) examTitle = parsed.title;
+          if (parsed.duration) examDuration = `${parsed.duration} mins`;
+          if (parsed.studentEmail) studentEmail = parsed.studentEmail;
+          if (parsed.studentName) studentName = parsed.studentName;
+        } catch {}
+      }
+
+      const teacherExamsRaw = localStorage.getItem("testify_teacher_exams");
+      if (teacherExamsRaw && examTitle === "Live Assessment Examination") {
+        try {
+          const tList = JSON.parse(teacherExamsRaw);
+          const found = tList.find((e: any) => String(e.id) === examIdParam || e.joinCode === examIdParam || e.accessToken === examIdParam);
+          if (found) {
+            examTitle = found.title;
+            examDuration = `${found.duration || 30} mins`;
+          }
+        } catch {}
+      }
+
+      const finalEmail = studentEmail || session?.user?.email || "student@example.com";
+      const finalName = studentName || session?.user?.name || "Student Scholar";
+
+      const newSubmission = {
+        id: examIdParam || `sub-${Date.now()}`,
+        examId: examIdParam || `sub-${Date.now()}`,
+        title: examTitle,
+        subject: subjectParam,
+        duration: examDuration,
+        schedule: `Completed on ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+        status: "Completed",
+        score: `${result.scorePercentage}%`,
+        percentage: result.scorePercentage,
+        isPassed: result.scorePercentage >= 40,
+        studentEmail: finalEmail,
+        studentName: finalName,
+        token: examIdParam || "exam_session",
+        completedAt: new Date().toISOString(),
+        timeTakenSeconds: result.timeSpentSeconds || 600,
+        correctAnswers: result.correctAnswers,
+        totalQuestions: result.totalQuestions,
+      };
+
+      const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+      const filtered = storedSubs.filter((s: any) => !(String(s.examId) === String(newSubmission.examId) && (s.studentEmail === newSubmission.studentEmail || !s.studentEmail)));
+      const updated = [newSubmission, ...filtered];
+      localStorage.setItem("testify_student_submissions", JSON.stringify(updated));
+
+      const storedHist = JSON.parse(localStorage.getItem("testify_practice_history") || "[]");
+      localStorage.setItem("testify_practice_history", JSON.stringify([newSubmission, ...storedHist]));
+
+      try {
+        purchaseService.saveAttempt({
+          id: newSubmission.id,
+          studentId: session?.user?.id || "student-1",
+          studentName: finalName,
+          studentEmail: finalEmail,
+          examId: examIdParam || newSubmission.id,
+          examTitle: examTitle,
+          subject: subjectParam,
+          startTime: new Date(Date.now() - (result.timeSpentSeconds || 600) * 1000).toISOString(),
+          endTime: new Date().toISOString(),
+          submissionTime: new Date().toISOString(),
+          durationMinutes: Math.max(1, Math.round((result.timeSpentSeconds || 600) / 60)),
+          status: "SUBMITTED",
+          answers: Object.fromEntries(Object.entries(userAnswers).map(([k, v]) => [k, String(v)])),
+          score: result.correctAnswers,
+          totalMarks: result.totalQuestions,
+          passMark: Math.ceil(result.totalQuestions * 0.4),
+          passed: result.scorePercentage >= 40,
+          evaluationStatus: "AUTO_EVALUATED",
+        });
+      } catch {}
+
+      window.dispatchEvent(new CustomEvent("testify_exam_submitted", { detail: newSubmission }));
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {
+      console.error("Failed to save student submission", e);
+    }
+
     router.push("/practice/result");
   };
 
@@ -291,7 +464,7 @@ export default function PracticeSessionPage() {
                   </Badge>
                 </div>
                 <CardTitle className="text-lg sm:text-xl">
-                  {currentQuestion.questionText}
+                  {currentQuestion.questionText || currentQuestion.question || "Examination Question"}
                 </CardTitle>
               </div>
 
@@ -319,8 +492,22 @@ export default function PracticeSessionPage() {
               {/* Answer Options */}
               <div className="space-y-3">
                 {currentQuestion.options?.map((option, index) => {
-                  const isSelected = selectedAnswer === index;
-                  const isCorrect = currentQuestion.correctAnswer === index;
+                  const isSelected =
+                    selectedAnswer === index ||
+                    selectedAnswer === option ||
+                    String(selectedAnswer) === String(index) ||
+                    (typeof selectedAnswer === 'string' && String(selectedAnswer).trim().toLowerCase() === String(option).trim().toLowerCase());
+
+                  const isCorrect =
+                    currentQuestion.correctAnswer === index ||
+                    currentQuestion.correctAnswer === option ||
+                    String(currentQuestion.correctAnswer) === String(index) ||
+                    String(currentQuestion.correctAnswer).trim().toLowerCase() === String(option).trim().toLowerCase() ||
+                    (currentQuestion.correctOptionIndex !== undefined && Number(currentQuestion.correctOptionIndex) === index) ||
+                    (Array.isArray(currentQuestion.options) && typeof currentQuestion.correctAnswer === 'number' && currentQuestion.options[currentQuestion.correctAnswer] === option);
+
+                  const isUserCorrectChoice = showExplanation && isSelected && isCorrect;
+                  const isUserWrongChoice = showExplanation && isSelected && !isCorrect;
 
                   return (
                     <motion.button
@@ -328,40 +515,25 @@ export default function PracticeSessionPage() {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => handleAnswerSelect(index)}
-                      disabled={config.mode === "normal" && showExplanation}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${
+                      className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
                         isSelected
-                          ? "bg-[#00A3C4] dark:bg-cyan-600 text-white border-[#00A3C4] dark:border-cyan-600"
-                          : showExplanation && isCorrect
-                            ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                            : showExplanation && isSelected && !isCorrect
-                              ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
-                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-[#00A3C4] dark:hover:border-cyan-500"
-                      } ${config.mode === "normal" && showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
+                          ? "bg-[#0092E3] dark:bg-cyan-600 text-white border-[#0092E3] dark:border-cyan-600 shadow-md font-semibold"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-[#0092E3] dark:hover:border-cyan-500"
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
                             isSelected
-                              ? "border-white bg-white/20"
-                              : showExplanation && isCorrect
-                                ? "border-emerald-500 bg-emerald-500"
-                                : showExplanation && isSelected && !isCorrect
-                                  ? "border-rose-500 bg-rose-500"
-                                  : "border-slate-300 dark:border-slate-600"
+                              ? "border-white bg-white/20 text-white"
+                              : "border-slate-300 dark:border-slate-600"
                           }`}
                         >
                           {isSelected && (
                             <CheckCircle2 className="h-4 w-4 text-white" />
                           )}
-                          {showExplanation && isCorrect && !isSelected && (
-                            <CheckCircle2 className="h-4 w-4 text-white" />
-                          )}
-                          {showExplanation && isSelected && !isCorrect && (
-                            <XCircle className="h-4 w-4 text-white" />
-                          )}
                         </div>
-                        <span className="flex-1">{option}</span>
+                        <span className="flex-1 font-medium">{option}</span>
                       </div>
                     </motion.button>
                   );
@@ -398,7 +570,7 @@ export default function PracticeSessionPage() {
           transition={{ delay: 0.3 }}
           className="flex flex-col items-center gap-4"
         >
-          {/* Navigation Buttons Group */}
+          {/* Navigation & Submit Buttons Group */}
           <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
             <Button
               variant="outline"
@@ -408,7 +580,7 @@ export default function PracticeSessionPage() {
             >
               <span className="flex items-center gap-2">
                 <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Previous</span>
+                <span>Previous</span>
               </span>
             </Button>
             <Button
@@ -419,33 +591,34 @@ export default function PracticeSessionPage() {
             >
               <span className="flex items-center gap-2">
                 <RotateCcw className="h-4 w-4" />
-                <span className="hidden sm:inline">Clear</span>
+                <span>Clear</span>
               </span>
             </Button>
-            <Button
-              size="md"
-              onClick={handleNext}
-              disabled={currentQuestionIndex === currentSession.length - 1}
-            >
-              <span className="flex items-center gap-2">
-                <span className="hidden sm:inline">Next</span>
-                <ChevronRight className="h-4 w-4" />
-              </span>
-            </Button>
-          </div>
 
-          {/* End Practice Button - Separated */}
-          <Button
-            variant="outline"
-            size="md"
-            onClick={() => setShowEndModal(true)}
-            className="w-full sm:w-auto justify-center"
-          >
-            <span className="flex items-center gap-2">
-              <span className="hidden sm:inline">End Practice</span>
-              <span className="sm:hidden">End</span>
-            </span>
-          </Button>
+            {currentQuestionIndex === currentSession.length - 1 ? (
+              <Button
+                size="md"
+                onClick={() => setShowEndModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/20 px-5"
+              >
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Submit Exam</span>
+                </span>
+              </Button>
+            ) : (
+              <Button
+                size="md"
+                onClick={handleNext}
+                className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold shadow-md shadow-[#0092E3]/20 px-5"
+              >
+                <span className="flex items-center gap-2">
+                  <span>Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              </Button>
+            )}
+          </div>
         </motion.div>
 
         {/* Stats Footer */}
@@ -500,5 +673,21 @@ export default function PracticeSessionPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function PracticeSessionPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="text-slate-400 text-xs font-semibold animate-pulse">
+            Loading examination questions...
+          </div>
+        </div>
+      }
+    >
+      <PracticeSessionContent />
+    </React.Suspense>
   );
 }

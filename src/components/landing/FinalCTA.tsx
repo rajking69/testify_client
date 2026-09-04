@@ -1,12 +1,64 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Check, ArrowRight, Sparkles } from "lucide-react";
+import {
+  Check,
+  ArrowRight,
+  Sparkles,
+  CheckCircle2,
+  Send,
+} from "lucide-react";
 import { AnimatedBackground } from "./AnimatedBackground";
+import { TeacherSubscriptionModal } from "@/components/teacher/TeacherSubscriptionModal";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
 
 export default function FinalCTA() {
+  const router = useRouter();
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Contact Sales Form State
+  const [institutionName, setInstitutionName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [campusSize, setCampusSize] = useState("1,000 - 5,000 students");
+  const [message, setMessage] = useState("");
+  const [isSubmittingSales, setIsSubmittingSales] = useState(false);
+  const [salesSubmitted, setSalesSubmitted] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSalesSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!institutionName.trim() || !contactEmail.trim()) return;
+
+    setIsSubmittingSales(true);
+    setTimeout(() => {
+      setIsSubmittingSales(false);
+      setSalesSubmitted(true);
+      setTimeout(() => {
+        setSalesSubmitted(false);
+        setIsSalesModalOpen(false);
+        showToast("Inquiry submitted! Our institutional team will contact you within 24 hours.");
+        setInstitutionName("");
+        setContactName("");
+        setContactEmail("");
+        setMessage("");
+      }, 1500);
+    }, 800);
+  };
+
   const lmsList = [
     "Google Classroom",
     "Canvas LMS",
@@ -18,6 +70,7 @@ export default function FinalCTA() {
 
   const pricingPlans = [
     {
+      id: "starter",
       name: "Starter / Free",
       price: "$0",
       period: "forever",
@@ -32,29 +85,29 @@ export default function FinalCTA() {
         "Standard web browser security",
       ],
       buttonText: "Start for Free",
-      buttonHref: "/auth/register",
-      buttonVariant: "outline",
+      action: () => router.push("/auth/register"),
     },
     {
-      name: "Pro Educator",
-      price: "$15",
-      period: "per teacher / month",
-      description: "Advanced proctoring, AI rubrics, and rich question formatting for power educators.",
+      id: "pro",
+      name: "Teacher Premium",
+      price: "$20",
+      period: "per year (1-Year Access)",
+      description: "Unlimited exams, paid exam monetization, live proctoring, and question bank.",
       badge: "Most Popular",
       popular: true,
       features: [
-        "Unlimited exams & question banks",
-        "LaTeX math, code & audio questions",
-        "Full-screen lockdown browser",
-        "AI rubric-assisted essay evaluation",
-        "Live student monitoring & focus alerts",
-        "Detailed class analytics & CSV export",
+        "Unlimited exams & central question bank",
+        "Create Free classroom & Paid marketplace exams",
+        "Bulk question import (Excel, CSV & JSON)",
+        "Live proctoring & webcam telemetry",
+        "Real-time focus alerts & anti-cheat engine",
+        "Full student evaluation & gradebook export",
       ],
-      buttonText: "Get Started Free",
-      buttonHref: "/auth/register",
-      buttonVariant: "primary",
+      buttonText: "Get Teacher Premium",
+      action: () => setIsSubscriptionOpen(true),
     },
     {
+      id: "institution",
       name: "Institution / Campus",
       price: "Custom",
       period: "per institution / year",
@@ -70,13 +123,20 @@ export default function FinalCTA() {
         "Priority 24/7 support & onboarding",
       ],
       buttonText: "Contact Sales",
-      buttonHref: "/auth/register",
-      buttonVariant: "outline",
+      action: () => setIsSalesModalOpen(true),
     },
   ];
 
   return (
     <section id="pricing" className="relative w-full overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#EFF6FB] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 py-16 lg:py-24 border-t border-[#E8EEF3] dark:border-slate-800 transition-colors duration-300">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-emerald-600 text-white text-xs font-bold border border-emerald-500 animate-bounce">
+          <CheckCircle2 className="h-4 w-4" />
+          {toastMessage}
+        </div>
+      )}
+
       {/* Moving Animated Glow & Tech Grid */}
       <AnimatedBackground />
 
@@ -93,8 +153,8 @@ export default function FinalCTA() {
             <h3 className="text-lg sm:text-xl font-bold font-display text-[#0B2238] dark:text-white">
               Easily integrate with your existing educational workflows
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              One-click roster import, single sign-on (SSO), and automated gradebook sync.
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Native synchronization with the world&apos;s leading Learning Management Systems
             </p>
           </div>
 
@@ -188,21 +248,22 @@ export default function FinalCTA() {
                   </div>
                 </div>
 
-                {/* Plan Button */}
+                {/* Plan Action Button */}
                 <div className="pt-6">
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
-                    <Link
-                      href={plan.buttonHref}
-                      className={`w-full inline-flex items-center justify-center rounded-xl py-3 px-4 text-xs font-bold transition-all ${
-                        plan.popular
-                          ? "bg-[#0B2238] dark:bg-blue-600 hover:bg-[#153450] dark:hover:bg-blue-500 text-white shadow-md"
-                          : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-[#0B2238] dark:text-white"
-                      }`}
-                    >
-                      <span>{plan.buttonText}</span>
-                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                    </Link>
-                  </motion.div>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={plan.action}
+                    className={`w-full inline-flex items-center justify-center rounded-xl py-3 px-4 text-xs font-bold transition-all cursor-pointer ${
+                      plan.popular
+                        ? "bg-[#0B2238] dark:bg-blue-600 hover:bg-[#153450] dark:hover:bg-blue-500 text-white shadow-md"
+                        : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-[#0B2238] dark:text-white"
+                    }`}
+                  >
+                    <span>{plan.buttonText}</span>
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </motion.button>
                 </div>
               </motion.div>
             ))}
@@ -254,6 +315,131 @@ export default function FinalCTA() {
           </div>
         </motion.div>
       </div>
+
+      {/* Teacher Subscription Modal ($20/year) */}
+      <TeacherSubscriptionModal
+        isOpen={isSubscriptionOpen}
+        onClose={() => setIsSubscriptionOpen(false)}
+        onSuccess={() => {
+          showToast("⭐ Teacher Premium Membership activated!");
+          router.push("/teacher/exams");
+        }}
+        initialMessage="Unlock full examination hosting, live proctoring, and question bank privileges on Testify."
+      />
+
+      {/* Contact Sales / Campus Demo Inquiry Modal */}
+      {isSalesModalOpen && (
+        <Modal
+          isOpen={isSalesModalOpen}
+          onClose={() => setIsSalesModalOpen(false)}
+          title="Institutional & Campus Inquiries"
+          description="Transform your university, school, or coaching academy assessment ecosystem."
+          size="md"
+        >
+          {salesSubmitted ? (
+            <div className="text-center py-6 space-y-3">
+              <div className="w-14 h-14 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto animate-bounce">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white">
+                Inquiry Received!
+              </h3>
+              <p className="text-xs text-slate-500">
+                Our educational partnerships team will reach out with customized campus pricing and onboarding assistance.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSalesSubmit} className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Institution / School Name <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={institutionName}
+                  onChange={(e) => setInstitutionName(e.target.value)}
+                  placeholder="e.g. Stanford University / BRAC Academy"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Contact Person Name <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="e.g. Dr. Arthur Pendelton"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Work Email <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="dean@university.edu"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Estimated Student Count
+                </label>
+                <Select
+                  options={[
+                    { value: "Under 1,000 students", label: "Under 1,000 students" },
+                    { value: "1,000 - 5,000 students", label: "1,000 - 5,000 students" },
+                    { value: "5,000 - 20,000 students", label: "5,000 - 20,000 students" },
+                    { value: "20,000+ Campus-wide", label: "20,000+ Campus-wide" },
+                  ]}
+                  value={campusSize}
+                  onChange={(e) => setCampusSize(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Requirements & Notes
+                </label>
+                <Textarea
+                  rows={2}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Describe your LMS, proctoring requirements, or deployment schedule..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsSalesModalOpen(false)}
+                  className="text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmittingSales}
+                  className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold text-xs px-5"
+                  leftIcon={<Send className="h-3.5 w-3.5" />}
+                >
+                  {isSubmittingSales ? "Submitting..." : "Submit Campus Inquiry"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      )}
     </section>
   );
 }

@@ -32,6 +32,7 @@ import {
 } from "@/lib/admin/toast";
 import { mockUsers } from "@/lib/admin/mock-data";
 import { User, TableColumn, ActionMenuItem } from "@/lib/admin/types";
+import { adminService } from "@/services/admin.service";
 
 export default function AdminUsersPage() {
   const { activeTab, setTab } = useTabState("all");
@@ -47,6 +48,25 @@ export default function AdminUsersPage() {
     user: User;
   } | null>(null);
   const [suspensionReason, setSuspensionReason] = useState("");
+
+  // Fetch real users from backend if available
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getUsers({ search: filters.search, role: filters.role })
+      .then((res) => {
+        if (isMounted && res.data && res.data.length > 0) {
+          setUsers(res.data);
+        }
+      })
+      .catch(() => {
+        // Keep fallback data if backend is offline
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [filters.search, filters.role]);
+
 
   // Filter users based on tab and filters
   const filteredUsers = users.filter((user) => {
