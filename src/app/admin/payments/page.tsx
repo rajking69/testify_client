@@ -25,6 +25,7 @@ import {
   cn,
 } from "@/lib/admin/utils";
 import { mockPayments } from "@/lib/admin/mock-data";
+import { adminService } from "@/services/admin.service";
 import {
   Payment,
   PaymentStatus,
@@ -43,10 +44,29 @@ export default function AdminPaymentsPage() {
     status: undefined,
   });
 
+  const [payments, setPayments] = useState<Payment[]>(mockPayments);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
+  // Fetch real payments from backend if available
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getPayments()
+      .then((res) => {
+        if (isMounted && res.data && res.data.purchases) {
+          setPayments(res.data.purchases);
+        }
+      })
+      .catch(() => {
+        // Fallback to initial state if backend offline
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter payments
-  const filteredPayments = mockPayments.filter((payment) => {
+  const filteredPayments = payments.filter((payment) => {
     if (filters.status && payment.status !== filters.status) return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();

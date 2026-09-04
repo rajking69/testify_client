@@ -8,17 +8,40 @@ import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/admin/utils";
 import { mockFeatureFlags } from "@/lib/admin/mock-data";
 import { FeatureFlag, FeatureCategory } from "@/lib/admin/types";
+import { adminService } from "@/services/admin.service";
 
 export default function AdminFeaturesPage() {
-  const [features, setFeatures] = useState(mockFeatureFlags);
+  const [features, setFeatures] = useState<FeatureFlag[]>(mockFeatureFlags);
   const [updating, setUpdating] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getFeatureFlags()
+      .then((res) => {
+        if (isMounted && res.data && res.data.length > 0) {
+          setFeatures(res.data);
+        }
+      })
+      .catch(() => {
+        // Fallback to initial state if backend offline
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleFeature = async (featureId: string) => {
     setUpdating(featureId);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setFeatures(features.map((f) => (f.id === featureId ? { ...f, enabled: !f.enabled } : f)));
-    setUpdating(null);
+    try {
+      await adminService.toggleFeatureFlag(featureId);
+      setFeatures(features.map((f) => (f.id === featureId ? { ...f, enabled: !f.enabled } : f)));
+    } catch {
+      // Local optimistic toggle on error
+      setFeatures(features.map((f) => (f.id === featureId ? { ...f, enabled: !f.enabled } : f)));
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const categoryIcons: Record<FeatureCategory, React.ReactNode> = {

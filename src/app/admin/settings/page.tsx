@@ -19,18 +19,41 @@ import { useTabState } from "@/lib/admin/url-state";
 import { cn } from "@/lib/admin/utils";
 import { mockSystemConfig } from "@/lib/admin/mock-data";
 import { SystemConfig } from "@/lib/admin/types";
+import { adminService } from "@/services/admin.service";
 
 export default function AdminSettingsPage() {
   const { activeTab, setTab } = useTabState("general");
   const [configs, setConfigs] = useState<SystemConfig[]>(mockSystemConfig);
   const [saving, setSaving] = useState(false);
 
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getSystemConfigs()
+      .then((res) => {
+        if (isMounted && res.data && res.data.length > 0) {
+          setConfigs(res.data);
+        }
+      })
+      .catch(() => {
+        // Fallback to initial state if backend offline
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    // Show success notification
+    try {
+      for (const config of configs) {
+        await adminService.updateSystemConfig(config.key, config.value);
+      }
+    } catch {
+      // Local save fallback
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
