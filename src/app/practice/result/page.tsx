@@ -77,7 +77,14 @@ export default function PracticeResultPage() {
   const handlePracticeMissed = () => {
     const missedQuestions = lastResult.questions.filter((question) => {
       const userAnswer = lastResult.userAnswers[question.id];
-      return userAnswer !== question.correctAnswer;
+      const correct =
+        userAnswer !== undefined &&
+        userAnswer !== null &&
+        (userAnswer === question.correctAnswer ||
+         String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
+         (question.correctOptionIndex !== undefined && Number(userAnswer) === Number(question.correctOptionIndex)) ||
+         (Array.isArray(question.options) && typeof userAnswer === 'number' && question.options[userAnswer] !== undefined && String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase()));
+      return !correct;
     });
 
     if (missedQuestions.length === 0) {
@@ -286,7 +293,14 @@ export default function PracticeResultPage() {
           <div className="space-y-3">
             {lastResult.questions.map((question, index) => {
               const userAnswer = lastResult.userAnswers[question.id];
-              const isCorrect = userAnswer === question.correctAnswer;
+              const isCorrect =
+                userAnswer !== undefined &&
+                userAnswer !== null &&
+                (userAnswer === question.correctAnswer ||
+                 String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
+                 (question.correctOptionIndex !== undefined && Number(userAnswer) === Number(question.correctOptionIndex)) ||
+                 (Array.isArray(question.options) && typeof userAnswer === 'number' && question.options[userAnswer] !== undefined && String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase()) ||
+                 (Array.isArray(question.options) && typeof userAnswer === 'string' && question.correctOptionIndex !== undefined && question.options[question.correctOptionIndex] !== undefined && String(userAnswer).trim().toLowerCase() === String(question.options[question.correctOptionIndex]).trim().toLowerCase()));
               const isExpanded = expandedQuestions.has(question.id);
 
               return (
@@ -356,45 +370,60 @@ export default function PracticeResultPage() {
                               </p>
                               <div className="space-y-2">
                                 {question.options?.map((option, optIndex) => {
-                                  const isUserAnswer = userAnswer === optIndex;
+                                  const isUserAnswer =
+                                    userAnswer === optIndex ||
+                                    userAnswer === option ||
+                                    String(userAnswer) === String(optIndex) ||
+                                    (typeof userAnswer === 'string' && String(userAnswer).trim().toLowerCase() === String(option).trim().toLowerCase());
+
                                   const isCorrectAnswer =
-                                    question.correctAnswer === optIndex;
+                                    question.correctAnswer === optIndex ||
+                                    question.correctAnswer === option ||
+                                    String(question.correctAnswer) === String(optIndex) ||
+                                    String(question.correctAnswer).trim().toLowerCase() === String(option).trim().toLowerCase() ||
+                                    (question.correctOptionIndex !== undefined && Number(question.correctOptionIndex) === optIndex) ||
+                                    (Array.isArray(question.options) && typeof question.correctAnswer === 'number' && question.options[question.correctAnswer] === option);
 
                                   return (
                                     <div
                                       key={optIndex}
-                                      className={`p-3 rounded-lg border text-sm ${
+                                      className={`p-3.5 rounded-xl border text-sm flex items-center justify-between transition-all ${
                                         isUserAnswer && isCorrectAnswer
-                                          ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+                                          ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-semibold shadow-sm"
                                           : isUserAnswer && !isCorrectAnswer
-                                            ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300"
+                                            ? "bg-rose-50 dark:bg-rose-950/60 border-rose-400 dark:border-rose-700 text-rose-800 dark:text-rose-300 font-semibold shadow-sm"
                                             : isCorrectAnswer
-                                              ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
-                                              : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                                              ? "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-medium"
+                                              : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                                       }`}
                                     >
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2.5 flex-1">
                                         {isUserAnswer && isCorrectAnswer && (
-                                          <CheckCircle2 className="h-4 w-4" />
+                                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                         )}
                                         {isUserAnswer && !isCorrectAnswer && (
-                                          <XCircle className="h-4 w-4" />
+                                          <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
                                         )}
                                         {!isUserAnswer && isCorrectAnswer && (
-                                          <CheckCircle2 className="h-4 w-4" />
+                                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                         )}
                                         <span>{option}</span>
-                                        {isUserAnswer && !isCorrectAnswer && (
-                                          <span className="ml-auto text-xs font-semibold">
-                                            (Your choice)
-                                          </span>
-                                        )}
-                                        {!isUserAnswer && isCorrectAnswer && (
-                                          <span className="ml-auto text-xs font-semibold">
-                                            (Correct answer)
-                                          </span>
-                                        )}
                                       </div>
+                                      {isUserAnswer && isCorrectAnswer && (
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                          (Your choice • Correct)
+                                        </span>
+                                      )}
+                                      {isUserAnswer && !isCorrectAnswer && (
+                                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400 shrink-0">
+                                          (Your choice • Incorrect)
+                                        </span>
+                                      )}
+                                      {!isUserAnswer && isCorrectAnswer && (
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                          (Correct answer)
+                                        </span>
+                                      )}
                                     </div>
                                   );
                                 })}
