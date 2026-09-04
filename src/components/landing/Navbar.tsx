@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
   Search,
+  KeyRound,
+  ArrowRight,
   Menu,
   X,
   ChevronDown,
@@ -177,21 +179,41 @@ export default function Navbar() {
 
         {/* Right: Search, Theme Toggle & Actions */}
         <div className="hidden sm:flex items-center gap-3">
-          {/* Quick Search */}
-          <div className="relative">
-            <Search
-              className={`absolute left-3 top-2.5 h-3.5 w-3.5 ${isScrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-300"}`}
+          {/* Quick Room Code Join Bar */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const input = e.currentTarget.elements.namedItem("roomCode") as HTMLInputElement;
+              const code = input?.value?.trim();
+              if (code) {
+                router.push(`/exam/${encodeURIComponent(code.toUpperCase())}`);
+              }
+            }}
+            className="relative flex items-center"
+          >
+            <KeyRound
+              className={`absolute left-3 h-3.5 w-3.5 pointer-events-none ${isScrolled ? "text-[#00A3C4] dark:text-cyan-400" : "text-cyan-300"}`}
             />
             <input
+              name="roomCode"
               type="text"
-              placeholder="Search platform..."
-              className={`h-8 w-36 lg:w-48 rounded-full border pl-8 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#00A3C4] transition-all shadow-2xs ${
+              placeholder={isLoggedIn ? "Enter Room Code..." : "Room Join Code..."}
+              className={`h-8 w-36 lg:w-48 rounded-full border pl-8 pr-7 text-xs font-mono uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#00A3C4] transition-all shadow-2xs ${
                 isScrolled
                   ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
                   : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white placeholder-slate-200 backdrop-blur-xs"
               }`}
             />
-          </div>
+            <button
+              type="submit"
+              className={`absolute right-2 p-0.5 rounded-full hover:scale-110 transition-all cursor-pointer ${
+                isScrolled ? "text-[#00A3C4] hover:text-[#008BB0]" : "text-cyan-300 hover:text-white"
+              }`}
+              title="Join Exam Room"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </form>
 
           {/* Animated Theme Toggle */}
           <ThemeToggle />
@@ -237,14 +259,6 @@ export default function Navbar() {
                   >
                     <Shield className="h-4 w-4 text-[#00A3C4]" />
                     Dashboard
-                  </Link>
-                  <Link
-                    href={`/profile/${((session.user as { role?: string })?.role) || "student"}`}
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <User className="h-4 w-4 text-[#00A3C4]" />
-                    Profile Settings
                   </Link>
                   <button
                     onClick={handleLogout}
