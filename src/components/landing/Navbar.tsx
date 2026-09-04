@@ -179,7 +179,7 @@ export default function Navbar() {
 
         {/* Right: Search, Theme Toggle & Actions */}
         <div className="hidden sm:flex items-center gap-3">
-          {/* Quick Room Code Join Bar */}
+          {/* Quick Room Code / Search Bar */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -192,16 +192,16 @@ export default function Navbar() {
             className="relative flex items-center"
           >
             <KeyRound
-              className={`absolute left-3 h-3.5 w-3.5 pointer-events-none ${isScrolled ? "text-[#00A3C4] dark:text-cyan-400" : "text-cyan-300"}`}
+              className={`absolute left-3 h-3.5 w-3.5 pointer-events-none ${isScrolled ? "text-slate-400 dark:text-slate-400" : "text-slate-300"}`}
             />
             <input
               name="roomCode"
               type="text"
-              placeholder={isLoggedIn ? "Enter Room Code..." : "Room Join Code..."}
-              className={`h-8 w-36 lg:w-48 rounded-full border pl-8 pr-7 text-xs font-mono uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#00A3C4] transition-all shadow-2xs ${
+              placeholder="Enter Room Code..."
+              className={`h-8 w-36 lg:w-44 rounded-full border pl-8 pr-7 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00A3C4] transition-all shadow-2xs ${
                 isScrolled
-                  ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
-                  : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white placeholder-slate-200 backdrop-blur-xs"
+                  ? "bg-white/80 dark:bg-slate-900/80 border-slate-300/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400"
+                  : "bg-white/20 dark:bg-slate-900/80 border-white/30 dark:border-slate-800 text-white placeholder-slate-300 backdrop-blur-xs"
               }`}
             />
             <button
