@@ -22,16 +22,16 @@ export default function TestifyHero() {
   const [activeRoleView, setActiveRoleView] = useState<"teacher" | "student" | "admin">("teacher");
 
   return (
-    <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#F5F9FC]/60 via-[#EEF5FA]/50 to-[#F8FBFE]/60 dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 pt-14 sm:pt-18 lg:pt-20 pb-12 sm:pb-16 transition-colors duration-300 transition-colors duration-300">
+    <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#F5F9FC]/60 via-[#EEF5FA]/50 to-[#F8FBFE]/60 dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 pt-28 sm:pt-32 lg:pt-36 pb-28 sm:pb-32 lg:pb-36 min-h-[95vh] sm:min-h-screen flex flex-col justify-center transition-colors duration-300 transition-colors duration-300">
       {/* Moving Vibrant Gradient Orbs & Tech Grid */}
       <AnimatedBackground variant="hero" />
 
       {/* Top Asymmetrical Curved Graphic matching reference */}
-      <div className="absolute top-0 right-0 w-[55%] h-20 sm:h-24 lg:h-28 bg-gradient-to-l from-[#F9B233] to-[#F59E0B] -z-0 rounded-bl-[100px] lg:rounded-bl-[140px] opacity-90 dark:opacity-40 shadow-md" />
-      <div className="absolute top-0 right-0 w-[45%] h-16 sm:h-20 lg:h-24 bg-[#0B2238] dark:bg-slate-950/80 -z-0 rounded-bl-[90px] lg:rounded-bl-[120px] shadow-lg" />
+      <div className="absolute top-0 right-0 w-[55%] h-28 sm:h-32 lg:h-36 bg-gradient-to-l from-[#F9B233] to-[#F59E0B] -z-0 rounded-bl-[100px] lg:rounded-bl-[140px] opacity-90 dark:opacity-40 shadow-md" />
+      <div className="absolute top-0 right-0 w-[45%] h-24 sm:h-28 lg:h-32 bg-[#0B2238] dark:bg-slate-950/80 -z-0 rounded-bl-[90px] lg:rounded-bl-[120px] shadow-lg" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 z-10 pt-4 lg:pt-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left Column: Headline & Action tailored to 3 Roles */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -92,7 +92,7 @@ export default function TestifyHero() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold font-display tracking-tight leading-[1.1] bg-gradient-to-r from-[#0B2238] via-[#0284C7] to-[#00A3C4] dark:from-white dark:via-cyan-300 dark:to-blue-400 bg-clip-text text-transparent drop-shadow-xs"
+                className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight leading-[1.1] bg-gradient-to-r from-[#0B2238] via-[#0284C7] to-[#00A3C4] dark:from-white dark:via-cyan-300 dark:to-blue-400 bg-clip-text text-transparent drop-shadow-xs"
               >
                 Online Exams
               </motion.h1>
@@ -344,7 +344,7 @@ export default function TestifyHero() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="flex flex-col items-center justify-center pt-8 sm:pt-10 pb-2 text-slate-400 dark:text-slate-500 text-xs font-medium gap-1.5 cursor-pointer select-none group"
+          className="flex flex-col items-center justify-center pt-16 sm:pt-24 pb-4 text-slate-400 dark:text-slate-500 text-xs font-medium gap-1.5 cursor-pointer select-none group"
           onClick={() => {
             const target = document.getElementById("explore-exams") || document.getElementById("features");
             target?.scrollIntoView({ behavior: "smooth" });

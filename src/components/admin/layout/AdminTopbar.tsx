@@ -1,22 +1,17 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Search,
   Bell,
-  Settings,
-  User,
   LogOut,
   Menu,
   ChevronDown,
   Home,
-  ShieldAlert,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/admin/utils";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface AdminTopbarProps {
@@ -28,6 +23,43 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { data: session } = authClient.useSession();
   const user = session?.user;
+
+  const [customProfile, setCustomProfile] = useState<{ name?: string; image?: string }>({});
+
+  useEffect(() => {
+    const syncProfile = () => {
+      try {
+        const userEmail = user?.email;
+        if (userEmail) {
+          const userSpecific = localStorage.getItem(`testify_custom_profile_${userEmail}`);
+          if (userSpecific) {
+            setCustomProfile(JSON.parse(userSpecific));
+            return;
+          }
+        }
+        const general = localStorage.getItem("testify_custom_profile");
+        if (general) {
+          const parsed = JSON.parse(general);
+          if (!userEmail || !parsed.email || parsed.email === userEmail) {
+            setCustomProfile(parsed);
+            return;
+          }
+        }
+        setCustomProfile({});
+      } catch {}
+    };
+    syncProfile();
+
+    window.addEventListener("testify_profile_updated", syncProfile);
+    window.addEventListener("storage", syncProfile);
+    return () => {
+      window.removeEventListener("testify_profile_updated", syncProfile);
+      window.removeEventListener("storage", syncProfile);
+    };
+  }, [user?.email]);
+
+  const activeName = customProfile.name || user?.name;
+  const activeImage = customProfile.image || user?.image;
 
   const handleLogout = async () => {
     await authClient.signOut();
@@ -160,22 +192,23 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2 rounded-xl p-1 sm:p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
           >
-            {user?.image ? (
+            {activeImage ? (
               <img
-                src={user.image}
-                alt={user?.name || "Admin"}
+                src={activeImage}
+                alt={activeName || "Admin"}
                 className="h-8 w-8 rounded-xl object-cover border border-purple-300 dark:border-purple-700 shadow-2xs"
               />
             ) : (
               <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#152234] to-[#5B67F7] text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
+                {activeName ? activeName.charAt(0).toUpperCase() : "A"}
               </div>
             )}
             <span className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200">
-              {user?.name || "Admin"}
+              {activeName || "Admin"}
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>
+
           {showProfileMenu && (
             <>
               <div
@@ -185,19 +218,27 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
               <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-bold font-display text-[#0B2238] dark:text-white truncate">
-                    {user?.name || "Administrator"}
+                    {activeName || "Administrator"}
                   </p>
                   <p className="text-[11px] text-slate-400 truncate">
                     {user?.email || "admin@testify.com"}
                   </p>
                 </div>
-                <div className="pt-1">
+                <div className="pt-1 space-y-0.5">
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Shield className="h-4 w-4 text-purple-500" />
+                    <span>Dashboard</span>
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
-                    Sign Out
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>
