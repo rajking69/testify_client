@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, ChevronLeft, ChevronRight, Layers, RefreshCw, AlertCircle } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Layers, RefreshCw, AlertCircle, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -17,6 +17,7 @@ import { QuestionFormModal } from "@/components/teacher/question-bank/QuestionFo
 import { QuestionDetailsModal } from "@/components/teacher/question-bank/QuestionDetailsModal";
 import { DeleteConfirmationModal } from "@/components/teacher/question-bank/DeleteConfirmationModal";
 import { ExamSelectorModal } from "@/components/teacher/question-bank/ExamSelectorModal";
+import { BulkImportModal } from "@/components/teacher/exam-setup/BulkImportModal";
 
 export default function QuestionBankPage() {
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
@@ -54,6 +55,7 @@ export default function QuestionBankPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [isExamSelectorOpen, setIsExamSelectorOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -275,6 +277,15 @@ export default function QuestionBankPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="font-bold text-xs"
+            leftIcon={<Upload className="h-4 w-4 text-[#0092E3]" />}
+          >
+            Bulk Import (JSON / CSV)
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={() => setIsExamSelectorOpen(true)}
             leftIcon={<Layers className="h-4 w-4" />}
           >
@@ -283,7 +294,8 @@ export default function QuestionBankPage() {
 
           <Button
             onClick={handleOpenCreateModal}
-            leftIcon={<Plus className="h-4 w-4" />}
+            className="bg-[#0092E3] hover:bg-[#007AC9] text-white"
+            leftIcon={<Plus className="h-4 w-4 text-white" />}
           >
             Create Question
           </Button>
@@ -444,8 +456,39 @@ export default function QuestionBankPage() {
         isOpen={isExamSelectorOpen}
         onClose={() => setIsExamSelectorOpen(false)}
         selectedIds={selectedIds}
+        allQuestions={questions}
         onExamQuestionsSelected={(selected) => {
-          showToast(`Selected ${selected.length} questions for exam creation!`, "success");
+          setSelectedIds([]);
+          showToast(`Successfully added ${selected.length} questions to your selected exam!`, "success");
+        }}
+      />
+
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        examSubject={category || "Computer Science"}
+        onImportQuestions={async (importedQuestions) => {
+          try {
+            for (const q of importedQuestions) {
+              await questionService.createQuestion({
+                questionText: q.questionText,
+                questionType: q.questionType,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation,
+                subject: q.subject || category || "Computer Science",
+                topic: q.topic,
+                difficulty: q.difficulty,
+                marks: q.marks,
+                tags: q.tags,
+                status: "READY",
+              });
+            }
+            showToast(`Successfully imported ${importedQuestions.length} questions into Question Bank!`, "success");
+            fetchQuestions();
+          } catch (err) {
+            showToast("Failed to save some questions to repository", "error");
+          }
         }}
       />
     </div>

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { AnimatedBackground } from "@/components/landing/AnimatedBackground";
 import { authClient } from "@/lib/auth-client";
 import { ShieldAlert, ArrowLeft, GraduationCap } from "lucide-react";
 import Link from "next/link";
@@ -21,8 +22,9 @@ export default function TeacherLayout({
   // Unauthenticated visitors cannot access teacher dashboard
   if (!isPending && !session) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-xl text-center space-y-4">
+      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 overflow-hidden">
+        <AnimatedBackground variant="hero" />
+        <div className="relative z-10 max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-8 shadow-xl text-center space-y-4">
           <div className="h-14 w-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
             <GraduationCap className="h-7 w-7" />
           </div>
@@ -54,8 +56,9 @@ export default function TeacherLayout({
   // Non-teachers cannot access teacher workspace
   if (!isPending && session && userRole !== "teacher" && userRole !== "admin") {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full rounded-3xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 p-8 shadow-xl text-center space-y-4">
+      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 overflow-hidden">
+        <AnimatedBackground variant="hero" />
+        <div className="relative z-10 max-w-md w-full rounded-3xl border border-rose-200 dark:border-rose-900/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-8 shadow-xl text-center space-y-4">
           <div className="h-14 w-14 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
             <ShieldAlert className="h-7 w-7" />
           </div>
@@ -86,7 +89,10 @@ export default function TeacherLayout({
 
   // Teachers get sidebar + topbar layout
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 flex flex-col lg:flex-row text-slate-900 dark:text-slate-100">
+    <div className="relative min-h-screen bg-slate-50/60 dark:bg-slate-950 flex flex-col lg:flex-row text-slate-900 dark:text-slate-100 overflow-hidden">
+      {/* Full Dashboard Landing Page Animated Aurora & Grid Background */}
+      <AnimatedBackground variant="hero" />
+
       {/* Sidebar Navigation */}
       <Sidebar
         isOpen={isMobileOpen}
@@ -96,7 +102,7 @@ export default function TeacherLayout({
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="relative z-10 flex-1 flex flex-col min-w-0">
         {/* Topbar Header */}
         <Topbar onOpenMobileSidebar={() => setIsMobileOpen(true)} />
 

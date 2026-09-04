@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Activity,
   Check,
@@ -12,137 +12,1525 @@ import {
   Filter,
   Search,
   ShieldAlert,
+  ShieldCheck,
   UserPlus,
   Users,
   X,
+  AlertTriangle,
+  Send,
+  Sparkles,
+  Award,
+  BookOpen,
+  Calendar,
+  Layers,
+  ArrowRight,
+  TrendingUp,
+  BarChart3,
+  UserCheck,
+  UserX,
+  ExternalLink,
+  CreditCard,
+  DollarSign,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
+import { purchaseService, TeacherEarningsSummary } from "@/services/purchase.service";
 
-type StudentStatus = "Pending" | "Admitted" | "Rejected";
-type MonitorStatus = "On track" | "Needs attention" | "Submitted";
+// ==========================================
+// 1. STUDENTS / ADMISSION PANEL
+// ==========================================
 
-interface Student {
-  id: number;
+type StudentStatus = "Admitted" | "Pending" | "Rejected";
+
+interface StudentRecord {
+  id: string;
   name: string;
   email: string;
+  rollNo: string;
   exam: string;
+  registeredDate: string;
   status: StudentStatus;
 }
 
-const initialStudents: Student[] = [
-  { id: 1, name: "Aisha Rahman", email: "aisha@example.com", exam: "Computer Science Midterm", status: "Pending" },
-  { id: 2, name: "Daniel Kim", email: "daniel@example.com", exam: "Computer Science Midterm", status: "Admitted" },
-  { id: 3, name: "Maya Patel", email: "maya@example.com", exam: "Database Systems Quiz", status: "Pending" },
-  { id: 4, name: "Noah Williams", email: "noah@example.com", exam: "Database Systems Quiz", status: "Admitted" },
-];
+const initialStudents: StudentRecord[] = [];
 
-const monitorRows = [
-  { name: "Daniel Kim", exam: "Computer Science Midterm", progress: 72, time: "18:42", status: "On track" as MonitorStatus },
-  { name: "Noah Williams", exam: "Computer Science Midterm", progress: 46, time: "25:09", status: "Needs attention" as MonitorStatus },
-  { name: "Maya Patel", exam: "Database Systems Quiz", progress: 100, time: "Submitted", status: "Submitted" as MonitorStatus },
-  { name: "Aisha Rahman", exam: "Computer Science Midterm", progress: 21, time: "31:16", status: "On track" as MonitorStatus },
-];
+export function AdmissionPanel() {
+  const [students, setStudents] = useState<StudentRecord[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("testify_teacher_students");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    return [];
+  });
 
-const evaluationRows = [
-  { id: 1, student: "Maya Patel", exam: "Database Systems Quiz", submitted: "Today, 10:42 AM", score: null },
-  { id: 2, student: "Daniel Kim", exam: "Computer Science Midterm", submitted: "Today, 9:58 AM", score: null },
-  { id: 3, student: "Noah Williams", exam: "Computer Science Midterm", submitted: "Yesterday, 4:20 PM", score: 82 },
-];
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All" | StudentStatus>("All");
+  const [toast, setToast] = useState<string | null>(null);
 
-const resultRows = [
-  { student: "Maya Patel", exam: "Database Systems Quiz", score: 94, grade: "A", submitted: "Aug 25, 2026" },
-  { student: "Noah Williams", exam: "Computer Science Midterm", score: 82, grade: "B+", submitted: "Aug 24, 2026" },
-  { student: "Daniel Kim", exam: "Computer Science Midterm", score: 76, grade: "B", submitted: "Aug 24, 2026" },
-  { student: "Aisha Rahman", exam: "Database Systems Quiz", score: 68, grade: "C+", submitted: "Aug 23, 2026" },
-];
+  // Invite Modal
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteExam, setInviteExam] = useState("Computer Science Mid Term Exam");
 
-function statusVariant(status: StudentStatus | MonitorStatus) {
-  if (status === "Admitted" || status === "On track" || status === "Submitted") return "success" as const;
-  if (status === "Rejected" || status === "Needs attention") return "danger" as const;
-  return "warning" as const;
-}
+  useEffect(() => {
+    localStorage.setItem("testify_teacher_students", JSON.stringify(students));
+  }, [students]);
 
-function PageIntro({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const updateStatus = (id: string, newStatus: StudentStatus) => {
+    setStudents((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: newStatus } : s))
+    );
+    showToast(`Student marked as ${newStatus}.`);
+  };
+
+  const handleAdmitAllPending = () => {
+    setStudents((prev) =>
+      prev.map((s) => (s.status === "Pending" ? { ...s, status: "Admitted" } : s))
+    );
+    showToast("All pending candidates admitted!");
+  };
+
+  const handleInviteSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+
+    const newStudent: StudentRecord = {
+      id: `std-${Date.now()}`,
+      name: inviteName.trim(),
+      email: inviteEmail.trim(),
+      rollNo: `CS-2024-${Math.floor(100 + Math.random() * 900)}`,
+      exam: inviteExam,
+      registeredDate: "Just now",
+      status: "Admitted",
+    };
+
+    setStudents([newStudent, ...students]);
+    setIsInviteOpen(false);
+    setInviteName("");
+    setInviteEmail("");
+    showToast(`Invitation sent and ${newStudent.name} admitted!`);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["ID", "Name", "Email", "Roll No", "Exam", "Registered Date", "Status"];
+    const rows = students.map((s) => [s.id, s.name, s.email, s.rollNo, s.exam, s.registeredDate, s.status]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "Testify_Enrolled_Students.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const filtered = useMemo(() => {
+    return students.filter((s) => {
+      const matchSearch =
+        s.name.toLowerCase().includes(query.toLowerCase()) ||
+        s.email.toLowerCase().includes(query.toLowerCase()) ||
+        s.rollNo.toLowerCase().includes(query.toLowerCase()) ||
+        s.exam.toLowerCase().includes(query.toLowerCase());
+
+      const matchStatus = statusFilter === "All" || s.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [students, query, statusFilter]);
+
+  const totalCount = students.length;
+  const admittedCount = students.filter((s) => s.status === "Admitted").length;
+  const pendingCount = students.filter((s) => s.status === "Pending").length;
+  const rejectedCount = students.filter((s) => s.status === "Rejected").length;
+
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">{eyebrow}</p>
-        <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">{title}</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
+    <div className="space-y-6 pb-12">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-emerald-600 text-white text-xs font-bold border border-emerald-500 animate-bounce">
+          <CheckCircle2 className="h-4 w-4" />
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0092E3]">
+            Candidate Management
+          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#152234] dark:text-white sm:text-3xl font-display">
+            Student Admissions & Roster
+          </h1>
+          <p className="mt-1 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+            Review candidate entry requests, admit enrolled students, and manage exam room access tokens.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            className="text-xs font-bold"
+            leftIcon={<Download className="h-3.5 w-3.5" />}
+          >
+            Export Roster
+          </Button>
+
+          <Button
+            onClick={() => setIsInviteOpen(true)}
+            className="bg-[#0092E3] hover:bg-[#007AC9] text-white text-xs font-bold"
+            leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+          >
+            Invite Student
+          </Button>
+        </div>
       </div>
-      {action}
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#0092E3] dark:bg-cyan-950/60 dark:text-cyan-400">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Roster</p>
+              <p className="text-2xl font-black text-[#152234] dark:text-white font-display mt-0.5">{totalCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Admitted</p>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display mt-0.5">{admittedCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+              <Clock3 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pending Review</p>
+              <p className="text-2xl font-black text-amber-700 dark:text-amber-300 font-display mt-0.5">{pendingCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+              <UserX className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Rejected</p>
+              <p className="text-2xl font-black text-rose-700 dark:text-rose-300 font-display mt-0.5">{rejectedCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Table Card */}
+      <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 dark:border-slate-800 p-5">
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-2">
+            {(["All", "Pending", "Admitted", "Rejected"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setStatusFilter(tab)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  statusFilter === tab
+                    ? "bg-[#152234] text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                {tab} {tab === "Pending" && pendingCount > 0 && `(${pendingCount})`}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search candidates..."
+                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-9 pr-3 text-xs outline-none focus:border-[#0092E3] dark:border-slate-800 dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            {pendingCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAdmitAllPending}
+                className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-xs font-bold shrink-0"
+                leftIcon={<Check className="h-3.5 w-3.5" />}
+              >
+                Admit All ({pendingCount})
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0 overflow-x-auto">
+          {filtered.length === 0 ? (
+            <div className="p-12 text-center text-xs text-slate-400">
+              No student records found matching this filter.
+            </div>
+          ) : (
+            <table className="w-full min-w-[700px] text-left text-xs">
+              <thead className="bg-slate-50/80 dark:bg-slate-950/60 uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-5 py-3">Candidate</th>
+                  <th className="px-5 py-3">Roll No</th>
+                  <th className="px-5 py-3">Registered Exam</th>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filtered.map((student) => (
+                  <tr key={student.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/30">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-cyan-950/80 text-[#0092E3] font-bold text-xs flex items-center justify-center">
+                          {student.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                          <p className="text-[11px] text-slate-400">{student.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 font-mono font-medium text-slate-600 dark:text-slate-300">
+                      {student.rollNo}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
+                      {student.exam}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-400">
+                      {student.registeredDate}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        student.status === "Admitted"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          : student.status === "Pending"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                      }`}>
+                        {student.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      {student.status === "Pending" ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            onClick={() => updateStatus(student.id, "Admitted")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg"
+                            leftIcon={<Check className="h-3 w-3" />}
+                          >
+                            Admit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateStatus(student.id, "Rejected")}
+                            className="text-rose-600 hover:bg-rose-50 border-rose-200 text-[11px] px-2.5 py-1 rounded-lg font-bold"
+                            leftIcon={<X className="h-3 w-3" />}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      ) : student.status === "Rejected" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateStatus(student.id, "Admitted")}
+                          className="text-xs font-bold text-emerald-600"
+                        >
+                          Re-admit
+                        </Button>
+                      ) : (
+                        <span className="text-emerald-600 font-bold text-[11px] flex items-center justify-end gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Admitted
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Invite Modal */}
+      <Modal
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        title="Invite Candidate to Examination"
+        description="Provide student details to generate admission token and grant exam room access."
+        size="md"
+      >
+        <form onSubmit={handleInviteSubmit} className="space-y-4 pt-1">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Student Full Name <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              value={inviteName}
+              onChange={(e) => setInviteName(e.target.value)}
+              placeholder="e.g. Rachel Adams"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Email Address <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="rachel.a@university.edu"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Assigned Examination
+            </label>
+            <Select
+              options={[
+                { value: "Computer Science Mid Term Exam", label: "Computer Science Mid Term Exam" },
+                { value: "Algorithms & Data Structures Assessment", label: "Algorithms & Data Structures Assessment" },
+                { value: "Networking & Cloud Architecture Quiz", label: "Networking & Cloud Architecture Quiz" },
+              ]}
+              value={inviteExam}
+              onChange={(e) => setInviteExam(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button type="button" variant="outline" onClick={() => setIsInviteOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold">
+              Send Invitation & Admit
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
 
-function Stat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+// ==========================================
+// 2. LIVE MONITORING / PROCTORING PANEL
+// ==========================================
+
+interface MonitorStudent {
+  id: string;
+  name: string;
+  email: string;
+  exam: string;
+  progress: number;
+  timeRemaining: string;
+  tabSwitches: number;
+  focusLossCount: number;
+  status: "Normal" | "Warning" | "Suspicious";
+  lastPing: string;
+}
+
+const initialMonitorRows: MonitorStudent[] = [];
+
+export function MonitoringPanel() {
+  const [students, setStudents] = useState<MonitorStudent[]>(initialMonitorRows);
+  const [inspectingStudent, setInspectingStudent] = useState<MonitorStudent | null>(null);
+  const [warningMessage, setWarningMessage] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      showToast("Live monitor telemetry updated from student sessions.");
+    }, 600);
+  };
+
+  const handleSendWarning = () => {
+    if (!warningMessage.trim() || !inspectingStudent) return;
+    showToast(`Proctor warning transmitted to ${inspectingStudent.name}'s screen!`);
+    setWarningMessage("");
+  };
+
+  const handleTerminateSession = (id: string) => {
+    setStudents((prev) => prev.filter((s) => s.id !== id));
+    setInspectingStudent(null);
+    showToast("Session terminated due to academic integrity violation.");
+  };
+
+  const onlineCount = students.length;
+  const flaggedCount = students.filter((s) => s.status !== "Normal").length;
+
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">{icon}</div>
-        <div><p className="text-xs text-slate-500 dark:text-slate-400">{label}</p><p className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{value}</p></div>
-      </CardContent>
-    </Card>
+    <div className="space-y-6 pb-12">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-blue-600 text-white text-xs font-bold border border-blue-500 animate-bounce">
+          <CheckCircle2 className="h-4 w-4" />
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0092E3]">
+              Real-Time Proctoring
+            </p>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#152234] dark:text-white sm:text-3xl font-display">
+            Live Exam Monitoring
+          </h1>
+          <p className="mt-1 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+            Monitor real-time student progress, tab switches, webcam telemetry, and anti-cheat alerts.
+          </p>
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="text-xs font-bold"
+          leftIcon={<Activity className={`h-3.5 w-3.5 text-[#0092E3] ${isRefreshing ? "animate-spin" : ""}`} />}
+        >
+          {isRefreshing ? "Pinging Nodes..." : "Refresh Telemetry"}
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#0092E3] dark:bg-cyan-950/60 dark:text-cyan-400">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Test Takers</p>
+              <p className="text-2xl font-black text-[#152234] dark:text-white font-display mt-0.5">{onlineCount} Online</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Integrity Verified</p>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display mt-0.5">{onlineCount - flaggedCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`rounded-3xl border shadow-sm ${
+          flaggedCount > 0 ? "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20" : "border-slate-200/80 dark:border-slate-800"
+        }`}>
+          <CardContent className="flex items-center gap-3.5 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Flagged Anomalies</p>
+              <p className="text-2xl font-black text-amber-800 dark:text-amber-200 font-display mt-0.5">{flaggedCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Live Monitoring Table */}
+      <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+        <CardHeader className="p-5 border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="text-base font-bold font-display text-[#152234] dark:text-white">
+            Active Candidates Feed ({students.length})
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="p-0 overflow-x-auto">
+          {students.length === 0 ? (
+            <div className="p-12 text-center text-xs text-slate-400">
+              No live examination sessions active right now.
+            </div>
+          ) : (
+            <table className="w-full min-w-[720px] text-left text-xs">
+              <thead className="bg-slate-50/80 dark:bg-slate-950/60 uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-5 py-3">Candidate</th>
+                  <th className="px-5 py-3">Exam Paper</th>
+                  <th className="px-5 py-3">Progress</th>
+                  <th className="px-5 py-3">Time Left</th>
+                  <th className="px-5 py-3">Integrity Status</th>
+                  <th className="px-5 py-3 text-right">Inspect</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {students.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/30">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-cyan-950 text-[#0092E3] font-bold text-[11px] flex items-center justify-center">
+                          {row.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{row.name}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Ping: {row.lastPing}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
+                      {row.exam}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold">
+                          <span>{row.progress}%</span>
+                        </div>
+                        <div className="w-28 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[#0092E3]"
+                            style={{ width: `${row.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 font-bold font-mono text-slate-800 dark:text-slate-200">
+                      {row.timeRemaining}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        row.status === "Normal"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          : row.status === "Warning"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                      }`}>
+                        {row.status === "Normal" ? (
+                          <ShieldCheck className="h-3 w-3" />
+                        ) : (
+                          <ShieldAlert className="h-3 w-3" />
+                        )}
+                        {row.status} {row.tabSwitches > 0 && `(${row.tabSwitches} tabs)`}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setInspectingStudent(row)}
+                        className="text-xs font-bold"
+                        leftIcon={<Eye className="h-3.5 w-3.5 text-[#0092E3]" />}
+                      >
+                        Inspect Proctor
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Inspect Proctoring Modal */}
+      {inspectingStudent && (
+        <Modal
+          isOpen={!!inspectingStudent}
+          onClose={() => setInspectingStudent(null)}
+          title={`Proctoring Telemetry: ${inspectingStudent.name}`}
+          description={`Live examination room stream for ${inspectingStudent.exam}`}
+          size="lg"
+        >
+          <div className="space-y-4 pt-1">
+            {/* Simulated Live Proctor Feed */}
+            <div className="relative aspect-video rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center mx-auto animate-pulse">
+                  <Eye className="h-6 w-6" />
+                </div>
+                <p className="text-xs text-slate-400 font-mono">
+                  [LIVE WEBCAM ENCRYPTED STREAM • 30 FPS • 1080P]
+                </p>
+              </div>
+
+              {/* Live Overlay Status */}
+              <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-[10px] font-bold font-mono text-emerald-400 border border-emerald-500/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                AI PROCTOR: ACTIVE
+              </div>
+
+              <div className="absolute bottom-3 right-3 text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded">
+                PING: {inspectingStudent.lastPing}
+              </div>
+            </div>
+
+            {/* Integrity Metrics Breakdown */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Progress</span>
+                <p className="text-base font-extrabold text-[#0092E3] mt-0.5">{inspectingStudent.progress}%</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Tab Switches</span>
+                <p className="text-base font-extrabold text-amber-600 mt-0.5">{inspectingStudent.tabSwitches}</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Focus Loss</span>
+                <p className="text-base font-extrabold text-slate-700 dark:text-slate-300 mt-0.5">{inspectingStudent.focusLossCount}</p>
+              </div>
+            </div>
+
+            {/* Transmit Warning */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Transmit Live Proctor Warning to Candidate
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={warningMessage}
+                  onChange={(e) => setWarningMessage(e.target.value)}
+                  placeholder="e.g. Please look directly at the screen and close background applications."
+                  className="text-xs"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSendWarning}
+                  disabled={!warningMessage.trim()}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0"
+                  leftIcon={<Send className="h-3.5 w-3.5" />}
+                >
+                  Send Warning
+                </Button>
+              </div>
+            </div>
+
+            {/* Terminate Action */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleTerminateSession(inspectingStudent.id)}
+                className="text-rose-600 hover:bg-rose-50 border-rose-200 text-xs font-bold"
+              >
+                Terminate Exam Session
+              </Button>
+
+              <Button size="sm" onClick={() => setInspectingStudent(null)} className="font-bold text-xs">
+                Close Inspector
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 }
 
-export function AdmissionPanel() {
-  const [students, setStudents] = useState(initialStudents);
-  const [query, setQuery] = useState("");
-  const [notice, setNotice] = useState("");
-  const visibleStudents = students.filter((student) => `${student.name} ${student.email} ${student.exam}`.toLowerCase().includes(query.toLowerCase()));
+// ==========================================
+// 3. POST-EXAM EVALUATION / GRADING PANEL
+// ==========================================
 
-  const updateStatus = (id: number, status: StudentStatus) => {
-    setStudents((current) => current.map((student) => student.id === id ? { ...student, status } : student));
-    setNotice(`Student ${status.toLowerCase()} successfully.`);
-  };
-
-  return <div className="space-y-6">
-    <PageIntro eyebrow="Student admission" title="Admit students to exams" description="Review enrollment requests, assign an exam, and control who can enter each assessment." action={<Button leftIcon={<UserPlus className="h-4 w-4" />}>Invite student</Button>} />
-    {notice && <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"><CheckCircle2 className="h-4 w-4" />{notice}</div>}
-    <div className="grid gap-4 sm:grid-cols-3"><Stat label="Total requests" value={`${students.length}`} icon={<Users className="h-5 w-5" />} /><Stat label="Admitted" value={`${students.filter((student) => student.status === "Admitted").length}`} icon={<Check className="h-5 w-5" />} /><Stat label="Pending review" value={`${students.filter((student) => student.status === "Pending").length}`} icon={<Clock3 className="h-5 w-5" />} /></div>
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><CardTitle>Admission requests</CardTitle><div className="relative w-full sm:w-72"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search students..." className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950" /></div></CardHeader>
-      <CardContent className="overflow-x-auto p-0"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-950/60"><tr><th className="px-6 py-3">Student</th><th className="px-6 py-3">Exam</th><th className="px-6 py-3">Status</th><th className="px-6 py-3 text-right">Action</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{visibleStudents.map((student) => <tr key={student.id}><td className="px-6 py-4"><p className="font-semibold text-slate-900 dark:text-white">{student.name}</p><p className="text-xs text-slate-500">{student.email}</p></td><td className="px-6 py-4 text-slate-600 dark:text-slate-300">{student.exam}</td><td className="px-6 py-4"><Badge variant={statusVariant(student.status)}>{student.status}</Badge></td><td className="px-6 py-4"><div className="flex justify-end gap-2">{student.status === "Pending" && <><Button size="sm" onClick={() => updateStatus(student.id, "Admitted")} leftIcon={<Check className="h-3.5 w-3.5" />}>Admit</Button><Button size="sm" variant="outline" onClick={() => updateStatus(student.id, "Rejected")} leftIcon={<X className="h-3.5 w-3.5" />}>Reject</Button></>}{student.status !== "Pending" && <Button size="sm" variant="ghost">View profile</Button>}</div></td></tr>)}</tbody></table></CardContent>
-    </Card>
-  </div>;
+interface EvaluationSubmission {
+  id: string;
+  student: string;
+  email: string;
+  exam: string;
+  submitted: string;
+  mcqScore: number;
+  mcqTotal: number;
+  writtenScore: number | null;
+  writtenMax: number;
+  status: "Pending Review" | "Graded";
+  writtenQuestionText: string;
+  studentAnswer: string;
+  rubricNotes: string;
+  teacherFeedback?: string;
 }
 
-export function MonitoringPanel() {
-  const [lastUpdated, setLastUpdated] = useState("just now");
-  const [selected, setSelected] = useState<string | null>(null);
-  return <div className="space-y-6">
-    <PageIntro eyebrow="Live monitoring" title="Monitor active exams" description="Track progress, time remaining, and integrity alerts while students are taking an exam." action={<Button variant="outline" onClick={() => setLastUpdated("just now")} leftIcon={<Activity className="h-4 w-4" />}>Refresh monitor</Button>} />
-    <div className="grid gap-4 sm:grid-cols-3"><Stat label="Active exams" value="2" icon={<FileCheck2 className="h-5 w-5" />} /><Stat label="Students online" value="32" icon={<Users className="h-5 w-5" />} /><Stat label="Alerts to review" value="3" icon={<ShieldAlert className="h-5 w-5" />} /></div>
-    <p className="text-xs text-slate-500">Last updated {lastUpdated}</p>
-    <Card><CardHeader><CardTitle>Live student activity</CardTitle></CardHeader><CardContent className="overflow-x-auto p-0"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-950/60"><tr><th className="px-6 py-3">Student</th><th className="px-6 py-3">Exam</th><th className="px-6 py-3">Progress</th><th className="px-6 py-3">Time</th><th className="px-6 py-3">Status</th><th className="px-6 py-3"></th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{monitorRows.map((row) => <tr key={row.name}><td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{row.name}</td><td className="px-6 py-4 text-slate-600 dark:text-slate-300">{row.exam}</td><td className="px-6 py-4"><div className="flex items-center gap-3"><div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-2 rounded-full bg-blue-600" style={{ width: `${row.progress}%` }} /></div><span className="text-xs font-semibold">{row.progress}%</span></div></td><td className="px-6 py-4 text-slate-600 dark:text-slate-300">{row.time}</td><td className="px-6 py-4"><Badge variant={statusVariant(row.status)}>{row.status}</Badge></td><td className="px-6 py-4 text-right"><Button size="sm" variant="ghost" onClick={() => setSelected(row.name)} leftIcon={<Eye className="h-3.5 w-3.5" />}>Inspect</Button></td></tr>)}</tbody></table></CardContent></Card>
-    {selected && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Monitoring details opened for <strong>{selected}</strong>. Review focus and proctoring events before contacting the student.</div>}
-  </div>;
-}
+const initialEvaluationRows: EvaluationSubmission[] = [];
 
 export function EvaluationPanel() {
-  const [scores, setScores] = useState<Record<number, number>>({ 3: 82 });
-  const [selectedId, setSelectedId] = useState(1);
-  const selected = evaluationRows.find((row) => row.id === selectedId) ?? evaluationRows[0];
-  const [score, setScore] = useState(String(scores[selected.id] ?? ""));
-  const saveScore = () => setScores((current) => ({ ...current, [selected.id]: Number(score) }));
-  return <div className="space-y-6">
-    <PageIntro eyebrow="Post-exam evaluation" title="Review and grade submissions" description="Evaluate written answers, override automated scores, and publish final results when your review is complete." action={<Badge variant="warning">{evaluationRows.filter((row) => !scores[row.id]).length} awaiting review</Badge>} />
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"><Card><CardHeader><CardTitle>Submission queue</CardTitle></CardHeader><CardContent className="space-y-2">{evaluationRows.map((row) => <button key={row.id} onClick={() => { setSelectedId(row.id); setScore(String(scores[row.id] ?? "")); }} className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors ${selected.id === row.id ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/30" : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"}`}><span><span className="block font-semibold text-slate-900 dark:text-white">{row.student}</span><span className="mt-1 block text-xs text-slate-500">{row.exam} · {row.submitted}</span></span>{scores[row.id] ? <Badge variant="success">{scores[row.id]} / 100</Badge> : <Badge variant="warning">Needs review</Badge>}</button>)}</CardContent></Card><Card><CardHeader><CardTitle>Evaluation workspace</CardTitle></CardHeader><CardContent className="space-y-5"><div><p className="font-semibold text-slate-900 dark:text-white">{selected.student}</p><p className="text-xs text-slate-500">{selected.exam}</p></div><div className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 dark:bg-slate-950 dark:text-slate-300">Student response: Explain how database indexing improves query performance and mention one trade-off.</div><div className="grid gap-2"><label htmlFor="score" className="text-xs font-bold uppercase tracking-wide text-slate-500">Final score</label><input id="score" type="number" min="0" max="100" value={score} onChange={(event) => setScore(event.target.value)} className="h-10 rounded-xl border border-slate-200 px-3 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950" /></div><Button onClick={saveScore} leftIcon={<Check className="h-4 w-4" />}>Save evaluation</Button></CardContent></Card></div>
-  </div>;
+  const [submissions, setSubmissions] = useState<EvaluationSubmission[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("testify_teacher_evaluations");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    return [];
+  });
+
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>(
+    initialEvaluationRows[0]?.id || ""
+  );
+  const [scoreInput, setScoreInput] = useState<string>("");
+  const [feedbackInput, setFeedbackInput] = useState<string>("");
+  const [toast, setToast] = useState<string | null>(null);
+
+  const selected = submissions.find((s) => s.id === selectedSubmissionId) || submissions[0];
+
+  useEffect(() => {
+    if (selected) {
+      setScoreInput(selected.writtenScore !== null ? String(selected.writtenScore) : "8");
+      setFeedbackInput(selected.teacherFeedback || "");
+    }
+  }, [selectedSubmissionId]);
+
+  useEffect(() => {
+    localStorage.setItem("testify_teacher_evaluations", JSON.stringify(submissions));
+  }, [submissions]);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSaveEvaluation = () => {
+    if (!selected) return;
+
+    const numScore = Number(scoreInput);
+    if (isNaN(numScore) || numScore < 0 || numScore > selected.writtenMax) {
+      showToast(`Score must be between 0 and ${selected.writtenMax}`);
+      return;
+    }
+
+    setSubmissions((prev) =>
+      prev.map((s) =>
+        s.id === selected.id
+          ? {
+              ...s,
+              writtenScore: numScore,
+              teacherFeedback: feedbackInput.trim(),
+              status: "Graded",
+            }
+          : s
+      )
+    );
+
+    showToast(`Evaluation saved for ${selected.student}! Total: ${selected.mcqScore + numScore} / 50`);
+  };
+
+  const pendingCount = submissions.filter((s) => s.status === "Pending Review").length;
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-emerald-600 text-white text-xs font-bold border border-emerald-500 animate-bounce">
+          <CheckCircle2 className="h-4 w-4" />
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0092E3]">
+            Post-Exam Evaluation
+          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#152234] dark:text-white sm:text-3xl font-display">
+            Review & Grade Submissions
+          </h1>
+          <p className="mt-1 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+            Evaluate student open-ended questions, inspect auto-graded MCQ scores, and publish final gradebooks.
+          </p>
+        </div>
+
+        <Badge
+          className={
+            pendingCount > 0
+              ? "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 text-xs font-bold px-3 py-1"
+              : "bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1"
+          }
+        >
+          {pendingCount > 0 ? `${pendingCount} Submissions Awaiting Review` : "All Submissions Graded"}
+        </Badge>
+      </div>
+
+      {/* Two-Column Workspace */}
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1.3fr]">
+        {/* Left: Submission Queue */}
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+          <CardHeader className="p-4 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-sm font-bold font-display text-[#152234] dark:text-white">
+              Submission Queue ({submissions.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 space-y-2">
+            {submissions.map((sub) => {
+              const isSelected = selected?.id === sub.id;
+              const totalScore = sub.mcqScore + (sub.writtenScore || 0);
+
+              return (
+                <button
+                  key={sub.id}
+                  onClick={() => setSelectedSubmissionId(sub.id)}
+                  className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-[#0092E3] bg-blue-50/60 dark:bg-cyan-950/40 shadow-sm"
+                      : "border-slate-200/80 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-950/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-xs text-slate-900 dark:text-white">{sub.student}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{sub.exam}</p>
+                    </div>
+                    <div>
+                      {sub.status === "Graded" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          <CheckCircle2 className="h-3 w-3" /> {totalScore} / 50
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          <Clock3 className="h-3 w-3" /> Needs Review
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2">
+                    <span>MCQ: {sub.mcqScore}/{sub.mcqTotal}</span>
+                    <span>{sub.submitted}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Right: Evaluation Workspace */}
+        {selected && (
+          <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+            <CardHeader className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold font-display text-[#152234] dark:text-white">
+                  {selected.student}
+                </CardTitle>
+                <p className="text-xs text-slate-400 mt-0.5">{selected.exam}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Auto-Graded MCQ</span>
+                <p className="text-base font-black text-emerald-600 dark:text-emerald-400">{selected.mcqScore} / {selected.mcqTotal}</p>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-5 space-y-4">
+              {/* Written Question Card */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Written Question Prompt
+                </span>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  {selected.writtenQuestionText}
+                </p>
+              </div>
+
+              {/* Student Response */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Candidate Response
+                </span>
+                <div className="text-xs leading-relaxed text-slate-800 dark:text-slate-200 bg-blue-50/50 dark:bg-cyan-950/20 p-3.5 rounded-xl border border-blue-200/60 dark:border-cyan-800">
+                  {selected.studentAnswer}
+                </div>
+              </div>
+
+              {/* Rubric Notes */}
+              <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 space-y-0.5">
+                <strong>Rubric Guidelines:</strong> {selected.rubricNotes}
+              </div>
+
+              {/* Grading Input */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Award Score (Max {selected.writtenMax})
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={selected.writtenMax}
+                    value={scoreInput}
+                    onChange={(e) => setScoreInput(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Teacher Feedback Note
+                  </label>
+                  <Input
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    placeholder="e.g. Excellent explanation of complexity."
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-500">
+                  Total Final Score: <strong className="text-slate-900 dark:text-white font-mono text-sm">{selected.mcqScore + (Number(scoreInput) || 0)} / 50</strong>
+                </div>
+                <Button
+                  onClick={handleSaveEvaluation}
+                  className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold text-xs"
+                  leftIcon={<Check className="h-3.5 w-3.5" />}
+                >
+                  Publish Evaluation
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
 }
 
+// ==========================================
+// 4. RESULTS & ANALYTICS PANEL
+// ==========================================
+
+interface ExamResultRecord {
+  id: string;
+  student: string;
+  email: string;
+  exam: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  grade: string;
+  status: "Pass" | "Fail";
+  submitted: string;
+  rank: number;
+}
+
+const initialResultRows: ExamResultRecord[] = [];
+
 export function ResultsPanel() {
+  const [results] = useState<ExamResultRecord[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("testify_teacher_results");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    return [];
+  });
+  const [activeTab, setActiveTab] = useState<"gradebook" | "earnings">("gradebook");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("All exams");
-  const exams = ["All exams", ...new Set(resultRows.map((row) => row.exam))];
-  const filtered = useMemo(() => resultRows.filter((row) => `${row.student} ${row.exam}`.toLowerCase().includes(query.toLowerCase()) && (filter === "All exams" || row.exam === filter)), [filter, query]);
-  const average = Math.round(resultRows.reduce((total, row) => total + row.score, 0) / resultRows.length);
-  return <div className="space-y-6">
-    <PageIntro eyebrow="Results & analytics" title="Results overview" description="Review class performance, identify students who need support, and share published results." action={<Button variant="outline" leftIcon={<Download className="h-4 w-4" />}>Export CSV</Button>} />
-    <div className="grid gap-4 sm:grid-cols-3"><Stat label="Submissions" value={`${resultRows.length}`} icon={<FileCheck2 className="h-5 w-5" />} /><Stat label="Average score" value={`${average}%`} icon={<Activity className="h-5 w-5" />} /><Stat label="Pass rate" value="75%" icon={<CheckCircle2 className="h-5 w-5" />} /></div>
-    <Card><CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><CardTitle>Published results</CardTitle><div className="flex flex-col gap-2 sm:flex-row"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search results..." className="h-9 rounded-xl border border-slate-200 pl-9 pr-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-950" /></div><div className="relative"><Filter className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><select value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm dark:border-slate-700 dark:bg-slate-950">{exams.map((exam) => <option key={exam}>{exam}</option>)}</select></div></div></CardHeader><CardContent className="overflow-x-auto p-0"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-950/60"><tr><th className="px-6 py-3">Student</th><th className="px-6 py-3">Exam</th><th className="px-6 py-3">Score</th><th className="px-6 py-3">Grade</th><th className="px-6 py-3">Submitted</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{filtered.map((row) => <tr key={`${row.student}-${row.exam}`}><td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{row.student}</td><td className="px-6 py-4 text-slate-600 dark:text-slate-300">{row.exam}</td><td className="px-6 py-4 font-bold text-slate-900 dark:text-white">{row.score}%</td><td className="px-6 py-4"><Badge variant={row.score >= 80 ? "success" : row.score >= 70 ? "info" : "warning"}>{row.grade}</Badge></td><td className="px-6 py-4 text-slate-500">{row.submitted}</td></tr>)}</tbody></table></CardContent></Card>
-  </div>;
+  const [selectedExam, setSelectedExam] = useState("All Exams");
+  const [selectedResult, setSelectedResult] = useState<ExamResultRecord | null>(null);
+  const [isPublished, setIsPublished] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<TeacherEarningsSummary | null>(null);
+
+  useEffect(() => {
+    const data = purchaseService.getTeacherEarnings();
+    setEarnings(data);
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const exams = ["All Exams", ...new Set(results.map((r) => r.exam))];
+
+  const filtered = useMemo(() => {
+    return results.filter((r) => {
+      const matchSearch =
+        r.student.toLowerCase().includes(query.toLowerCase()) ||
+        r.email.toLowerCase().includes(query.toLowerCase()) ||
+        r.exam.toLowerCase().includes(query.toLowerCase());
+
+      const matchExam = selectedExam === "All Exams" || r.exam === selectedExam;
+      return matchSearch && matchExam;
+    });
+  }, [results, query, selectedExam]);
+
+  const totalSubmissions = results.length;
+  const averagePercentage =
+    totalSubmissions > 0
+      ? Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / totalSubmissions)
+      : 0;
+  const passingRate =
+    totalSubmissions > 0
+      ? Math.round((results.filter((r) => r.status === "Pass").length / totalSubmissions) * 100)
+      : 0;
+
+  const handleExportCSV = () => {
+    const headers = ["Rank", "Student", "Email", "Exam", "Score", "Max Score", "Percentage", "Grade", "Status", "Submitted"];
+    const rows = results.map((r) => [r.rank, r.student, r.email, r.exam, r.score, r.maxScore, `${r.percentage}%`, r.grade, r.status, r.submitted]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "Testify_Exam_Results_Gradebook.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-blue-600 text-white text-xs font-bold border border-blue-500 animate-bounce">
+          <CheckCircle2 className="h-4 w-4" />
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0092E3]">
+            Assessment Analytics & Revenue
+          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#152234] dark:text-white sm:text-3xl font-display">
+            Results & Earnings Dashboard
+          </h1>
+          <p className="mt-1 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+            Review candidate grades, grade curves, and manage income from Paid Examination sales.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            className="text-xs font-bold"
+            leftIcon={<Download className="h-3.5 w-3.5" />}
+          >
+            Export Gradebook
+          </Button>
+
+          <Button
+            onClick={() => {
+              setIsPublished(!isPublished);
+              showToast(isPublished ? "Results hidden from candidate portal." : "Results published to student portal!");
+            }}
+            className={
+              isPublished
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                : "bg-[#0092E3] hover:bg-[#007AC9] text-white text-xs font-bold"
+            }
+            leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+          >
+            {isPublished ? "Results Live (Published)" : "Publish Results"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 w-fit">
+        <button
+          onClick={() => setActiveTab("gradebook")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === "gradebook"
+              ? "bg-white dark:bg-slate-800 text-[#152234] dark:text-white shadow-sm"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Candidate Gradebook ({totalSubmissions})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("earnings")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === "earnings"
+              ? "bg-white dark:bg-slate-800 text-[#152234] dark:text-white shadow-sm"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          💰 Paid Exam Earnings
+        </button>
+      </div>
+
+      {activeTab === "earnings" ? (
+        /* Teacher Earnings & Revenue View */
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-4">
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Paid Exams Sold</span>
+              <p className="text-2xl font-black text-[#152234] dark:text-white font-display mt-1">
+                {earnings?.totalSalesCount || 14}
+              </p>
+            </Card>
+
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Gross Sales Volume</span>
+              <p className="text-2xl font-black text-[#0092E3] dark:text-cyan-400 font-display mt-1">
+                ৳{earnings?.grossRevenue || 700}.00
+              </p>
+            </Card>
+
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Platform Fee (10%)</span>
+              <p className="text-2xl font-black text-rose-500 font-display mt-1">
+                ৳{earnings?.platformFees || 70}.00
+              </p>
+            </Card>
+
+            <Card className="rounded-3xl border border-emerald-200 dark:border-emerald-800 shadow-sm p-5 bg-emerald-50/50 dark:bg-emerald-950/30">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Teacher Net Earnings</span>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display mt-1">
+                ৳{earnings?.teacherEarnings || 630}.00
+              </p>
+            </Card>
+          </div>
+
+          <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 p-5 space-y-4">
+            <h3 className="text-base font-bold font-display text-slate-900 dark:text-white">
+              Recent Paid Exam Transactions
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold">
+                    <th className="pb-3">Candidate</th>
+                    <th className="pb-3">Exam Paper</th>
+                    <th className="pb-3">Gateway</th>
+                    <th className="pb-3">Transaction ID</th>
+                    <th className="pb-3">Amount</th>
+                    <th className="pb-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tr>
+                    <td className="py-3 font-semibold text-slate-800 dark:text-slate-200">Alex Morgan</td>
+                    <td className="py-3 text-slate-600 dark:text-slate-400">Advanced JavaScript & React Mock Test</td>
+                    <td className="py-3 font-mono">SSLCOMMERZ</td>
+                    <td className="py-3 font-mono text-slate-500">TXN_984128</td>
+                    <td className="py-3 font-bold text-emerald-600">৳50.00</td>
+                    <td className="py-3 text-right">
+                      <Badge variant="success">Settled</Badge>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-semibold text-slate-800 dark:text-slate-200">Samantha Reed</td>
+                    <td className="py-3 text-slate-600 dark:text-slate-400">Database Engineering & SQL Optimization</td>
+                    <td className="py-3 font-mono">BKASH</td>
+                    <td className="py-3 font-mono text-slate-500">TXN_774912</td>
+                    <td className="py-3 font-bold text-emerald-600">৳60.00</td>
+                    <td className="py-3 text-right">
+                      <Badge variant="success">Settled</Badge>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-semibold text-slate-800 dark:text-slate-200">Daniel Kim</td>
+                    <td className="py-3 text-slate-600 dark:text-slate-400">Quantum Mechanics Assessment</td>
+                    <td className="py-3 font-mono">STRIPE</td>
+                    <td className="py-3 font-mono text-slate-500">TXN_512933</td>
+                    <td className="py-3 font-bold text-emerald-600">৳80.00</td>
+                    <td className="py-3 text-right">
+                      <Badge variant="success">Settled</Badge>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        /* Standard Gradebook View */
+        <>
+          {/* Stats Cards */}
+          <div className="grid gap-4 sm:grid-cols-4">
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <CardContent className="flex items-center gap-3.5 p-5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#0092E3] dark:bg-cyan-950/60 dark:text-cyan-400">
+                  <FileCheck2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Graded Papers</p>
+                  <p className="text-2xl font-black text-[#152234] dark:text-white font-display mt-0.5">{totalSubmissions}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <CardContent className="flex items-center gap-3.5 p-5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Class Average</p>
+                  <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300 font-display mt-0.5">{averagePercentage}%</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <CardContent className="flex items-center gap-3.5 p-5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                  <Award className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Passing Rate</p>
+                  <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display mt-0.5">{passingRate}%</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <CardContent className="flex items-center gap-3.5 p-5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+                  <Award className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Top Score</p>
+                  <p className="text-2xl font-black text-amber-700 dark:text-amber-300 font-display mt-0.5">96% (A+)</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+      {/* Main Results Table Card */}
+      <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 dark:border-slate-800 p-5">
+          <CardTitle className="text-base font-bold font-display text-[#152234] dark:text-white">
+            Candidate Scores & Transcripts
+          </CardTitle>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="relative w-full sm:w-60">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search candidate or exam..."
+                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-9 pr-3 text-xs outline-none focus:border-[#0092E3] dark:border-slate-800 dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            <div className="w-full sm:w-52">
+              <select
+                value={selectedExam}
+                onChange={(e) => setSelectedExam(e.target.value)}
+                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 text-xs outline-none focus:border-[#0092E3] dark:border-slate-800 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-medium"
+              >
+                {exams.map((ex) => (
+                  <option key={ex} value={ex}>{ex}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0 overflow-x-auto">
+          {filtered.length === 0 ? (
+            <div className="p-12 text-center text-xs text-slate-400">
+              No results found matching this filter.
+            </div>
+          ) : (
+            <table className="w-full min-w-[720px] text-left text-xs">
+              <thead className="bg-slate-50/80 dark:bg-slate-950/60 uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-5 py-3">Rank</th>
+                  <th className="px-5 py-3">Candidate</th>
+                  <th className="px-5 py-3">Exam</th>
+                  <th className="px-5 py-3">Score</th>
+                  <th className="px-5 py-3">Percentage</th>
+                  <th className="px-5 py-3">Grade</th>
+                  <th className="px-5 py-3 text-right">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filtered.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/30">
+                    <td className="px-5 py-3.5 font-mono font-bold text-slate-400">
+                      #{row.rank}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-cyan-950 text-[#0092E3] font-bold text-[11px] flex items-center justify-center">
+                          {row.student.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{row.student}</p>
+                          <p className="text-[10px] text-slate-400">{row.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
+                      {row.exam}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold font-mono text-slate-900 dark:text-white">
+                      {row.score} / {row.maxScore}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold font-mono text-[#0092E3]">
+                      {row.percentage}%
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        row.grade.startsWith("A")
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          : row.grade.startsWith("B")
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                      }`}>
+                        {row.grade} ({row.status})
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedResult(row)}
+                        className="text-xs font-bold text-[#0092E3] hover:text-[#007AC9]"
+                        leftIcon={<Eye className="h-3.5 w-3.5" />}
+                      >
+                        Analytics
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+      </>
+      )}
+
+      {/* Individual Result Analytics Modal */}
+      {selectedResult && (
+        <Modal
+          isOpen={!!selectedResult}
+          onClose={() => setSelectedResult(null)}
+          title={`Performance Report: ${selectedResult.student}`}
+          description={`Comprehensive assessment transcript for ${selectedResult.exam}`}
+          size="md"
+        >
+          <div className="space-y-4 pt-1">
+            {/* Score Banner */}
+            <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-cyan-950/40 border border-blue-200/80 dark:border-cyan-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Total Final Score
+                </span>
+                <p className="text-2xl font-black text-[#152234] dark:text-white font-display mt-0.5">
+                  {selectedResult.score} / {selectedResult.maxScore} ({selectedResult.percentage}%)
+                </p>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Class Rank
+                </span>
+                <p className="text-2xl font-black text-[#0092E3] font-display mt-0.5">
+                  #{selectedResult.rank}
+                </p>
+              </div>
+            </div>
+
+            {/* Subject Breakdown */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Topic Mastery Breakdown
+              </span>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <div className="flex justify-between font-bold mb-1">
+                    <span>Algorithms & Complexity</span>
+                    <span className="text-emerald-600 font-mono">95%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: "95%" }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between font-bold mb-1">
+                    <span>Database Indexing & Architecture</span>
+                    <span className="text-[#0092E3] font-mono">88%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-[#0092E3] rounded-full" style={{ width: "88%" }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between font-bold mb-1">
+                    <span>Networking Protocols</span>
+                    <span className="text-amber-600 font-mono">75%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: "75%" }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button size="sm" onClick={() => setSelectedResult(null)} className="font-bold text-xs">
+                Close Report
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
 }
