@@ -41,7 +41,7 @@ export function StripeCardPaymentModal({
   title,
   subtitle,
   amount,
-  currencySymbol = "৳",
+  currencySymbol = "$",
   itemType,
   itemId,
   studentEmail = "",

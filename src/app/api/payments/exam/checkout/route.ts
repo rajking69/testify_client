@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       req.headers.get("origin") ||
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
-    const amountInCents = Math.round(Number(price || 50) * 100);
+    const amountInCents = Math.round(Number(price !== undefined && price !== null && Number(price) > 0 ? price : 5) * 100);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],

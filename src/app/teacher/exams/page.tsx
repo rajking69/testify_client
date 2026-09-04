@@ -432,7 +432,7 @@ export default function TeacherExamsPage() {
                 <div className="flex items-center gap-1.5">
                   {exam.accessType === "PAID" ? (
                     <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      Paid Ã Â§Â³{exam.price || 50}
+                      Paid • ${exam.price || 5}
                     </span>
                   ) : (
                     <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">

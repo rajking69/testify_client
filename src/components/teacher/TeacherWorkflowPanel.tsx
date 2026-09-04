@@ -1220,21 +1220,21 @@ export function ResultsPanel() {
             <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Gross Sales Volume</span>
               <p className="text-2xl font-black text-[#0092E3] dark:text-cyan-400 font-display mt-1">
-                ৳{earnings?.grossRevenue || 700}.00
+                ${earnings?.grossRevenue || 700}.00
               </p>
             </Card>
 
             <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Platform Fee (10%)</span>
               <p className="text-2xl font-black text-rose-500 font-display mt-1">
-                ৳{earnings?.platformFees || 70}.00
+                ${earnings?.platformFees || 70}.00
               </p>
             </Card>
 
             <Card className="rounded-3xl border border-emerald-200 dark:border-emerald-800 shadow-sm p-5 bg-emerald-50/50 dark:bg-emerald-950/30">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Teacher Net Earnings</span>
               <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display mt-1">
-                ৳{earnings?.teacherEarnings || 630}.00
+                ${earnings?.teacherEarnings || 630}.00
               </p>
             </Card>
           </div>
@@ -1262,7 +1262,7 @@ export function ResultsPanel() {
                     <td className="py-3 text-slate-600 dark:text-slate-400">Advanced JavaScript & React Mock Test</td>
                     <td className="py-3 font-mono">SSLCOMMERZ</td>
                     <td className="py-3 font-mono text-slate-500">TXN_984128</td>
-                    <td className="py-3 font-bold text-emerald-600">৳50.00</td>
+                    <td className="py-3 font-bold text-emerald-600">$50.00</td>
                     <td className="py-3 text-right">
                       <Badge variant="success">Settled</Badge>
                     </td>
@@ -1272,7 +1272,7 @@ export function ResultsPanel() {
                     <td className="py-3 text-slate-600 dark:text-slate-400">Database Engineering & SQL Optimization</td>
                     <td className="py-3 font-mono">BKASH</td>
                     <td className="py-3 font-mono text-slate-500">TXN_774912</td>
-                    <td className="py-3 font-bold text-emerald-600">৳60.00</td>
+                    <td className="py-3 font-bold text-emerald-600">$60.00</td>
                     <td className="py-3 text-right">
                       <Badge variant="success">Settled</Badge>
                     </td>
@@ -1282,7 +1282,7 @@ export function ResultsPanel() {
                     <td className="py-3 text-slate-600 dark:text-slate-400">Quantum Mechanics Assessment</td>
                     <td className="py-3 font-mono">STRIPE</td>
                     <td className="py-3 font-mono text-slate-500">TXN_512933</td>
-                    <td className="py-3 font-bold text-emerald-600">৳80.00</td>
+                    <td className="py-3 font-bold text-emerald-600">$80.00</td>
                     <td className="py-3 text-right">
                       <Badge variant="success">Settled</Badge>
                     </td>

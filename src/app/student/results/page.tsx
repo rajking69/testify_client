@@ -241,7 +241,7 @@ export default function StudentResultsPage() {
                     </div>
 
                     <span className="text-sm font-black text-emerald-600">
-                      ৳{pur.amount}.00
+                      ${pur.amount}.00
                     </span>
                   </div>
 

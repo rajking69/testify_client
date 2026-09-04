@@ -54,6 +54,35 @@ function PracticeSessionContent() {
     const subjectParam = searchParams.get("subject");
     const examIdParam = searchParams.get("examId");
 
+    // 0. Strict 1-Attempt Guard: Check if student has already completed this exam
+    if (examIdParam && typeof window !== "undefined") {
+      try {
+        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+        const currentEmail = (session?.user?.email || "").trim().toLowerCase();
+        const currentUserId = session?.user?.id;
+
+        const alreadyTaken = storedSubs.find((sub: any) => {
+          const matchExam =
+            String(sub.examId) === examIdParam ||
+            String(sub.id) === examIdParam ||
+            sub.token === examIdParam;
+
+          const matchUser =
+            (currentEmail && sub.studentEmail && sub.studentEmail.trim().toLowerCase() === currentEmail) ||
+            (currentUserId && sub.studentId && sub.studentId === currentUserId);
+
+          return matchExam && matchUser;
+        });
+
+        if (alreadyTaken) {
+          router.replace(`/exam/${examIdParam}`);
+          return;
+        }
+      } catch (e) {
+        console.error("Retake guard error:", e);
+      }
+    }
+
     let questionsToUse: any[] = [];
     let examDurationSec = 600; // 10 mins default
 

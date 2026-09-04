@@ -75,10 +75,19 @@ export default function StudentExamsMarketplacePage() {
   useEffect(() => {
     async function loadExamsData() {
       try {
-        // 1. Load Student Purchases
-        const storedPurchases = localStorage.getItem("testify_student_purchases");
-        if (storedPurchases) {
-          setPurchasedExamIds(JSON.parse(storedPurchases));
+        // 1. Load Verified Stripe Purchases (cs_...)
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("testify_student_purchases");
+        }
+        const storedRecords = localStorage.getItem("testify_purchased_records");
+        if (storedRecords) {
+          const records = JSON.parse(storedRecords);
+          const validIds = records
+            .filter((r: any) => r.paymentStatus === "SUCCESS" && r.paymentProvider === "STRIPE" && r.transactionId?.startsWith("cs_"))
+            .map((r: any) => String(r.examId));
+          setPurchasedExamIds(validIds);
+        } else {
+          setPurchasedExamIds([]);
         }
 
         let realList: MarketplaceExam[] = [];
@@ -179,7 +188,6 @@ export default function StudentExamsMarketplacePage() {
 
     setIsProcessingPayment(true);
     try {
-      // 1. Call server-side Stripe Checkout session endpoint
       const res = await fetch("/api/payments/exam/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,25 +201,14 @@ export default function StudentExamsMarketplacePage() {
       const data = await res.json();
 
       if (data.success && data.url) {
-        // Redirect directly to official Stripe Checkout page
         window.location.href = data.url;
         return;
       }
 
-      // Fallback for development without active live Stripe keys
-      const updated = [...purchasedExamIds, purchasingExam.id];
-      setPurchasedExamIds(updated);
-      localStorage.setItem("testify_student_purchases", JSON.stringify(updated));
-
-      setPurchaseSuccess(true);
-      setTimeout(() => {
-        setPurchaseSuccess(false);
-        const token = purchasingExam.accessToken || purchasingExam.joinCode || purchasingExam.id;
-        setPurchasingExam(null);
-        router.push(`/exam/${token}`);
-      }, 1200);
-    } catch (err) {
+      throw new Error(data.message || "Failed to initialize Stripe payment session.");
+    } catch (err: any) {
       console.error("Purchase failed:", err);
+      showToast(err.message || "Payment authorization failed.");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -351,7 +348,7 @@ export default function StudentExamsMarketplacePage() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-sm">
-                            ৳{exam.price}
+                            ${exam.price}
                           </span>
                         )
                       ) : (
@@ -405,7 +402,7 @@ export default function StudentExamsMarketplacePage() {
                         onClick={() => setPurchasingExam(exam)}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-md shadow-emerald-600/15 flex items-center justify-center gap-1.5"
                       >
-                        <CreditCard className="h-3.5 w-3.5" /> Buy Exam — ৳{exam.price}
+                        <CreditCard className="h-3.5 w-3.5" /> Buy Exam — ${exam.price}
                       </Button>
                     ) : (
                       <Link href={`/exam/${targetToken}`} className="block w-full">
@@ -434,7 +431,7 @@ export default function StudentExamsMarketplacePage() {
             const updated = [...purchasedExamIds, purchasingExam.id];
             setPurchasedExamIds(updated);
             localStorage.setItem("testify_student_purchases", JSON.stringify(updated));
-            setToastMessage(`✓ Stripe Payment of ৳${purchasingExam.price} confirmed! Exam Unlocked.`);
+            setToastMessage(`✓ Stripe Payment of $${purchasingExam.price} confirmed! Exam Unlocked.`);
             setTimeout(() => {
               setToastMessage(null);
               const token = purchasingExam.accessToken || purchasingExam.joinCode || purchasingExam.id;

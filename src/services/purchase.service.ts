@@ -81,13 +81,16 @@ export const purchaseService = {
     }
   },
 
-  // 3. Verify Exam Access
+  // 3. Verify Exam Access strictly against verified successful Stripe purchases
   hasAccess(examId: string, accessType: "FREE" | "PAID"): boolean {
     if (accessType === "FREE") return true;
     try {
-      const storedIds = localStorage.getItem("testify_student_purchases");
-      const ids: string[] = storedIds ? JSON.parse(storedIds) : [];
-      return ids.includes(examId);
+      const purchases = this.getPurchasedExams();
+      return purchases.some(
+        (p) =>
+          p.paymentStatus === "SUCCESS" &&
+          (String(p.examId) === String(examId) || p.transactionId?.startsWith("cs_"))
+      );
     } catch {
       return false;
     }
