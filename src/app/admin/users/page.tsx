@@ -30,7 +30,6 @@ import {
   showErrorToast,
   withPromiseToast,
 } from "@/lib/admin/toast";
-import { mockUsers } from "@/lib/admin/mock-data";
 import { User, TableColumn, ActionMenuItem } from "@/lib/admin/types";
 import { adminService } from "@/services/admin.service";
 
@@ -41,7 +40,7 @@ export default function AdminUsersPage() {
     role: undefined,
   });
 
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [actionModal, setActionModal] = useState<{
     type: "activate" | "deactivate" | "suspend" | "restore" | "delete";
@@ -55,13 +54,11 @@ export default function AdminUsersPage() {
     adminService
       .getUsers({ search: filters.search, role: filters.role })
       .then((res) => {
-        if (isMounted && res.data && res.data.length > 0) {
+        if (isMounted && res.data) {
           setUsers(res.data);
         }
       })
-      .catch(() => {
-        // Keep fallback data if backend is offline
-      });
+      .catch(() => {});
     return () => {
       isMounted = false;
     };

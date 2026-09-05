@@ -22,6 +22,7 @@ import {
   Shield,
   Sparkles,
   Target,
+  DollarSign,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { TestifyLogoIcon } from "@/components/ui/Logo";
@@ -47,6 +48,11 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Dashboard",
       href: "/teacher/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
+    },
+    {
+      label: "Revenue & Sales",
+      href: "/teacher/revenue",
+      icon: <DollarSign className="h-5 w-5" />,
     },
     {
       label: "Practice Mode",

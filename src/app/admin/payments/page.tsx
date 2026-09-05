@@ -24,7 +24,6 @@ import {
   formatRelativeTime,
   cn,
 } from "@/lib/admin/utils";
-import { mockPayments } from "@/lib/admin/mock-data";
 import { adminService } from "@/services/admin.service";
 import {
   Payment,
@@ -44,7 +43,7 @@ export default function AdminPaymentsPage() {
     status: undefined,
   });
 
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
   // Fetch real payments from backend if available
@@ -57,9 +56,7 @@ export default function AdminPaymentsPage() {
           setPayments(res.data.purchases);
         }
       })
-      .catch(() => {
-        // Fallback to initial state if backend offline
-      });
+      .catch(() => {});
     return () => {
       isMounted = false;
     };
@@ -88,14 +85,14 @@ export default function AdminPaymentsPage() {
 
   // Stats
   const stats = {
-    total: mockPayments.length,
-    success: mockPayments.filter((p) => p.status === "success").length,
-    pending: mockPayments.filter((p) => p.status === "pending").length,
-    failed: mockPayments.filter((p) => p.status === "failed").length,
-    totalRevenue: mockPayments
+    total: payments.length,
+    success: payments.filter((p) => p.status === "success").length,
+    pending: payments.filter((p) => p.status === "pending").length,
+    failed: payments.filter((p) => p.status === "failed").length,
+    totalRevenue: payments
       .filter((p) => p.status === "success")
       .reduce((sum, p) => sum + p.amount, 0),
-    pendingRevenue: mockPayments
+    pendingRevenue: payments
       .filter((p) => p.status === "pending")
       .reduce((sum, p) => sum + p.amount, 0),
   };
@@ -298,10 +295,10 @@ export default function AdminPaymentsPage() {
             </h3>
             <div className="space-y-3">
               {["Credit Card", "Bank Transfer", "PayPal"].map((method) => {
-                const count = mockPayments.filter(
+                const count = payments.filter(
                   (p) => p.paymentMethod === method,
                 ).length;
-                const percentage = (count / mockPayments.length) * 100;
+                const percentage = payments.length > 0 ? (count / payments.length) * 100 : 0;
                 return (
                   <div key={method}>
                     <div className="flex items-center justify-between mb-1">

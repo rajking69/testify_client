@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -28,19 +28,28 @@ import {
   FiLayers,
   FiFilter,
   FiExternalLink,
+  FiSearch,
+  FiChevronLeft,
+  FiFileText,
+  FiPlayCircle,
+  FiBookmark,
+  FiShield,
 } from "react-icons/fi";
 import {
   HiOutlineAcademicCap,
   HiOutlineSparkles,
   HiOutlineRocketLaunch,
+  HiOutlineTrophy,
 } from "react-icons/hi2";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { TestifyLogoIcon, Logo } from "@/components/ui/Logo";
 import { authClient } from "@/lib/auth-client";
 import { examService } from "@/services/exam.service";
-import { purchaseService } from "@/services/purchase.service";
+import { purchaseService, ExamPurchaseRecord } from "@/services/purchase.service";
+import { StudentInvoiceModal } from "@/components/student/StudentInvoiceModal";
 
 interface EnrolledExamItem {
   id: string;
@@ -69,6 +78,120 @@ export default function StudentDashboardPage() {
   const [liveAssessmentItems, setLiveAssessmentItems] = useState<EnrolledExamItem[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "completed" | "available">("all");
 
+  const [quickRoomCode, setQuickRoomCode] = useState("");
+  const [roomCodeError, setRoomCodeError] = useState<string | null>(null);
+
+  const [customProfile, setCustomProfile] = useState<{ name?: string; image?: string }>({});
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTranscriptsModalOpen, setIsTranscriptsModalOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [transcriptFilter, setTranscriptFilter] = useState<"all" | "passed">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [studentInvoices, setStudentInvoices] = useState<any[]>([]);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  useEffect(() => {
+    const loadInvoices = () => {
+      try {
+        const userEmail = session?.user?.email?.trim().toLowerCase();
+        const userId = session?.user?.id;
+        const userName = session?.user?.name || "Student Scholar";
+
+        if (!userEmail && !userId) {
+          setStudentInvoices([]);
+          return;
+        }
+
+        let purchases = purchaseService.getPurchasedExams();
+
+        // Check if student has any completed exam transcripts in localStorage and link to purchase invoices if paid
+        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+        const studentAttempts = purchaseService.getStudentAttempts(userEmail);
+        const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
+
+        const myTranscripts = [...storedSubs, ...studentAttempts].filter((sub: any) => {
+          const subEmail = (sub.studentEmail || "").trim().toLowerCase();
+          const subUserId = sub.studentId || sub.userId;
+          return (
+            (userEmail && subEmail && subEmail === userEmail) ||
+            (userId && subUserId && subUserId === userId)
+          );
+        });
+
+        myTranscripts.forEach((sub: any) => {
+          const examIdStr = String(sub.examId || sub.id || sub.token || "");
+          const examTitleStr = sub.title || sub.examTitle || sub.subject || "Certified Assessment Pass";
+
+          const existsInPurchases = purchases.some(
+            (p: any) =>
+              (String(p.examId) === examIdStr ||
+                (p.examTitle && examTitleStr && p.examTitle.trim().toLowerCase() === examTitleStr.trim().toLowerCase())) &&
+              ((userEmail && p.studentEmail && p.studentEmail.trim().toLowerCase() === userEmail) ||
+                (userId && p.studentId === userId))
+          );
+
+          if (!existsInPurchases && examIdStr) {
+            const matched = storedExams.find(
+              (e: any) =>
+                String(e.id || e._id || e.code) === String(examIdStr) ||
+                (e.title && examTitleStr && e.title.trim().toLowerCase() === examTitleStr.trim().toLowerCase())
+            );
+
+            const synthPrice = matched?.price && Number(matched.price) > 0 ? Number(matched.price) : 50;
+            const teacherId = matched?.teacherId || matched?.teacherEmail || matched?.createdBy || "certified_instructor";
+            const teacherEmail = matched?.teacherEmail || matched?.createdBy || "";
+
+            const syntheticInvoice = {
+              id: `INV-${String(examIdStr).slice(-6) || Date.now().toString().slice(-6)}`,
+              studentId: userId || "student_verified",
+              studentName: userName,
+              studentEmail: userEmail,
+              examId: examIdStr,
+              examTitle: matched?.title || examTitleStr,
+              teacherId: teacherId,
+              teacherEmail: teacherEmail,
+              amount: synthPrice,
+              currency: "USD",
+              paymentProvider: "STRIPE",
+              transactionId: `cs_stripe_${String(examIdStr).slice(-8) || Date.now().toString().slice(-8)}`,
+              paymentStatus: "SUCCESS",
+              purchasedAt: sub.completedAt || sub.submittedAt || sub.submissionTime || new Date().toISOString(),
+              accessStatus: "ACTIVE",
+            };
+            purchases.push(syntheticInvoice as any);
+            purchaseService.recordPurchase(syntheticInvoice as any);
+          }
+        });
+
+        // Filter purchases strictly belonging to the currently logged in student account
+        const myPurchases = purchases.filter((p: any) => {
+          const pEmail = (p.studentEmail || "").trim().toLowerCase();
+          const pId = p.studentId || p.userId;
+          return (userEmail && pEmail && pEmail === userEmail) || (userId && pId && pId === userId);
+        });
+
+        setStudentInvoices(myPurchases);
+      } catch {
+        setStudentInvoices([]);
+      }
+    };
+    loadInvoices();
+    window.addEventListener("storage", loadInvoices);
+    window.addEventListener("testify_exam_submitted", loadInvoices);
+    return () => {
+      window.removeEventListener("storage", loadInvoices);
+      window.removeEventListener("testify_exam_submitted", loadInvoices);
+    };
+  }, [session?.user?.email, session?.user?.id, session?.user?.name]);
+
   useEffect(() => {
     const calculateStats = () => {
       try {
@@ -96,10 +219,12 @@ export default function StudentDashboardPage() {
         });
 
         const userEmail = session?.user?.email?.trim().toLowerCase();
+        const userId = session?.user?.id;
         const userSubs = storedSubs.filter((s: any) => {
-          if (!userEmail) return true;
-          if (!s.studentEmail || s.studentEmail === "student@example.com") return true;
-          return s.studentEmail.toLowerCase() === userEmail;
+          if (!userEmail && !userId) return false;
+          const sEmail = (s.studentEmail || "").trim().toLowerCase();
+          const sId = s.studentId || s.userId;
+          return (userEmail && sEmail && sEmail === userEmail) || (userId && sId && sId === userId);
         });
 
         const count = userSubs.length;
@@ -125,7 +250,8 @@ export default function StudentDashboardPage() {
     const syncLiveAssessments = async () => {
       try {
         const userEmail = session?.user?.email?.trim().toLowerCase();
-        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+        const userId = session?.user?.id;
+        let storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
         const attemptSubs = purchaseService.getStudentAttempts();
 
         attemptSubs.forEach((att) => {
@@ -148,64 +274,68 @@ export default function StudentDashboardPage() {
           }
         });
 
-        const userSubs = storedSubs.filter((s: any) => {
-          if (!userEmail) return true;
-          if (!s.studentEmail || s.studentEmail === "student@example.com") return true;
-          return s.studentEmail.toLowerCase() === userEmail;
-        });
-
-        let list: EnrolledExamItem[] = userSubs.map((sub: any) => ({
-          id: String(sub.id || sub.examId),
-          title: sub.title || "Live Assessment Examination",
-          subject: sub.subject || "General",
-          schedule: sub.schedule || `Completed on ${new Date(sub.completedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-          duration: sub.duration || "60 mins",
-          status: "Completed",
-          score: sub.score || `${sub.percentage}%`,
-          percentage: typeof sub.percentage === "number" ? sub.percentage : parseInt(sub.score || "0"),
-          token: sub.token || sub.id,
-        }));
-
-        const teacherExams = localStorage.getItem("testify_teacher_exams");
-        if (teacherExams) {
-          const tList = JSON.parse(teacherExams);
-          tList.forEach((t: any) => {
-            const alreadySubmitted = list.some((item) => item.id === String(t.id) || item.token === t.accessToken || item.token === t.joinCode);
-            if (!alreadySubmitted) {
-              list.push({
-                id: String(t.id),
-                title: t.title,
-                subject: t.subject || "General",
-                schedule: "Active Today • Available",
-                duration: `${t.duration || 60} mins`,
-                status: "Available",
-                token: t.accessToken || t.joinCode || String(t.id),
-              });
-            }
+        const renderSubmissions = (subs: any[]) => {
+          const userSubs = subs.filter((s: any) => {
+            if (!userEmail && !userId) return false;
+            const sEmail = (s.studentEmail || "").trim().toLowerCase();
+            const sId = s.studentId || s.userId;
+            return (
+              (userEmail && sEmail && sEmail === userEmail) ||
+              (userId && sId && sId === userId)
+            );
           });
-        }
+
+          let completedList: EnrolledExamItem[] = userSubs.map((sub: any) => ({
+            id: String(sub.id || sub.examId),
+            examId: String(sub.examId || sub.id),
+            title: sub.title || "Live Assessment Examination",
+            subject: sub.subject || "General",
+            schedule: sub.schedule || `Completed on ${new Date(sub.completedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+            duration: sub.duration || "60 mins",
+            status: "Completed",
+            score: sub.score || `${sub.percentage}%`,
+            percentage: typeof sub.percentage === "number" ? sub.percentage : parseInt(sub.score || "0"),
+            token: sub.token || sub.id,
+          }));
+
+          setLiveAssessmentItems(completedList);
+        };
+
+        renderSubmissions(storedSubs);
 
         try {
-          const res = await examService.getAllExams();
-          if (res?.data && res.data.length > 0) {
-            res.data.forEach((b: any) => {
-              const alreadyInList = list.some((item) => item.id === String(b._id) || item.token === b.accessToken || item.token === b.joinCode);
-              if (!alreadyInList && b.isPublished !== false && b.status !== "Draft") {
-                list.push({
-                  id: String(b._id),
-                  title: b.title,
-                  subject: b.subject || b.category || "General",
-                  schedule: "Available Now",
-                  duration: `${b.durationMinutes || 60} mins`,
-                  status: "Available",
-                  token: b.accessToken || b.joinCode || String(b._id),
-                });
+          const res = await examService.getMySubmissions();
+          if (res && res.data && res.data.length > 0) {
+            const apiSubsConverted = res.data.map((sub: any) => ({
+              id: String(sub._id || sub.examId),
+              examId: String(sub.examId),
+              title: (sub.exam as any)?.title || sub.title || "Completed Assessment",
+              subject: (sub.exam as any)?.subject || sub.subject || "General",
+              duration: `${(sub.exam as any)?.durationMinutes || 60} mins`,
+              schedule: `Completed on ${new Date(sub.submittedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+              status: "Completed",
+              score: `${sub.score || 0}%`,
+              percentage: sub.score || 0,
+              isPassed: Boolean(sub.passed),
+              studentEmail: userEmail || "",
+              studentId: session?.user?.id || "",
+              token: String(sub.examId),
+              completedAt: sub.submittedAt || new Date().toISOString(),
+              timeTakenSeconds: 300,
+              correctAnswers: sub.answers ? sub.answers.filter((a: any) => a.isCorrect).length : 0,
+              totalQuestions: sub.answers ? sub.answers.length : 10,
+            }));
+
+            const merged = [...storedSubs];
+            apiSubsConverted.forEach((apiItem) => {
+              if (!merged.some((m: any) => String(m.examId) === String(apiItem.examId))) {
+                merged.unshift(apiItem);
               }
             });
+            localStorage.setItem("testify_student_submissions", JSON.stringify(merged));
+            renderSubmissions(merged);
           }
         } catch {}
-
-        setLiveAssessmentItems(list);
       } catch {
         setLiveAssessmentItems([]);
       }
@@ -229,16 +359,25 @@ export default function StudentDashboardPage() {
     };
   }, [session?.user?.email]);
 
-  const [quickRoomCode, setQuickRoomCode] = useState("");
-  const [roomCodeError, setRoomCodeError] = useState<string | null>(null);
+  useEffect(() => {
+    const syncStudentData = () => {
+      try {
+        const userEmail = session?.user?.email;
+        if (userEmail) {
+          const userSpecific = localStorage.getItem(`testify_custom_profile_${userEmail}`);
+          if (userSpecific) {
+            setCustomProfile(JSON.parse(userSpecific));
+          } else {
+            setCustomProfile({});
+          }
+        }
+      } catch {}
+    };
 
-  const [customProfile, setCustomProfile] = useState<{ name?: string; image?: string }>({});
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [profileName, setProfileName] = useState("");
-  const [profileImage, setProfileImage] = useState("");
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    syncStudentData();
+    window.addEventListener("testify_profile_updated", syncStudentData);
+    return () => window.removeEventListener("testify_profile_updated", syncStudentData);
+  }, [session?.user?.email]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -290,26 +429,6 @@ export default function StudentDashboardPage() {
       }
     }
   };
-
-  useEffect(() => {
-    const syncStudentData = () => {
-      try {
-        const userEmail = session?.user?.email;
-        if (userEmail) {
-          const userSpecific = localStorage.getItem(`testify_custom_profile_${userEmail}`);
-          if (userSpecific) {
-            setCustomProfile(JSON.parse(userSpecific));
-          } else {
-            setCustomProfile({});
-          }
-        }
-      } catch {}
-    };
-
-    syncStudentData();
-    window.addEventListener("testify_profile_updated", syncStudentData);
-    return () => window.removeEventListener("testify_profile_updated", syncStudentData);
-  }, [session?.user?.email]);
 
   const displayedName = customProfile.name || session?.user?.name || "Student Scholar";
   const displayedImage = customProfile.image || session?.user?.image;
@@ -433,11 +552,16 @@ export default function StudentDashboardPage() {
     );
   }
 
+  const ITEMS_PER_PAGE = 4;
+
   const filteredExams = liveAssessmentItems.filter((item) => {
-    if (activeTab === "completed") return item.status === "Completed";
-    if (activeTab === "available") return item.status === "Available" || item.status === "Scheduled";
-    return true;
+    const matchesFilter = transcriptFilter === "passed" ? (item.percentage ? item.percentage >= 80 : parseInt(item.score || "0") >= 80) : true;
+    const matchesSearch = !searchQuery.trim() ||
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.subject.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Toast notification */}
@@ -455,107 +579,140 @@ export default function StudentDashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* 1. TOP HERO PROFILE HEADER CARD (KEPT EXACTLY AS YOU REQUESTED) */}
+      {/* 1. UNIFIED DYNAMIC TOP TOOLBAR (PROFILE + QUICK ROOM JOIN + NAV ACTIONS) */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="rounded-3xl border border-slate-200/90 dark:border-slate-800/80 bg-white/95 dark:bg-[#070E1A]/90 p-5 sm:p-6 shadow-sm backdrop-blur-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6"
+        className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-[#070E1A]/95 p-4 sm:p-5 shadow-sm backdrop-blur-xl space-y-4 relative"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4.5">
-          {/* Student Profile Picture with Upload Trigger */}
-          <div className="relative group shrink-0">
-            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl overflow-hidden border-2 border-[#0092E3]/30 dark:border-cyan-500/30 bg-gradient-to-tr from-[#0092E3] to-[#00CBB8] shadow-md flex items-center justify-center text-white text-2xl font-bold">
-              {displayedImage ? (
-                <img
-                  src={displayedImage}
-                  alt={displayedName}
-                  className="h-full w-full object-cover rounded-2xl"
-                />
-              ) : (
-                <span>{displayedName.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <button
-              onClick={handleOpenEditProfile}
-              className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-xl bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-md transition-all active:scale-95 cursor-pointer"
-              title="Change Profile Picture"
-            >
-              <FiCamera className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold font-display text-[#152234] dark:text-white tracking-tight">
-                {displayedName}
-              </h1>
+        {/* Top Tier: Student Profile & Navigation Action Controls */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          {/* Left: Student Profile */}
+          <div className="flex items-center gap-3.5 shrink-0">
+            <div className="relative group shrink-0">
+              <div className="h-14 w-14 sm:h-15 sm:w-15 rounded-2xl overflow-hidden border-2 border-[#0092E3]/30 dark:border-cyan-500/30 bg-gradient-to-tr from-[#0092E3] to-[#00CBB8] shadow-sm flex items-center justify-center text-white text-xl font-bold">
+                {displayedImage ? (
+                  <img
+                    src={displayedImage}
+                    alt={displayedName}
+                    className="h-full w-full object-cover rounded-2xl"
+                  />
+                ) : (
+                  <span>{displayedName.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
               <button
                 onClick={handleOpenEditProfile}
-                className="text-slate-400 hover:text-[#0092E3] transition-colors cursor-pointer"
-                title="Edit Profile"
+                className="absolute -bottom-1 -right-1 p-1.5 rounded-xl bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+                title="Change Profile Picture"
               >
-                <FiEdit3 className="h-4 w-4" />
+                <FiCamera className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#EBF7FF] dark:bg-cyan-950/60 border border-blue-100 dark:border-cyan-800 text-[11px] font-bold text-[#0092E3] dark:text-cyan-300">
-                <HiOutlineAcademicCap className="h-3.5 w-3.5" />
-                Student Scholar
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                <FiCheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                Verified Student Account
-              </span>
-            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-bold font-display text-[#152234] dark:text-white tracking-tight">
+                  {displayedName}
+                </h1>
+                <button
+                  onClick={handleOpenEditProfile}
+                  className="text-slate-400 hover:text-[#0092E3] transition-colors cursor-pointer"
+                  title="Edit Profile"
+                >
+                  <FiEdit3 className="h-4 w-4" />
+                </button>
+              </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400 pt-0.5">
-              Welcome to your Testify Student Portal. Manage assessments, practice question banks, and review performance transcripts.
-            </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#EBF7FF] dark:bg-cyan-950/60 border border-blue-100 dark:border-cyan-800 text-[11px] font-bold text-[#0092E3] dark:text-cyan-300">
+                  <HiOutlineAcademicCap className="h-3.5 w-3.5" />
+                  Student Scholar
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                  <FiCheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  Verified Student
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Quick Action Controls */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link href="/">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<FiChevronLeft className="h-4 w-4 text-[#0092E3]" />}
+                className="h-9 px-3.5 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-800 hover:border-[#0092E3]/40 transition-all shadow-2xs"
+              >
+                Back to Home
+              </Button>
+            </Link>
+
+            <Link href="/practice">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<FiZap className="h-4 w-4 text-[#00CBB8]" />}
+                className="h-9 px-3.5 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-800 hover:border-[#00CBB8]/40 transition-all shadow-2xs"
+              >
+                Practice Hub
+              </Button>
+            </Link>
+
+            <Link href="/student/exams">
+              <Button
+                size="sm"
+                rightIcon={<FiArrowRight className="h-3.5 w-3.5" />}
+                className="h-9 px-4 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#0092E3] to-[#007AC9] text-white shadow-xs shadow-[#0092E3]/20 transition-all"
+              >
+                Browse Exams
+              </Button>
+            </Link>
+
+            <ThemeToggle className="shrink-0 h-9 w-9 rounded-xl" />
           </div>
         </div>
 
-        {/* Action Controls including Landing Page Button */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-auto">
-          <Link href="/">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<FiHome className="h-4 w-4 text-[#0092E3]" />}
-              className="h-10 px-4 rounded-xl font-bold text-xs border-slate-200/90 dark:border-slate-700/80 hover:border-[#0092E3]/40 transition-all shadow-xs"
-              title="Return to Public Landing Page"
-            >
-              Landing Page
-            </Button>
-          </Link>
+        {/* Bottom Tier: Dedicated Full-Width Quick Room Join Bar */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
+          <form onSubmit={handleJoinByCode} className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-500 pointer-events-none">
+                <FiKey className="h-4 w-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="ENTER EXAM ROOM CODE (E.G. CS-ALGO-2026)..."
+                value={quickRoomCode}
+                onChange={(e) => {
+                  setQuickRoomCode(e.target.value);
+                  setRoomCodeError(null);
+                }}
+                className="w-full h-10.5 pl-10 pr-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-2xs"
+              />
+            </div>
 
-          <Link href="/practice">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<FiZap className="h-4 w-4 text-[#00CBB8]" />}
-              className="h-10 px-4 rounded-xl font-bold text-xs border-slate-200/90 dark:border-slate-700/80 hover:border-[#00CBB8]/40 transition-all shadow-xs"
+            <button
+              type="submit"
+              className="h-10.5 px-6 rounded-xl bg-gradient-to-r from-[#0092E3] to-[#007AC9] hover:from-[#007AC9] hover:to-[#0062A3] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
             >
-              Practice Hub
-            </Button>
-          </Link>
-
-          <Link href="/student/exams">
-            <Button
-              size="sm"
-              rightIcon={<FiArrowRight className="h-3.5 w-3.5" />}
-              className="h-10 px-5 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#0092E3] to-[#007AC9] hover:from-[#007AC9] hover:to-[#0062A3] text-white shadow-md shadow-[#0092E3]/25 transition-all"
-            >
-              Browse Exams
-            </Button>
-          </Link>
-
-          <ThemeToggle className="shrink-0 h-10 w-10 rounded-xl" />
+              <span>Join Exam Room</span>
+              <FiArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+          {roomCodeError && (
+            <p className="text-[11px] text-rose-500 mt-1 font-semibold flex items-center gap-1 pl-1">
+              <FiAlertCircle className="h-3 w-3" />
+              <span>{roomCodeError}</span>
+            </p>
+          )}
         </div>
       </motion.div>
 
-      {/* 2. STATS OVERVIEW - PROFESSIONAL SLEEK BENTO CARDS */}
+      {/* 2. STATS OVERVIEW - ENTERPRISE SLEEK BENTO CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Completed Exams */}
         <motion.div
@@ -578,7 +735,7 @@ export default function StudentDashboardPage() {
             <div className="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
               {dashboardStats.completedExams}
             </div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <span>Completed Assessments</span>
             </p>
           </div>
@@ -605,7 +762,7 @@ export default function StudentDashboardPage() {
             <div className="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
               {dashboardStats.completedExams > 0 ? `${dashboardStats.averageScore}%` : "0%"}
             </div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <span>Overall Average Score</span>
             </p>
           </div>
@@ -632,7 +789,7 @@ export default function StudentDashboardPage() {
             <div className="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
               {dashboardStats.practiceSolved}
             </div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <span>Practice Questions Solved</span>
             </p>
           </div>
@@ -657,305 +814,335 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             <div className="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
-              {dashboardStats.activeStudyTimeHours} <span className="text-base font-medium text-slate-400">Hrs</span>
+              {dashboardStats.activeStudyTimeHours} <span className="text-sm font-medium text-slate-400">Hrs</span>
             </div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <span>Active Study &amp; Exam Time</span>
             </p>
           </div>
         </motion.div>
       </div>
 
-      {/* 3. SLEEK ROOM CODE QUICK LAUNCHER BAR */}
+      {/* 3. COMPLETED TRANSCRIPTS ACTION BANNER (FULL WIDTH) */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.25 }}
-        className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/20 via-slate-900/60 to-slate-900/90 dark:from-cyan-950/30 dark:via-slate-950 dark:to-[#080E1A] p-4 sm:p-5 shadow-xs"
+        onClick={() => setIsTranscriptsModalOpen(true)}
+        className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#080E1A] p-5 sm:p-6 shadow-xs hover:border-emerald-500/40 hover:shadow-md transition-all cursor-pointer group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative"
       >
-        <form onSubmit={handleJoinByCode} className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 w-full sm:w-auto">
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#0092E3] to-[#00CBB8] text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
-              <FiKey className="h-5 w-5" />
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/50 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 group-hover:scale-105 transition-transform">
+            <FiCheckCircle className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white font-display group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                Completed Examination Transcripts
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200/50">
+                {liveAssessmentItems.length} Verified
+              </span>
             </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Access all examination scorecards, verified transcripts, and performance breakdowns in one clean hub.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsTranscriptsModalOpen(true);
+          }}
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold shadow-sm shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer shrink-0 self-end sm:self-auto"
+        >
+          <span>View All Transcripts ({liveAssessmentItems.length})</span>
+          <FiArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </button>
+      </motion.div>
+
+      {/* 4. BALANCED BOTTOM WORKSPACE (2 EQUAL COLUMNS - NO L SHAPE) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* Card 1: Academic Progress Analytics */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#080E1A] p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8.5 w-8.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                <FiTrendingUp className="h-4.5 w-4.5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">
+                Academic Progress Analytics
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/50">
+              Verified
+            </span>
+          </div>
+
+          {/* Progress Indicators */}
+          <div className="space-y-4 py-1">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Join Private Examination Room
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                  Instant Access
+              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <span>Exam Accuracy</span>
+                <span className="text-cyan-600 dark:text-cyan-400 font-extrabold">
+                  {dashboardStats.completedExams > 0 ? `${dashboardStats.averageScore}%` : "0%"}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Have an invitation pass? Enter your instructor&apos;s Room Code (e.g. <code className="text-cyan-600 dark:text-cyan-400 font-mono font-bold">CS-ALGO-2026</code>)
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${dashboardStats.completedExams > 0 ? dashboardStats.averageScore : 5}%` }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <span>Practice Target</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
+                  {Math.min(100, Math.round((dashboardStats.practiceSolved / 50) * 100))}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(5, Math.min(100, Math.round((dashboardStats.practiceSolved / 50) * 100)))}%` }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <span>Study Consistency</span>
+                <span className="text-amber-600 dark:text-amber-400 font-extrabold">
+                  {dashboardStats.activeStudyTimeHours > 0 ? "High" : "Ready"}
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${dashboardStats.activeStudyTimeHours > 0 ? Math.min(100, dashboardStats.activeStudyTimeHours * 30) : 10}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 2: Quick Learning Shortcuts & Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.35 }}
+          className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#080E1A] p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8.5 w-8.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+                <FiZap className="h-4.5 w-4.5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">
+                Quick Learning Shortcuts
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Fast Access
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            <Link
+              href="/practice"
+              className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 hover:border-cyan-500/40 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+                  <FiZap className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-500 transition-colors">
+                    Interactive Practice Hub
+                  </h4>
+                  <p className="text-[11px] text-slate-500">Timed drills &amp; topic quizzes</p>
+                </div>
+              </div>
+              <FiArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            <Link
+              href="/practice/saved"
+              className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 hover:border-indigo-500/40 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                  <FiBookmark className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors">
+                    My Bookmarked Questions
+                  </h4>
+                  <p className="text-[11px] text-slate-500">Review saved questions</p>
+                </div>
+              </div>
+              <FiArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* 5. MY PURCHASED EXAMS & INVOICES SECTION */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.4 }}
+        className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#080E1A] p-5 sm:p-6 shadow-xs space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-[#EBF7FF] dark:bg-cyan-950/60 text-[#0092E3] dark:text-cyan-400 flex items-center justify-center font-bold border border-blue-100 dark:border-blue-900/50">
+              <FiFileText className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
+                <span>My Purchased Exams</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-[#0092E3] dark:text-cyan-400 font-extrabold">
+                  {studentInvoices.length}
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Verified entry passes, teacher vouchers, and official tax invoices for your account.
               </p>
             </div>
           </div>
+          {studentInvoices.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 text-xs font-bold shrink-0 self-start sm:self-auto">
+              <FiCheckCircle className="h-3.5 w-3.5" /> Stripe Verified Access Active
+            </span>
+          )}
+        </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-60">
-              <input
-                type="text"
-                placeholder="ENTER CODE..."
-                value={quickRoomCode}
-                onChange={(e) => {
-                  setQuickRoomCode(e.target.value);
-                  setRoomCodeError(null);
-                }}
-                className="w-full h-10 rounded-xl px-3.5 text-xs font-mono font-bold uppercase tracking-wider bg-white dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-2xs"
-              />
+        {studentInvoices.length === 0 ? (
+          <div className="p-8 text-center rounded-2xl bg-slate-50/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+              <FiFileText className="h-6 w-6" />
             </div>
-            <button
-              type="submit"
-              className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#0092E3] to-[#007AC9] hover:from-[#007AC9] hover:to-[#0062A3] text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer shrink-0"
-            >
-              <span>Enter Room</span>
-              <FiArrowRight className="h-3.5 w-3.5" />
-            </button>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                No Purchased Exams Yet
+              </h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Explore the exam marketplace to enroll in certified mock assessments and unlock official invoices.
+              </p>
+            </div>
+            <Link href="/student/exams" className="inline-block pt-1">
+              <Button className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold text-xs px-5 py-2 rounded-xl shadow-xs">
+                Browse Marketplace Exams
+              </Button>
+            </Link>
           </div>
-        </form>
-        {roomCodeError && (
-          <p className="text-xs text-rose-500 mt-2 font-semibold flex items-center gap-1.5 pl-1">
-            <FiAlertCircle className="h-3.5 w-3.5" />
-            <span>{roomCodeError}</span>
-          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {studentInvoices.map((inv) => {
+              const isAttempted = liveAssessmentItems.some(
+                (item: any) =>
+                  String(item.id || item.examId) === String(inv.examId) ||
+                  (inv.examTitle && item.title && item.title.trim().toLowerCase() === inv.examTitle.trim().toLowerCase())
+              );
+              const paidVal = Number(inv.paidAmount ?? inv.amount ?? 0);
+              const teacherDisplay = inv.teacherName || inv.teacherEmail || "Certified Teacher / Instructor";
+              const formattedDate = new Date(inv.purchaseDate || inv.purchasedAt || Date.now()).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
+
+              return (
+                <div
+                  key={inv.id}
+                  className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 hover:border-[#0092E3]/50 transition-all flex flex-col justify-between space-y-4 shadow-2xs hover:shadow-md"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#0092E3]">
+                        {inv.id}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold">
+                        PAID • ${paidVal.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                        {inv.examTitle || "Certified Examination Assessment"}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                        <FiUser className="h-3 w-3 text-slate-400" />
+                        <span>Teacher: <strong>{teacherDisplay}</strong></span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                    <span className="flex items-center gap-1">
+                      <FiCalendar className="h-3 w-3 text-slate-400" />
+                      <span>Purchased: <strong>{formattedDate}</strong></span>
+                    </span>
+
+                    {isAttempted ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <FiCheckCircle className="h-3.5 w-3.5" /> Completed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-600 dark:text-cyan-400">
+                        <FiClock className="h-3.5 w-3.5" /> Ready to Take
+                      </span>
+                    )}
+                  </div>
+                  {/* Actions: View Invoice / Start Exam / Show Result */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedInvoice(inv);
+                        setIsInvoiceModalOpen(true);
+                      }}
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-[#0092E3] text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#0092E3] bg-white dark:bg-slate-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <FiFileText className="h-3.5 w-3.5 text-[#0092E3]" />
+                      <span>View Invoice</span>
+                    </button>
+
+                    {isAttempted ? (
+                      <Link
+                        href={`/practice/result?examId=${inv.examId}&title=${encodeURIComponent(inv.examTitle || "Exam")}`}
+                        className="flex-1 block"
+                      >
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-xl shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
+                          <FiCheckCircle className="h-3.5 w-3.5" />
+                          <span>Show Result</span>
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href={`/exam/${inv.examId}`} className="flex-1 block">
+                        <Button className="w-full bg-[#0092E3] hover:bg-[#007AC9] text-white text-xs font-bold py-2 rounded-xl shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
+                          <span>Start Exam</span>
+                          <FiArrowRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </motion.div>
-      {/* 4. MAIN TWO-COLUMN PROFESSIONAL WORKSPACE */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Assessment Activity & Schedules (8 Cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Assessment List Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-            className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#080E1A] p-5 sm:p-6 shadow-xs"
-          >
-            {/* Header & Filter Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-800/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-                  <FiActivity className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white font-display">
-                    Assessment Activity &amp; Live Schedules
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Your enrolled test papers, completed transcripts, and active tests
-                  </p>
-                </div>
-              </div>
-
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs font-semibold">
-                <button
-                  onClick={() => setActiveTab("all")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    activeTab === "all"
-                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs font-bold"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  All ({liveAssessmentItems.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab("completed")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    activeTab === "completed"
-                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs font-bold"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  Completed ({dashboardStats.completedExams})
-                </button>
-                <button
-                  onClick={() => setActiveTab("available")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    activeTab === "available"
-                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs font-bold"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  Available
-                </button>
-              </div>
-            </div>
-
-            {/* Assessment Feed Items */}
-            <div className="pt-4 space-y-3">
-              {filteredExams.length > 0 ? (
-                filteredExams.map((exam, i) => (
-                  <motion.div
-                    key={`${exam.id}-${i}`}
-                    whileHover={{ scale: 1.005 }}
-                    className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 hover:bg-slate-100/70 dark:hover:bg-slate-900/80 hover:border-cyan-500/30 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div
-                        className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 border ${
-                          exam.status === "Completed"
-                            ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400"
-                            : "bg-cyan-50 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400"
-                        }`}
-                      >
-                        {exam.status === "Completed" ? (
-                          <FiCheckCircle className="h-5 w-5" />
-                        ) : (
-                          <FiBookOpen className="h-5 w-5" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                            {exam.title}
-                          </h3>
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {exam.subject}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <FiCalendar className="h-3 w-3" />
-                            {exam.schedule}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <FiClock className="h-3 w-3" />
-                            {exam.duration}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action & Score Right */}
-                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                      {exam.status === "Completed" ? (
-                        <>
-                          <div className="text-right">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-xl font-bold text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                              Score: {exam.score}
-                            </span>
-                          </div>
-                          <Link
-                            href={`/practice/result?score=${exam.percentage || 60}&total=100&subject=${encodeURIComponent(exam.subject)}&title=${encodeURIComponent(exam.title)}`}
-                            className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-cyan-500 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 bg-white dark:bg-slate-800 flex items-center gap-1.5 shadow-2xs transition-colors"
-                          >
-                            <span>Review Transcript</span>
-                            <FiArrowRight className="h-3 w-3" />
-                          </Link>
-                        </>
-                      ) : (
-                        <Link
-                          href={`/exam/${encodeURIComponent(exam.token || exam.id)}`}
-                          className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#0092E3] to-[#007AC9] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-cyan-500/20 hover:shadow-md transition-all active:scale-95"
-                        >
-                          <span>Start Exam</span>
-                          <FiArrowRight className="h-3 w-3" />
-                        </Link>
-                      )}
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="py-12 text-center space-y-3">
-                  <div className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto">
-                    <FiLayers className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    No assessments found in this view
-                  </h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Explore available certified exam papers or practice question modules from the directory.
-                  </p>
-                  <Link
-                    href="/student/exams"
-                    className="inline-flex items-center gap-2 text-xs font-bold text-[#0092E3] hover:underline pt-1"
-                  >
-                    <span>Browse Examination Catalog</span>
-                    <FiArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-                  </div>
-
-        {/* Right Column: Academic Progress (4 Cols) */}
-        <div className="lg:col-span-4">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.35 }}
-            className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#080E1A] p-5 sm:p-6 shadow-xs space-y-5"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                  <FiTrendingUp className="h-4 w-4" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Academic Progress
-                </h3>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                Verified
-              </span>
-            </div>
-
-            {/* Progress Bars */}
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  <span>Exam Accuracy</span>
-                  <span className="text-cyan-600 dark:text-cyan-400">
-                    {dashboardStats.completedExams > 0 ? `${dashboardStats.averageScore}%` : "0%"}
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${dashboardStats.completedExams > 0 ? dashboardStats.averageScore : 5}%` }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  <span>Practice Target</span>
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    {Math.min(100, Math.round((dashboardStats.practiceSolved / 50) * 100))}%
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.max(5, Math.min(100, Math.round((dashboardStats.practiceSolved / 50) * 100)))}%` }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  <span>Study Consistency</span>
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {dashboardStats.activeStudyTimeHours > 0 ? "High" : "Ready"}
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${dashboardStats.activeStudyTimeHours > 0 ? Math.min(100, dashboardStats.activeStudyTimeHours * 30) : 10}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
 
       {/* Profile Edit Modal */}
       <Modal
@@ -981,77 +1168,72 @@ export default function StudentDashboardPage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-xl bg-[#0092E3] text-white shadow-md hover:bg-[#007AC9] transition-all cursor-pointer"
-                title="Upload Photo"
               >
                 <FiCamera className="h-3.5 w-3.5" />
               </button>
             </div>
-
             <input
-              ref={fileInputRef}
               type="file"
-              accept="image/*"
+              ref={fileInputRef}
               onChange={handleFileUpload}
+              accept="image/*"
               className="hidden"
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-bold text-[#0092E3] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <FiUpload className="h-3.5 w-3.5" />
-              <span>Choose Photo from Device</span>
-            </button>
+            <p className="text-[11px] text-slate-500">Click camera icon to upload profile photo</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Full Name
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Full Scholar Name
             </label>
             <Input
               type="text"
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
-              placeholder="Your full name"
+              placeholder="e.g. Alex Morgan"
+              className="text-xs"
               required
-              className="text-xs h-10 rounded-xl"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Or Paste Avatar Image URL
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Registered Email (Account Bound)
             </label>
             <Input
-              type="text"
-              value={profileImage}
-              onChange={(e) => setProfileImage(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              className="text-xs h-10 rounded-xl"
+              type="email"
+              value={session?.user?.email || ""}
+              disabled
+              className="text-xs opacity-70 bg-slate-50 dark:bg-slate-900 cursor-not-allowed"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => setIsEditModalOpen(false)}
-              className="rounded-xl text-xs h-9"
+              className="text-xs"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              size="sm"
               disabled={isSavingProfile}
-              className="rounded-xl text-xs h-9 bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold"
+              className="bg-[#0092E3] hover:bg-[#007AC9] text-white text-xs font-bold px-5"
             >
-              {isSavingProfile ? "Saving..." : "Save Changes"}
+              {isSavingProfile ? "Saving..." : "Save Profile"}
             </Button>
           </div>
         </form>
       </Modal>
+
+      {/* Official Tax Invoice & Payment Receipt Modal Component */}
+      <StudentInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        invoice={selectedInvoice}
+      />
     </div>
   );
-}
+};

@@ -40,59 +40,117 @@ export function activateTeacherPremium(durationDays = 365, userEmail?: string) {
   window.dispatchEvent(new CustomEvent("testify_subscription_updated", { detail: subData }));
 }
 
-export function useTeacherSubscription(userSession?: any): SubscriptionState & { refresh: () => Promise<void> } {
-  const [state, setState] = useState<SubscriptionState>({
-    hasPremium: false,
-    daysRemaining: 0,
-    expiryDateFormatted: "",
-    isLoaded: false,
-  });
+function getInitialSyncState(userSession?: any): SubscriptionState {
+  if (typeof window === "undefined") {
+    return { hasPremium: false, daysRemaining: 0, expiryDateFormatted: "", isLoaded: false };
+  }
 
-  const checkSubscription = useCallback(async () => {
-    let isSubActive = false;
-    let expiryStr: string | null = null;
-    const currentEmail = userSession?.user?.email;
+  const currentEmail = userSession?.user?.email;
+  let isSubActive = false;
+  let expiryStr: string | null = null;
 
-    // 1. Check LocalStorage strictly for the currently logged in user email
-    if (typeof window !== "undefined" && currentEmail) {
-      try {
-        const userSpecific = localStorage.getItem(`testify_teacher_subscription_${currentEmail}`);
-        const userFlag = localStorage.getItem(`testify_teacher_premium_${currentEmail}`);
+  try {
+    if (currentEmail) {
+      const userSpecific = localStorage.getItem(`testify_teacher_subscription_${currentEmail}`);
+      const userFlag = localStorage.getItem(`testify_teacher_premium_${currentEmail}`);
 
-        if (userSpecific) {
-          const parsed = JSON.parse(userSpecific);
-          if (
-            parsed.email === currentEmail &&
-            (parsed.hasActiveSubscription || parsed.status === "active" || parsed.isPremium)
-          ) {
-            isSubActive = true;
-            expiryStr = parsed.expiryDate || parsed.currentPeriodEnd;
-          }
-        } else if (userFlag === "true") {
+      if (userSpecific) {
+        const parsed = JSON.parse(userSpecific);
+        if (
+          parsed.email === currentEmail &&
+          (parsed.hasActiveSubscription || parsed.status === "active" || parsed.isPremium)
+        ) {
           isSubActive = true;
+          expiryStr = parsed.expiryDate || parsed.currentPeriodEnd;
         }
-
-        // Clean up any legacy un-scoped test keys from the browser
-        localStorage.removeItem("testify_teacher_subscription");
-        localStorage.removeItem("testify_teacher_premium");
-      } catch {}
-    }
-
-    // 2. Check Session User Object
-    if (userSession?.user) {
-      const u = userSession.user as any;
-      if (u.isPremium || u.hasActiveSubscription || u.premiumStatus === "active") {
+      } else if (userFlag === "true") {
         isSubActive = true;
-        if (u.premiumExpiresAt || u.subscriptionExpiry) {
-          expiryStr = u.premiumExpiresAt || u.subscriptionExpiry;
+      }
+    } else {
+      // Fallback search across localStorage keys if session is loading
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith("testify_teacher_subscription_") || key.startsWith("testify_teacher_premium_"))) {
+          const val = localStorage.getItem(key);
+          if (val === "true") {
+            isSubActive = true;
+            break;
+          } else if (val && val.startsWith("{")) {
+            try {
+              const parsed = JSON.parse(val);
+              if (parsed.hasActiveSubscription || parsed.status === "active" || parsed.isPremium) {
+                isSubActive = true;
+                expiryStr = parsed.expiryDate || parsed.currentPeriodEnd;
+                break;
+              }
+            } catch {}
+          }
         }
       }
     }
+  } catch {}
 
-    // 3. Check Backend APIs in parallel
+  if (!isSubActive && userSession?.user) {
+    const u = userSession.user as any;
+    if (u.isPremium || u.hasActiveSubscription || u.premiumStatus === "active") {
+      isSubActive = true;
+      if (u.premiumExpiresAt || u.subscriptionExpiry) {
+        expiryStr = u.premiumExpiresAt || u.subscriptionExpiry;
+      }
+    }
+  }
+
+  let days = 365;
+  let formattedDate = "";
+
+  if (isSubActive) {
+    if (expiryStr) {
+      const expDate = new Date(expiryStr);
+      const now = new Date();
+      const diffMs = expDate.getTime() - now.getTime();
+      const remaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      days = remaining > 0 ? remaining : 365;
+      formattedDate = expDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } else {
+      days = 365;
+      const nextYear = new Date();
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      formattedDate = nextYear.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+  }
+
+  return {
+    hasPremium: isSubActive,
+    daysRemaining: isSubActive ? days : 0,
+    expiryDateFormatted: formattedDate,
+    isLoaded: isSubActive,
+  };
+}
+
+export function useTeacherSubscription(userSession?: any): SubscriptionState & { refresh: () => Promise<void> } {
+  const userEmail = (userSession?.user?.email || "").trim().toLowerCase();
+  const userId = userSession?.user?.id || "";
+
+  const [state, setState] = useState<SubscriptionState>(() => getInitialSyncState(userSession));
+
+  const checkSubscription = useCallback(async () => {
+    // 1. Calculate current local sync state synchronously
+    const syncState = getInitialSyncState(userSession);
+    let isSubActive = syncState.hasPremium;
+    let expiryStr: string | null = syncState.expiryDateFormatted;
+
+    // 2. Perform backend API verification in background safely
     try {
       const res = await paymentService.getTeacherPremiumStatus();
-      if (res.success && res.data) {
+      if (res && res.success && res.data) {
         if (res.data.isPremium || res.data.premiumStatus === "active") {
           isSubActive = true;
           if (res.data.premiumExpiresAt) {
@@ -103,7 +161,7 @@ export function useTeacherSubscription(userSession?: any): SubscriptionState & {
     } catch {
       try {
         const subRes = await subscriptionService.getMyStatus();
-        if (subRes.data && subRes.data.hasActiveSubscription) {
+        if (subRes && subRes.data && subRes.data.hasActiveSubscription) {
           isSubActive = true;
           if (subRes.data.subscription?.currentPeriodEnd) {
             expiryStr = subRes.data.subscription.currentPeriodEnd;
@@ -112,7 +170,6 @@ export function useTeacherSubscription(userSession?: any): SubscriptionState & {
       } catch {}
     }
 
-    // Calculate Days Remaining
     let days = 365;
     let formattedDate = "";
 
@@ -123,11 +180,13 @@ export function useTeacherSubscription(userSession?: any): SubscriptionState & {
         const diffMs = expDate.getTime() - now.getTime();
         const remaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
         days = remaining > 0 ? remaining : 365;
-        formattedDate = expDate.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+        formattedDate = !isNaN(expDate.getTime())
+          ? expDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "";
       } else {
         days = 365;
         const nextYear = new Date();
@@ -140,13 +199,26 @@ export function useTeacherSubscription(userSession?: any): SubscriptionState & {
       }
     }
 
-    setState({
+    const newState: SubscriptionState = {
       hasPremium: isSubActive,
       daysRemaining: isSubActive ? days : 0,
       expiryDateFormatted: formattedDate,
       isLoaded: true,
+    };
+
+    // Update state ONLY if values actually changed to prevent infinite re-render loops
+    setState((prev) => {
+      if (
+        prev.hasPremium === newState.hasPremium &&
+        prev.daysRemaining === newState.daysRemaining &&
+        prev.expiryDateFormatted === newState.expiryDateFormatted &&
+        prev.isLoaded === newState.isLoaded
+      ) {
+        return prev;
+      }
+      return newState;
     });
-  }, [userSession]);
+  }, [userEmail, userId]);
 
   useEffect(() => {
     checkSubscription();

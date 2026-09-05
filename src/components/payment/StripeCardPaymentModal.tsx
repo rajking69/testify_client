@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { purchaseService } from "@/services/purchase.service";
 
 export interface StripePaymentModalProps {
   isOpen: boolean;
@@ -106,7 +107,7 @@ export function StripeCardPaymentModal({
       const transactionId = `txn_strp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       const cardLast4 = cleanCard.length >= 4 ? cleanCard.slice(-4) : "4242";
 
-      // Save purchase record
+      // Save purchase record & generate official invoice
       if (typeof window !== "undefined") {
         if (itemType === "EXAM") {
           const stored = localStorage.getItem("testify_student_purchases") || "[]";
@@ -115,6 +116,63 @@ export function StripeCardPaymentModal({
             ids.push(itemId);
             localStorage.setItem("testify_student_purchases", JSON.stringify(ids));
           }
+
+          let matchedTeacherId = "";
+          let matchedTeacherEmail = "";
+          let matchedTeacherName = "";
+          let matchedExamTitle = title || "Certified Assessment";
+          let matchedPrice = amount || 50;
+
+          try {
+            const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
+            const found = storedExams.find(
+              (e: any) =>
+                String(e.id || e._id || e.code) === String(itemId) ||
+                (e.title && title && e.title.trim().toLowerCase() === title.trim().toLowerCase())
+            );
+            if (found) {
+              matchedTeacherId = found.teacherId || found.teacherEmail || found.createdBy || "";
+              matchedTeacherEmail = found.teacherEmail || found.createdBy || "";
+              matchedTeacherName = found.teacherName || found.instructorName || "";
+              matchedExamTitle = found.title || matchedExamTitle;
+              if (found.price && Number(found.price) > 0) {
+                matchedPrice = Number(found.price);
+              }
+            }
+          } catch {}
+
+          const now = new Date();
+          const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+          const randSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+          const invoiceNumber = `INV-${dateStr}-${randSuffix}`;
+
+          purchaseService.recordPurchase({
+            id: invoiceNumber,
+            studentId: "student_verified",
+            studentName: cardHolder || "Student Scholar",
+            studentEmail: (email || studentEmail || "").trim().toLowerCase() || "student@example.com",
+            examId: itemId,
+            examTitle: matchedExamTitle,
+            teacherId: matchedTeacherId || "certified_instructor",
+            teacherName: matchedTeacherName || matchedTeacherEmail || "Certified Teacher / Instructor",
+            teacherEmail: matchedTeacherEmail,
+            originalExamPrice: matchedPrice,
+            paidAmount: matchedPrice,
+            amount: matchedPrice,
+            currency: "USD",
+            paymentProvider: "STRIPE",
+            paymentMethod: "Stripe Secured Card",
+            transactionId: transactionId,
+            paymentTransactionId: transactionId,
+            paymentStatus: "SUCCESS",
+            purchasedAt: now.toISOString(),
+            purchaseDate: now.toISOString(),
+            createdAt: now.toISOString(),
+            accessStatus: "ACTIVE",
+          });
+
+          // Dispatch event to refresh invoices across teacher & student views
+          window.dispatchEvent(new CustomEvent("testify_exam_submitted"));
         }
       }
 
@@ -122,7 +180,7 @@ export function StripeCardPaymentModal({
         transactionId,
         cardLast4,
         amount,
-        currency: currencySymbol === "$" ? "USD" : "BDT",
+        currency: "USD",
       });
       onClose();
     } catch (err: any) {

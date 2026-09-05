@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
 import { getStatusColor, formatCurrency, formatRelativeTime, cn } from "@/lib/admin/utils";
-import { mockSubscriptions } from "@/lib/admin/mock-data";
+import { adminService } from "@/services/admin.service";
 import { Subscription, SubscriptionTier, TableColumn, ActionMenuItem } from "@/lib/admin/types";
 
 export default function AdminSubscriptionsPage() {
@@ -20,10 +20,26 @@ export default function AdminSubscriptionsPage() {
     status: undefined,
   });
 
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getPayments()
+      .then((res) => {
+        if (isMounted && res.data && res.data.subscriptions) {
+          setSubscriptions(res.data.subscriptions);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter subscriptions
-  const filteredSubscriptions = mockSubscriptions.filter((sub) => {
+  const filteredSubscriptions = subscriptions.filter((sub) => {
     if (filters.tier && sub.tier !== filters.tier) return false;
     if (filters.status && sub.status !== filters.status) return false;
     if (filters.search) {
@@ -42,12 +58,12 @@ export default function AdminSubscriptionsPage() {
 
   // Stats
   const stats = {
-    total: mockSubscriptions.length,
-    active: mockSubscriptions.filter((s) => s.status === "active").length,
-    free: mockSubscriptions.filter((s) => s.tier === "free").length,
-    pro: mockSubscriptions.filter((s) => s.tier === "pro").length,
-    institutional: mockSubscriptions.filter((s) => s.tier === "institutional").length,
-    monthlyRevenue: mockSubscriptions
+    total: subscriptions.length,
+    active: subscriptions.filter((s) => s.status === "active").length,
+    free: subscriptions.filter((s) => s.tier === "free").length,
+    pro: subscriptions.filter((s) => s.tier === "pro").length,
+    institutional: subscriptions.filter((s) => s.tier === "institutional").length,
+    monthlyRevenue: subscriptions
       .filter((s) => s.status === "active")
       .reduce((sum, s) => sum + s.amount, 0),
   };

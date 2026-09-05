@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { AdminCard, StatCard } from "@/components/admin/shared/AdminCard";
 import { cn, formatNumber, formatDateTime } from "@/lib/admin/utils";
-import { mockAnalyticsData } from "@/lib/admin/mock-data";
+import { initialAnalyticsData } from "@/lib/admin/initial-state";
 import {
   AreaChart,
   Area,
@@ -34,7 +34,7 @@ import {
 
 export default function AdminAnalyticsPage() {
   const { systemHealth, examStats, userStats, examPerformance } =
-    mockAnalyticsData;
+    initialAnalyticsData;
 
   // Prepare data for charts
   const systemHealthData = systemHealth.map((metric) => ({

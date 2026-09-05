@@ -41,15 +41,15 @@ export default function Benefits() {
             <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between p-3 rounded-2xl bg-[#F4F8FC] dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700">
                 <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">Midterm Exam - Computer Architecture</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">45 Questions • 60 Mins • Auto-Proctored</p>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">Computer Science Assessment</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Structured Questions • Timed • Auto-Proctored</p>
                 </div>
-                <span className="text-xs font-extrabold text-[#00A3C4] dark:text-cyan-400">94 Submitted</span>
+                <span className="text-xs font-extrabold text-[#00A3C4] dark:text-cyan-400">Submissions Synced</span>
               </div>
 
               <div className="flex justify-between items-center font-semibold text-[11px]">
                 <span className="text-slate-600 dark:text-slate-400">Auto-Grading Rubric:</span>
-                <span className="text-[#00A3C4] dark:text-cyan-400 font-bold">Active (100% Automated)</span>
+                <span className="text-[#00A3C4] dark:text-cyan-400 font-bold">Active (Continuous Evaluation)</span>
               </div>
             </div>
           </motion.div>
@@ -163,16 +163,16 @@ export default function Benefits() {
 
             <div className="p-4 rounded-2xl bg-[#FAF5FF] dark:bg-purple-950/20 border border-[#E9D5FF] dark:border-purple-900/30 text-xs text-slate-700 dark:text-slate-300 space-y-2.5">
               <div className="flex justify-between font-semibold text-[11px]">
-                <span className="text-slate-600 dark:text-slate-400">Registered Faculty Members:</span>
-                <span className="text-slate-900 dark:text-white font-bold">180 Teachers</span>
+                <span className="text-slate-600 dark:text-slate-400">Registered Faculty Roster:</span>
+                <span className="text-slate-900 dark:text-white font-bold">Institutional Active</span>
               </div>
               <div className="flex justify-between font-semibold text-[11px]">
-                <span className="text-slate-600 dark:text-slate-400">Active Student Accounts:</span>
-                <span className="text-slate-900 dark:text-white font-bold">4,250 Enrolled</span>
+                <span className="text-slate-600 dark:text-slate-400">Student Accounts Roster:</span>
+                <span className="text-slate-900 dark:text-white font-bold">Roster Verified</span>
               </div>
               <div className="flex justify-between font-semibold text-[11px]">
                 <span className="text-slate-600 dark:text-slate-400">Security Audit Log:</span>
-                <span className="text-emerald-700 dark:text-emerald-400 font-bold">100% Clean (0 Incidents)</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">Clean Audit Trail</span>
               </div>
             </div>
           </motion.div>

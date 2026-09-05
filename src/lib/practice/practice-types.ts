@@ -36,6 +36,8 @@ export interface PracticeResult {
   completedAt: string;
   userAnswers: Record<string, string | number>;
   questions: Question[];
+  examTitle?: string;
+  examSubject?: string;
 }
 
 export interface PracticeHistoryItem {

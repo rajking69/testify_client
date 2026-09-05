@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
 import { formatRelativeTime, cn } from "@/lib/admin/utils";
-import { mockQuestions } from "@/lib/admin/mock-data";
+import { questionService } from "@/services/question.service";
 import {
   Question,
   QuestionType,
@@ -41,6 +41,7 @@ export default function AdminQuestionsPage() {
     difficulty: undefined,
   });
 
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
     null,
   );
@@ -49,8 +50,39 @@ export default function AdminQuestionsPage() {
     question?: Question;
   } | null>(null);
 
+  React.useEffect(() => {
+    let isMounted = true;
+    questionService
+      .getQuestions({ search: filters.search, questionType: filters.type, difficulty: filters.difficulty })
+      .then((res) => {
+        if (isMounted && res.data) {
+          const list: Question[] = res.data.map((item: any) => ({
+            id: String(item._id),
+            question: item.questionText || item.question || "",
+            subject: item.subject || item.category || "General",
+            topic: item.topic || "General",
+            type: (item.questionType?.toLowerCase() || "mcq") as QuestionType,
+            difficulty: item.difficulty?.toLowerCase() || "medium",
+            options: item.options || [],
+            correctAnswer: item.correctAnswer || "",
+            explanation: item.explanation || "",
+            createdBy: item.createdBy || "Instructor",
+            createdAt: item.createdAt || new Date().toISOString(),
+            tags: item.tags || [],
+            category: item.category || "General",
+            usageCount: item.usageCount || 0,
+          }));
+          setQuestions(list);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [filters.search, filters.type, filters.difficulty]);
+
   // Filter questions
-  const filteredQuestions = mockQuestions.filter((question) => {
+  const filteredQuestions = questions.filter((question) => {
     if (filters.type && question.type !== filters.type) return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();
@@ -73,10 +105,10 @@ export default function AdminQuestionsPage() {
 
   // Stats
   const stats = {
-    total: mockQuestions.length,
-    mcq: mockQuestions.filter((q) => q.type === "mcq").length,
-    trueFalse: mockQuestions.filter((q) => q.type === "true_false").length,
-    shortAnswer: mockQuestions.filter((q) => q.type === "short_answer").length,
+    total: questions.length,
+    mcq: questions.filter((q) => q.type === "mcq").length,
+    trueFalse: questions.filter((q) => q.type === "true_false").length,
+    shortAnswer: questions.filter((q) => q.type === "short_answer").length,
   };
 
   // Table columns

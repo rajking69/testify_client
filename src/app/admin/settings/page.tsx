@@ -17,13 +17,12 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useTabState } from "@/lib/admin/url-state";
 import { cn } from "@/lib/admin/utils";
-import { mockSystemConfig } from "@/lib/admin/mock-data";
 import { SystemConfig } from "@/lib/admin/types";
 import { adminService } from "@/services/admin.service";
 
 export default function AdminSettingsPage() {
   const { activeTab, setTab } = useTabState("general");
-  const [configs, setConfigs] = useState<SystemConfig[]>(mockSystemConfig);
+  const [configs, setConfigs] = useState<SystemConfig[]>([]);
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
@@ -31,13 +30,11 @@ export default function AdminSettingsPage() {
     adminService
       .getSystemConfigs()
       .then((res) => {
-        if (isMounted && res.data && res.data.length > 0) {
+        if (isMounted && res.data) {
           setConfigs(res.data);
         }
       })
-      .catch(() => {
-        // Fallback to initial state if backend offline
-      });
+      .catch(() => {});
     return () => {
       isMounted = false;
     };
@@ -57,7 +54,7 @@ export default function AdminSettingsPage() {
   };
 
   const handleReset = () => {
-    setConfigs(mockSystemConfig);
+    setConfigs([]);
   };
 
   const updateConfig = (id: string, value: string) => {
