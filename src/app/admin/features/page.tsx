@@ -6,12 +6,11 @@ import { AdminCard, StatCard } from "@/components/admin/shared/AdminCard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/admin/utils";
-import { mockFeatureFlags } from "@/lib/admin/mock-data";
 import { FeatureFlag, FeatureCategory } from "@/lib/admin/types";
 import { adminService } from "@/services/admin.service";
 
 export default function AdminFeaturesPage() {
-  const [features, setFeatures] = useState<FeatureFlag[]>(mockFeatureFlags);
+  const [features, setFeatures] = useState<FeatureFlag[]>([]);
   const [updating, setUpdating] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -19,13 +18,11 @@ export default function AdminFeaturesPage() {
     adminService
       .getFeatureFlags()
       .then((res) => {
-        if (isMounted && res.data && res.data.length > 0) {
+        if (isMounted && res.data) {
           setFeatures(res.data);
         }
       })
-      .catch(() => {
-        // Fallback to initial state if backend offline
-      });
+      .catch(() => {});
     return () => {
       isMounted = false;
     };

@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
 import { getStatusColor, formatRelativeTime, cn } from "@/lib/admin/utils";
-import { mockExams } from "@/lib/admin/mock-data";
+import { examService } from "@/services/exam.service";
 import {
   Exam,
   ExamStatus,
@@ -41,14 +41,49 @@ export default function AdminExamsPage() {
     status: undefined,
   });
 
+  const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [examModal, setExamModal] = useState<{
     type: "create" | "edit";
     exam?: Exam;
   } | null>(null);
 
+  React.useEffect(() => {
+    let isMounted = true;
+    examService
+      .getAllExams()
+      .then((res) => {
+        if (isMounted && res.data) {
+          const list: Exam[] = res.data.map((item: any) => ({
+            id: String(item._id),
+            title: item.title,
+            subject: item.subject || item.category || "General",
+            status: (item.status || "published").toLowerCase() as ExamStatus,
+            durationMinutes: item.durationMinutes || 60,
+            totalMarks: item.totalMarks || 50,
+            passMark: Math.round((item.totalMarks || 50) * (item.passPercentage || 40) / 100),
+            questionCount: item.questions?.length || 0,
+            enrolledCount: item.enrolledCount || 0,
+            completedCount: item.completedCount || 0,
+            schedule: {
+              startWindow: item.createdAt || new Date().toISOString(),
+              endWindow: item.updatedAt || new Date().toISOString(),
+            },
+            createdBy: item.createdBy || "Instructor",
+            createdAt: item.createdAt || new Date().toISOString(),
+            updatedAt: item.updatedAt || new Date().toISOString(),
+          }));
+          setExams(list);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter exams
-  const filteredExams = mockExams.filter((exam) => {
+  const filteredExams = exams.filter((exam) => {
     if (filters.status && exam.status !== filters.status) return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();
@@ -70,10 +105,10 @@ export default function AdminExamsPage() {
 
   // Stats
   const stats = {
-    total: mockExams.length,
-    published: mockExams.filter((e) => e.status === "published").length,
-    scheduled: mockExams.filter((e) => e.status === "scheduled").length,
-    draft: mockExams.filter((e) => e.status === "draft").length,
+    total: exams.length,
+    published: exams.filter((e) => e.status === "published").length,
+    scheduled: exams.filter((e) => e.status === "scheduled").length,
+    draft: exams.filter((e) => e.status === "draft").length,
   };
 
   // Table columns
@@ -155,6 +190,84 @@ export default function AdminExamsPage() {
     },
   ];
 
+  const [formTitle, setFormTitle] = useState("");
+  const [formSubject, setFormSubject] = useState("");
+  const [formDuration, setFormDuration] = useState("60");
+  const [formMarks, setFormMarks] = useState("50");
+  const [formStatus, setFormStatus] = useState<ExamStatus>("draft");
+
+  const openCreateModal = () => {
+    setFormTitle("");
+    setFormSubject("General");
+    setFormDuration("60");
+    setFormMarks("50");
+    setFormStatus("draft");
+    setExamModal({ type: "create" });
+  };
+
+  const openEditModal = (exam: Exam) => {
+    setFormTitle(exam.title);
+    setFormSubject(exam.subject);
+    setFormDuration(String(exam.durationMinutes));
+    setFormMarks(String(exam.totalMarks));
+    setFormStatus(exam.status);
+    setExamModal({ type: "edit", exam });
+  };
+
+  const handleSaveExam = () => {
+    if (!formTitle.trim()) return;
+
+    const duration = Number(formDuration) || 60;
+    const totalMarks = Number(formMarks) || 50;
+    const passMark = Math.round((totalMarks * 40) / 100);
+
+    if (examModal?.type === "create") {
+      const newExam: Exam = {
+        id: `exam_${Date.now()}`,
+        title: formTitle,
+        subject: formSubject || "General",
+        status: formStatus,
+        durationMinutes: duration,
+        totalMarks: totalMarks,
+        passMark: passMark,
+        questionCount: 0,
+        enrolledCount: 0,
+        completedCount: 0,
+        schedule: {
+          startWindow: new Date().toISOString(),
+          endWindow: new Date(Date.now() + 86400000).toISOString(),
+        },
+        createdBy: "Administrator",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setExams((prev) => [newExam, ...prev]);
+    } else if (examModal?.type === "edit" && examModal.exam) {
+      const updatedId = examModal.exam.id;
+      setExams((prev) =>
+        prev.map((e) =>
+          e.id === updatedId
+            ? {
+                ...e,
+                title: formTitle,
+                subject: formSubject,
+                durationMinutes: duration,
+                totalMarks: totalMarks,
+                passMark: passMark,
+                status: formStatus,
+                updatedAt: new Date().toISOString(),
+              }
+            : e
+        )
+      );
+    }
+    setExamModal(null);
+  };
+
+  const handleDeleteExam = (id: string) => {
+    setExams((prev) => prev.filter((e) => e.id !== id));
+  };
+
   // Action menu items
   const getActionMenuItems = (exam: Exam): ActionMenuItem<Exam>[] => [
     {
@@ -165,12 +278,12 @@ export default function AdminExamsPage() {
     {
       label: "Edit",
       icon: <Edit className="h-4 w-4" />,
-      onClick: (e) => setExamModal({ type: "edit", exam: e }),
+      onClick: (e) => openEditModal(e),
     },
     {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
-      onClick: (e) => console.log("Delete exam", e.id),
+      onClick: (e) => handleDeleteExam(e.id),
       danger: true,
     },
   ];
@@ -187,7 +300,7 @@ export default function AdminExamsPage() {
             Create, schedule, and manage platform examinations
           </p>
         </div>
-        <Button onClick={() => setExamModal({ type: "create" })}>
+        <Button onClick={openCreateModal}>
           <Plus className="h-4 w-4 mr-2" />
           Create Exam
         </Button>
@@ -301,7 +414,8 @@ export default function AdminExamsPage() {
                 Exam Title
               </label>
               <Input
-                defaultValue={examModal.exam?.title}
+                value={formTitle}
+                onChange={(e) => setFormTitle(e.target.value)}
                 placeholder="Enter exam title"
               />
             </div>
@@ -311,7 +425,8 @@ export default function AdminExamsPage() {
                 Subject
               </label>
               <Input
-                defaultValue={examModal.exam?.subject}
+                value={formSubject}
+                onChange={(e) => setFormSubject(e.target.value)}
                 placeholder="Enter subject"
               />
             </div>
@@ -323,7 +438,8 @@ export default function AdminExamsPage() {
                 </label>
                 <Input
                   type="number"
-                  defaultValue={examModal.exam?.durationMinutes}
+                  value={formDuration}
+                  onChange={(e) => setFormDuration(e.target.value)}
                   placeholder="60"
                 />
               </div>
@@ -333,7 +449,8 @@ export default function AdminExamsPage() {
                 </label>
                 <Input
                   type="number"
-                  defaultValue={examModal.exam?.totalMarks}
+                  value={formMarks}
+                  onChange={(e) => setFormMarks(e.target.value)}
                   placeholder="100"
                 />
               </div>
@@ -344,7 +461,8 @@ export default function AdminExamsPage() {
                 Status
               </label>
               <Select
-                defaultValue={examModal.exam?.status || "draft"}
+                value={formStatus}
+                onChange={(val: any) => setFormStatus((val?.target?.value || val) as ExamStatus)}
                 options={[
                   { value: "draft", label: "Draft" },
                   { value: "scheduled", label: "Scheduled" },
@@ -357,7 +475,7 @@ export default function AdminExamsPage() {
               <Button variant="outline" onClick={() => setExamModal(null)}>
                 Cancel
               </Button>
-              <Button>
+              <Button onClick={handleSaveExam}>
                 {examModal.type === "create" ? "Create Exam" : "Save Changes"}
               </Button>
             </div>
