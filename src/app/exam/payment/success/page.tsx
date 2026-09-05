@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { AnimatedBackground } from "@/components/landing/AnimatedBackground";
 import { purchaseService } from "@/services/purchase.service";
 
+import { authClient } from "@/lib/auth-client";
+
 function StudentPaymentSuccessContent() {
   const router = useRouter();
+  const { data: sessionData } = authClient.useSession();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const examId =
@@ -20,7 +23,7 @@ function StudentPaymentSuccessContent() {
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    // 1. Immediately unlock and record purchase locally
+    // 1. Immediately unlock and record purchase invoice locally
     if (examId && examId !== "default_exam" && typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem("testify_student_purchases") || "[]";
@@ -30,20 +33,65 @@ function StudentPaymentSuccessContent() {
           localStorage.setItem("testify_student_purchases", JSON.stringify(ids));
         }
 
+        const studentEmail = (sessionData?.user?.email || "").trim().toLowerCase() || "student@example.com";
+        const studentId = sessionData?.user?.id || "student_verified";
+        const studentName = sessionData?.user?.name || "Student Scholar";
+
+        const priceParam = searchParams.get("price") || searchParams.get("amount");
+        let resolvedPrice = priceParam ? Number(priceParam) : 50;
+        let resolvedTitle = "Certified Assessment Pass";
+        let resolvedTeacherId = "certified_instructor";
+        let resolvedTeacherName = "Certified Teacher / Instructor";
+        let resolvedTeacherEmail = "";
+
+        try {
+          const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
+          const matched = storedExams.find((e: any) => String(e.id || e._id || e.code) === String(examId));
+          if (matched) {
+            resolvedTitle = matched.title || resolvedTitle;
+            resolvedTeacherId = matched.teacherId || matched.teacherEmail || matched.createdBy || resolvedTeacherId;
+            resolvedTeacherEmail = matched.teacherEmail || matched.createdBy || "";
+            resolvedTeacherName = matched.teacherName || matched.instructorName || resolvedTeacherEmail || resolvedTeacherName;
+            if (matched.price && Number(matched.price) > 0) {
+              resolvedPrice = Number(matched.price);
+            }
+          }
+        } catch {}
+
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+        const randSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const invoiceNumber = `INV-${dateStr}-${randSuffix}`;
+        const finalTxnId = String(sessionId || `cs_stripe_${Date.now()}`);
+
         purchaseService.recordPurchase({
-          id: `pur-${Date.now()}`,
-          studentId: "student_verified",
+          id: invoiceNumber,
+          studentId: studentId,
+          studentName: studentName,
+          studentEmail: studentEmail,
           examId: String(examId),
-          examTitle: "Certified Assessment Pass",
-          teacherId: "teacher_certified",
-          amount: 50,
-          currency: "BDT",
+          examTitle: resolvedTitle,
+          teacherId: resolvedTeacherId,
+          teacherName: resolvedTeacherName,
+          teacherEmail: resolvedTeacherEmail,
+          originalExamPrice: resolvedPrice,
+          paidAmount: resolvedPrice,
+          amount: resolvedPrice,
+          currency: "USD",
           paymentProvider: "STRIPE",
-          transactionId: String(sessionId || `txn_${Date.now()}`),
+          paymentMethod: "Stripe Secured Card",
+          transactionId: finalTxnId,
+          paymentTransactionId: finalTxnId,
           paymentStatus: "SUCCESS",
-          purchasedAt: new Date().toLocaleTimeString(),
+          purchasedAt: now.toISOString(),
+          purchaseDate: now.toISOString(),
+          createdAt: now.toISOString(),
           accessStatus: "ACTIVE",
         });
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("testify_exam_submitted"));
+        }
       } catch (e) {
         console.error("Local purchase record error:", e);
       }
