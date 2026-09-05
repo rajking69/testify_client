@@ -3,9 +3,18 @@ import { inferAdditionalFields } from "better-auth/client/plugins";
 import { emailOTPClient } from "better-auth/client/plugins";
 import { authConfig } from "./auth-types";
 
+const sanitizeUrl = (rawUrl?: string): string => {
+  if (!rawUrl) return "https://testify-server-5ta4.onrender.com";
+  let cleaned = rawUrl.trim().replace(/^["'\\]+|["'\\]+$/g, "").trim();
+  if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
+    cleaned = `https://${cleaned}`;
+  }
+  return cleaned.replace(/\/+$/, "");
+};
+
 // Create typed auth client with inferred additional fields
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:5000",
+  baseURL: sanitizeUrl(process.env.NEXT_PUBLIC_BETTER_AUTH_URL),
   plugins: [inferAdditionalFields<typeof authConfig>(), emailOTPClient()],
 });
 
