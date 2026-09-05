@@ -83,10 +83,10 @@ export function Logo({
   className = "",
   showText = true,
   textClassName = "",
-  href,
+  href = "/",
 }: LogoProps) {
   const content = (
-    <div className={`inline-flex items-center gap-3 shrink-0 ${className}`}>
+    <div className={`inline-flex items-center gap-3 shrink-0 cursor-pointer ${className}`}>
       <TestifyLogoIcon size={size} />
       {showText && (
         <span
