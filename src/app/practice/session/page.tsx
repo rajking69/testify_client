@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
 import { purchaseService } from "@/services/purchase.service";
+import { examService } from "@/services/exam.service";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
@@ -19,7 +21,6 @@ import {
   Home,
 } from "lucide-react";
 import { usePractice } from "@/lib/practice/practice-context";
-import { questionBank } from "@/lib/practice/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -46,8 +47,9 @@ function PracticeSessionContent() {
   } = usePractice();
 
   const [showEndModal, setShowEndModal] = useState(false);
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
 
-  // Auto-initialize exam session from URL query parameters if not started
+  // Auto-initialize exam session from URL query parameters or backend exam
   useEffect(() => {
     if (currentSession && currentSession.length > 0) return;
 
@@ -75,7 +77,7 @@ function PracticeSessionContent() {
         });
 
         if (alreadyTaken) {
-          router.replace(`/exam/${examIdParam}`);
+          router.replace(`/practice/result?examId=${examIdParam}`);
           return;
         }
       } catch (e) {
@@ -83,63 +85,118 @@ function PracticeSessionContent() {
       }
     }
 
-    let questionsToUse: any[] = [];
-    let examDurationSec = 600; // 10 mins default
+    async function initializeQuestions() {
+      let questionsToUse: any[] = [];
+      let examDurationSec = 600; // 10 mins default
 
-    // 1. Check if examId exists in teacher's created exams
-    if (examIdParam && typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("testify_teacher_exams");
-        if (stored) {
-          const list = JSON.parse(stored);
-          const found = list.find(
-            (e: any) =>
-              String(e.id) === examIdParam ||
-              e.joinCode?.toUpperCase() === examIdParam.toUpperCase() ||
-              e.accessToken === examIdParam
-          );
-          if (found) {
-            if (found.duration) {
-              examDurationSec = found.duration * 60;
-            }
-            if (found.questions && found.questions.length > 0) {
-              questionsToUse = found.questions.map((q: any, idx: number) => ({
-                id: q.id || `q-${idx}`,
-                subject: found.subject || "Computer Science",
+      if (examIdParam && typeof window !== "undefined") {
+        // 1. Check if active live exam was stored by waiting room
+        try {
+          const storedActive = localStorage.getItem("testify_active_live_exam");
+          if (storedActive) {
+            const active = JSON.parse(storedActive);
+            if (
+              (String(active.examId) === examIdParam || active.token === examIdParam) &&
+              active.questions &&
+              active.questions.length > 0
+            ) {
+              if (active.duration) {
+                examDurationSec = active.duration * 60;
+              }
+              questionsToUse = active.questions.map((q: any, idx: number) => ({
+                id: q.id || q._id || `q-${idx}`,
+                subject: active.subject || "Examination",
                 topic: q.topic || "General",
-                type: q.type || "mcq",
-                difficulty: q.difficulty || "medium",
-                questionText: q.questionText || q.text || q.question || "Sample examination question",
-                question: q.questionText || q.text || q.question || "Sample examination question",
-                options: q.options || ["Option A", "Option B", "Option C", "Option D"],
+                type: q.type || q.questionType?.toLowerCase() || "mcq",
+                difficulty: q.difficulty?.toLowerCase() || "medium",
+                questionText: q.questionText || q.text || q.question || "Examination Question",
+                question: q.questionText || q.text || q.question || "Examination Question",
+                options: q.options || [],
                 correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
-                explanation: q.explanation || "Official answer explanation provided by instructor.",
+                explanation: q.explanation || "Official answer explanation.",
               }));
             }
           }
-        }
-      } catch {}
-    }
+        } catch {}
 
-    // 2. Fallback to Question Bank by Subject
-    if (questionsToUse.length === 0) {
-      if (subjectParam) {
-        const matched = questionBank.filter(
-          (q) => q.subject.toLowerCase() === subjectParam.toLowerCase()
-        );
-        questionsToUse = matched.length > 0 ? matched : questionBank.slice(0, 10);
-      } else {
-        questionsToUse = questionBank.slice(0, 10);
+        // 2. If not found in active live storage, fetch from backend API
+        if (questionsToUse.length === 0) {
+          try {
+            const single = await examService.getExamById(examIdParam);
+            if (single?.data && single.data.questions && single.data.questions.length > 0) {
+              if (single.data.durationMinutes) {
+                examDurationSec = single.data.durationMinutes * 60;
+              }
+              questionsToUse = single.data.questions.map((q: any, idx: number) => ({
+                id: q.id || q._id || `q-${idx}`,
+                subject: single.data.subject || single.data.category || "Examination",
+                topic: q.topic || "General",
+                type: q.type || q.questionType?.toLowerCase() || "mcq",
+                difficulty: q.difficulty?.toLowerCase() || "medium",
+                questionText: q.questionText || q.text || q.question || "Examination Question",
+                question: q.questionText || q.text || q.question || "Examination Question",
+                options: q.options || [],
+                correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
+                explanation: q.explanation || "Official answer explanation.",
+              }));
+            }
+          } catch (e) {
+            console.error("Failed to fetch exam questions from API:", e);
+          }
+        }
+
+        // 3. Check teacher custom exams in localStorage
+        if (questionsToUse.length === 0) {
+          try {
+            const stored = localStorage.getItem("testify_teacher_exams");
+            if (stored) {
+              const list = JSON.parse(stored);
+              const found = list.find(
+                (e: any) =>
+                  String(e.id) === examIdParam ||
+                  e.joinCode?.toUpperCase() === examIdParam.toUpperCase() ||
+                  e.accessToken === examIdParam
+              );
+              if (found) {
+                if (found.duration) {
+                  examDurationSec = found.duration * 60;
+                }
+                if (found.questions && found.questions.length > 0) {
+                  questionsToUse = found.questions.map((q: any, idx: number) => ({
+                    id: q.id || `q-${idx}`,
+                    subject: found.subject || "Examination",
+                    topic: q.topic || "General",
+                    type: q.type || "mcq",
+                    difficulty: q.difficulty || "medium",
+                    questionText: q.questionText || q.text || q.question || "Sample examination question",
+                    question: q.questionText || q.text || q.question || "Sample examination question",
+                    options: q.options || [],
+                    correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
+                    explanation: q.explanation || "Official answer explanation provided by instructor.",
+                  }));
+                }
+              }
+            }
+          } catch {}
+        }
+
+        // Strict Zero-Mock Policy: If no questions found for this exam, set error
+        if (questionsToUse.length === 0) {
+          setSessionLoadError("No examination questions are configured for this session. Please contact your instructor.");
+          return;
+        }
+      }
+
+      if (questionsToUse.length > 0) {
+        setCurrentSession(questionsToUse);
+        setCurrentQuestionIndex(0);
+        setUserAnswers({});
+        setTimeRemaining(examDurationSec);
+        setIsTimerRunning(true);
       }
     }
 
-    if (questionsToUse.length > 0) {
-      setCurrentSession(questionsToUse);
-      setCurrentQuestionIndex(0);
-      setUserAnswers({});
-      setTimeRemaining(examDurationSec);
-      setIsTimerRunning(true);
-    }
+    initializeQuestions();
   }, [
     currentSession,
     searchParams,
@@ -148,6 +205,8 @@ function PracticeSessionContent() {
     setUserAnswers,
     setTimeRemaining,
     setIsTimerRunning,
+    router,
+    session,
   ]);
 
   // Derive selectedAnswer from userAnswers instead of using useEffect
@@ -159,7 +218,7 @@ function PracticeSessionContent() {
   // Derive showExplanation - in normal mode, show when answer is selected
   const showExplanation = false; // Hidden during exam; revealed only on result page after completion
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     const result = endPracticeSession();
 
     try {
@@ -215,12 +274,27 @@ function PracticeSessionContent() {
         timeTakenSeconds: result.timeSpentSeconds || 600,
         correctAnswers: result.correctAnswers,
         totalQuestions: result.totalQuestions,
+        questions: result.questions || currentSession,
+        userAnswers: result.userAnswers || userAnswers,
       };
 
       const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
       const filtered = storedSubs.filter((s: any) => !(String(s.examId) === String(newSubmission.examId) && (s.studentEmail === newSubmission.studentEmail || !s.studentEmail)));
       const updated = [newSubmission, ...filtered];
       localStorage.setItem("testify_student_submissions", JSON.stringify(updated));
+
+      // Submit directly to backend API if this is an official examination
+      if (examIdParam) {
+        try {
+          const apiAnswers = Object.entries(userAnswers).map(([k, v]) => ({
+            questionId: String(k),
+            submittedAnswer: String(v),
+          }));
+          await examService.submitExam(examIdParam, apiAnswers);
+        } catch (apiErr) {
+          console.warn("Backend API exam submission note:", apiErr);
+        }
+      }
 
       const storedHist = JSON.parse(localStorage.getItem("testify_practice_history") || "[]");
       localStorage.setItem("testify_practice_history", JSON.stringify([newSubmission, ...storedHist]));
@@ -294,6 +368,62 @@ function PracticeSessionContent() {
       routerRef.current.push("/practice/result");
     }
   }, [isTimerRunning, timeRemaining, config.mode]);
+
+  if (session?.user?.role === "teacher") {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#FAF8F5] via-[#F4F9FD] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md bg-white dark:bg-slate-900 p-8 rounded-3xl border border-amber-300 dark:border-amber-800 shadow-xl">
+          <div className="h-14 w-14 rounded-2xl bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+            <AlertCircle className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold font-display text-[#0B2238] dark:text-white">
+            Teacher Access Restricted
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            You are currently logged in as a <strong>Teacher ({session?.user?.email})</strong>. Teachers are strictly prohibited from attempting or submitting practice tests and examinations.
+          </p>
+          <div className="pt-3 flex flex-col gap-2">
+            <Link href="/teacher/dashboard">
+              <Button className="w-full bg-[#152234] text-white text-xs font-bold h-10 rounded-xl">
+                Go to Teacher Dashboard
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionLoadError) {
+    const examIdParam = searchParams.get("examId");
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#FAF8F5] via-[#F4F9FD] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+          <AlertCircle className="h-14 w-14 text-rose-500 mx-auto" />
+          <h2 className="text-xl font-bold font-display text-[#0B2238] dark:text-white">
+            Questions Unavailable
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            {sessionLoadError}
+          </p>
+          <div className="pt-3 flex gap-2 justify-center">
+            {examIdParam && (
+              <Link href={`/exam/${examIdParam}`}>
+                <Button className="bg-[#0092E3] text-white text-xs font-semibold px-5">
+                  Back to Exam Room
+                </Button>
+              </Link>
+            )}
+            <Link href="/">
+              <Button variant="outline" className="text-xs px-5">
+                Home
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentSession || currentSession.length === 0) {
     return (

@@ -14,7 +14,7 @@ import {
   Home,
 } from "lucide-react";
 import { usePractice } from "@/lib/practice/practice-context";
-import { subjects } from "@/lib/practice/mock-data";
+import { subjects } from "@/lib/practice/practice-constants";
 import { PracticeMode, Difficulty } from "@/lib/practice/practice-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
