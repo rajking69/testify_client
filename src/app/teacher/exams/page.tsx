@@ -51,6 +51,8 @@ export interface ExamItem {
   price?: number;
   joinCode?: string;
   accessToken?: string;
+  teacherId?: string;
+  teacherName?: string;
   teacherEmail?: string;
   createdBy?: string;
   questions?: any[];
@@ -233,6 +235,9 @@ export default function TeacherExamsPage() {
               status,
               accessType,
               price: finalPrice,
+              teacherId: item.teacherId || session?.user?.id || session?.user?.email || "",
+              teacherName: item.teacherName || session?.user?.name || "Instructor",
+              teacherEmail: item.teacherEmail || session?.user?.email || "",
             }
           : item
       );
@@ -240,41 +245,26 @@ export default function TeacherExamsPage() {
       try {
         await examService.updateExam(editingExam.id, {
           title: title.trim(),
+          category: subject.trim(),
+          subject: subject.trim(),
           description: description.trim(),
           durationMinutes: Number(duration),
           totalMarks: Number(totalMarks),
+          passPercentage: Math.round(((Number(passMark) || 20) / (Number(totalMarks) || 50)) * 100),
           accessType,
           price: finalPrice,
+          status: status === "Published" ? "PUBLISHED" : status === "Scheduled" ? "PUBLISHED" : "DRAFT",
         });
       } catch {}
       showToast("Exam updated successfully!");
       setIsModalOpen(false);
     } else {
-      const newExamId = String(Date.now());
+      let createdId = String(Date.now());
       const joinCode = generateJoinCode(subject);
       const accessToken = generateAccessToken();
-      const newExam: ExamItem = {
-        id: newExamId,
-        title: title.trim(),
-        subject: subject.trim(),
-        description: description.trim(),
-        date: date || "Scheduled Soon",
-        duration: Number(duration) || 60,
-        totalMarks: Number(totalMarks) || 50,
-        passMark: Number(passMark) || 20,
-        studentsCount: 0,
-        status: "Draft",
-        accessType,
-        price: finalPrice,
-        joinCode,
-        accessToken,
-        teacherEmail: session?.user?.email || "",
-        createdBy: session?.user?.email || "",
-        questions: [],
-      };
-      updateExamsState([newExam, ...examsList]);
+
       try {
-        await examService.createExam({
+        const res = await examService.createExam({
           title: title.trim(),
           category: subject.trim(),
           subject: subject.trim(),
@@ -284,14 +274,40 @@ export default function TeacherExamsPage() {
           passPercentage: Math.round(((Number(passMark) || 20) / (Number(totalMarks) || 50)) * 100),
           accessType,
           price: finalPrice,
-          status: "DRAFT",
+          status: status === "Published" ? "PUBLISHED" : status === "Scheduled" ? "PUBLISHED" : "DRAFT",
           questions: [],
         });
+        if (res && res.data && res.data._id) {
+          createdId = String(res.data._id);
+        }
       } catch {}
+
+      const newExam: ExamItem = {
+        id: createdId,
+        title: title.trim(),
+        subject: subject.trim(),
+        description: description.trim(),
+        date: date || "Scheduled Soon",
+        duration: Number(duration) || 60,
+        totalMarks: Number(totalMarks) || 50,
+        passMark: Number(passMark) || 20,
+        studentsCount: 0,
+        status: status,
+        accessType,
+        price: finalPrice,
+        joinCode,
+        accessToken,
+        teacherId: session?.user?.id || session?.user?.email || "",
+        teacherName: session?.user?.name || "Instructor",
+        teacherEmail: session?.user?.email || "",
+        createdBy: session?.user?.email || "",
+        questions: [],
+      };
+      updateExamsState([newExam, ...examsList]);
       showToast("Exam created! Redirecting to Question Setup...");
       setIsModalOpen(false);
       // Seamlessly redirect teacher to Question Setup Console
-      router.push(`/teacher/exams/${newExamId}/setup`);
+      router.push(`/teacher/exams/${createdId}/setup`);
     }
   };
 
@@ -304,17 +320,22 @@ export default function TeacherExamsPage() {
     showToast("Exam deleted.");
   };
 
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string) => {
+    let newStatus: "Published" | "Scheduled" | "Draft" = "Draft";
     const updated: ExamItem[] = examsList.map((item) => {
       if (item.id === id) {
-        const nextStatus: "Published" | "Scheduled" | "Draft" =
-          item.status === "Published" ? "Scheduled" : "Published";
-        return { ...item, status: nextStatus };
+        newStatus = item.status === "Published" ? "Draft" : "Published";
+        return { ...item, status: newStatus };
       }
       return item;
     });
     updateExamsState(updated);
-    showToast("Exam status updated!");
+    try {
+      await examService.updateExam(id, {
+        status: (newStatus as string) === "Published" ? "PUBLISHED" : "DRAFT",
+      });
+    } catch {}
+    showToast(`Exam status updated to ${newStatus}!`);
   };
 
   if (!isLoaded) {
@@ -432,7 +453,7 @@ export default function TeacherExamsPage() {
                 <div className="flex items-center gap-1.5">
                   {exam.accessType === "PAID" ? (
                     <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      Paid • ${exam.price || 5}
+                      Paid • ${exam.price || 50}
                     </span>
                   ) : (
                     <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -639,7 +660,7 @@ export default function TeacherExamsPage() {
             {accessType === "PAID" && (
               <div className="pt-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Exam Price (Ã Â§Â³ / BDT) <span className="text-rose-500">*</span>
+                  Exam Price ($ USD) <span className="text-rose-500">*</span>
                 </label>
                 <Input
                   type="number"
