@@ -14,13 +14,12 @@ import {
   PracticeResult,
   PracticeMode,
   Difficulty,
+  PracticeHistoryItem,
 } from "./practice-types";
 import {
-  questionBank,
   subjects,
-  practiceHistory,
   defaultSessionTime,
-} from "./mock-data";
+} from "./practice-constants";
 
 interface PracticeContextType {
   // Configuration state
@@ -50,8 +49,8 @@ interface PracticeContextType {
   setLastResult: (result: PracticeResult | null) => void;
 
   // History state
-  history: typeof practiceHistory;
-  addToHistory: (item: (typeof practiceHistory)[0]) => void;
+  history: PracticeHistoryItem[];
+  addToHistory: (item: PracticeHistoryItem) => void;
 
   // Utility functions
   startPracticeSession: (config: PracticeSessionConfig) => void;
@@ -85,16 +84,25 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
   const [timeRemaining, setTimeRemaining] = useState(defaultSessionTime);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
 
-  // Bookmark state (initialized with some bookmarked questions)
-  const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Question[]>(
-    questionBank.filter((q) => q.isBookmarked),
-  );
+  // Bookmark state (initialized empty for real user bookmarks)
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Question[]>([]);
 
   // Results state
-  const [lastResult, setLastResult] = useState<PracticeResult | null>(null);
+  const [lastResult, setLastResultState] = useState<PracticeResult | null>(null);
+
+  const setLastResult = useCallback((result: PracticeResult | null) => {
+    setLastResultState(result);
+    if (result) {
+      try {
+        localStorage.setItem("testify_last_result", JSON.stringify(result));
+      } catch (e) {
+        console.error("Failed to save lastResult to localStorage", e);
+      }
+    }
+  }, []);
 
   // History state
-  const [history, setHistory] = useState(practiceHistory);
+  const [history, setHistory] = useState<PracticeHistoryItem[]>([]);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -115,6 +123,15 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
         console.error("Failed to load history from localStorage", e);
       }
     }
+
+    const savedResult = localStorage.getItem("testify_last_result");
+    if (savedResult) {
+      try {
+        setLastResultState(JSON.parse(savedResult));
+      } catch (e) {
+        console.error("Failed to load lastResult from localStorage", e);
+      }
+    }
   }, []);
 
   // Save bookmarks to localStorage whenever they change
@@ -133,7 +150,7 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
   // Filter questions based on configuration
   const getFilteredQuestions = useCallback(
     (config: PracticeSessionConfig): Question[] => {
-      let filtered = [...questionBank];
+      let filtered: Question[] = [];
 
       // Filter by subject
       if (config.subject) {
@@ -281,24 +298,17 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
       if (isBookmarked) {
         return prev.filter((q) => q.id !== questionId);
       } else {
-        const questionToAdd = questionBank.find((q) => q.id === questionId);
+        const questionToAdd = currentSession?.find((q) => q.id === questionId);
         if (questionToAdd) {
           return [...prev, { ...questionToAdd, isBookmarked: true }];
         }
         return prev;
       }
     });
-
-    // Also update in question bank
-    const questionIndex = questionBank.findIndex((q) => q.id === questionId);
-    if (questionIndex !== -1) {
-      questionBank[questionIndex].isBookmarked =
-        !questionBank[questionIndex].isBookmarked;
-    }
-  }, []);
+  }, [currentSession]);
 
   // Add item to history
-  const addToHistory = useCallback((item: (typeof practiceHistory)[0]) => {
+  const addToHistory = useCallback((item: PracticeHistoryItem) => {
     setHistory((prev) => [item, ...prev]);
   }, []);
 
