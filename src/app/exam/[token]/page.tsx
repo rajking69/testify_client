@@ -22,6 +22,7 @@ import {
   KeyRound,
   CreditCard,
   Layers,
+  ShieldAlert,
 } from "lucide-react";
 import { StudentExamPurchaseModal } from "@/components/student/StudentExamPurchaseModal";
 
@@ -42,69 +43,6 @@ interface ExamRecord {
   questions?: any[];
 }
 
-const defaultPublishedExams: ExamRecord[] = [
-  {
-    id: "cs-midterm-101",
-    title: "Computer Science Mid Term Exam",
-    subject: "Computer Science",
-    description: "Live assessment covering core CS concepts, data structures, algorithms, and logic.",
-    duration: 30,
-    totalMarks: 25,
-    passMark: 10,
-    status: "Published",
-    accessType: "FREE",
-    price: 0,
-    joinCode: "COMPZPN",
-    accessToken: "cs_midterm_101",
-    questions: [],
-  },
-  {
-    id: "js-mastery-mock",
-    title: "Advanced JavaScript & Web Mock Test",
-    subject: "Computer Science",
-    description: "Premium certification test covering asynchronous JS, event loop, closures, and React architecture.",
-    duration: 45,
-    totalMarks: 50,
-    passMark: 25,
-    status: "Published",
-    accessType: "PAID",
-    price: 5,
-    joinCode: "JSPREM50",
-    accessToken: "js_mastery_mock",
-    questions: [],
-  },
-  {
-    id: "math-calculus-202",
-    title: "Calculus & Linear Algebra Assessment",
-    subject: "Mathematics",
-    description: "Comprehensive mathematics paper on differentiation, integration, matrices, and vectors.",
-    duration: 60,
-    totalMarks: 50,
-    passMark: 20,
-    status: "Published",
-    accessType: "FREE",
-    price: 0,
-    joinCode: "MATH7K9",
-    accessToken: "math_calculus_202",
-    questions: [],
-  },
-  {
-    id: "physics-quantum-301",
-    title: "Quantum Mechanics & Optics Mock",
-    subject: "Physics",
-    description: "Premium assessment covering wave-particle duality, photonics, and quantum states.",
-    duration: 45,
-    totalMarks: 40,
-    passMark: 20,
-    status: "Published",
-    accessType: "PAID",
-    price: 5,
-    joinCode: "PHYQNT75",
-    accessToken: "physics_quantum_301",
-    questions: [],
-  },
-];
-
 export default function StudentExamWaitingRoomPage({
   params,
 }: {
@@ -117,6 +55,7 @@ export default function StudentExamWaitingRoomPage({
 
   const [exam, setExam] = useState<ExamRecord | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [enteredJoinCode, setEnteredJoinCode] = useState("");
@@ -134,25 +73,40 @@ export default function StudentExamWaitingRoomPage({
     }
   }, [session]);
 
-  // Lookup Exam by Access Token, Join Code, or ID across LocalStorage, Backend API, and Default Catalog
+  // Lookup Exam by Access Token, Join Code, or ID strictly from Backend API
   useEffect(() => {
     async function resolveExam() {
+      setIsLoaded(false);
+      setConnectionError(null);
       try {
         let found: ExamRecord | undefined;
+        let isServerOffline = false;
 
-        // 1. Check teacher custom exams in localStorage
-        const stored = localStorage.getItem("testify_teacher_exams");
-        if (stored) {
-          const list: ExamRecord[] = JSON.parse(stored);
-          found = list.find(
-            (item) =>
-              item.accessToken === rawToken ||
-              item.joinCode?.toUpperCase() === rawToken.toUpperCase() ||
-              String(item.id) === rawToken
-          );
+        // 1. First attempt to fetch from Backend API by ID or token
+        try {
+          const singleRes = await examService.getExamById(rawToken);
+          if (singleRes && singleRes.data) {
+            const match = singleRes.data;
+            found = {
+              id: String(match._id),
+              title: match.title,
+              subject: match.subject || match.category || "General",
+              description: match.description || "Instructor published examination.",
+              duration: match.durationMinutes || 60,
+              totalMarks: match.totalMarks || 50,
+              passMark: Math.round((match.totalMarks || 50) * (match.passPercentage || 40) / 100),
+              status: "Published",
+              accessType: (String(match.accessType).toUpperCase() === "PAID" || Number(match.price) > 0) ? "PAID" : "FREE",
+              price: match.price || 0,
+              joinCode: (match as any).joinCode || rawToken,
+              accessToken: (match as any).accessToken || String(match._id),
+              questions: match.questions || [],
+            };
+          }
+        } catch {
+          // If direct ID lookup fails, search across all exams (for joinCode / accessToken)
         }
 
-        // 2. If not found in localStorage, fetch from backend API
         if (!found) {
           try {
             const res = await examService.getAllExams();
@@ -181,19 +135,26 @@ export default function StudentExamWaitingRoomPage({
                 };
               }
             }
-          } catch (e) {
-            console.error("Failed to load exam from API:", e);
+          } catch (apiErr: any) {
+            console.error("Failed to load exam from API:", apiErr);
+            isServerOffline = true;
           }
         }
 
-        // 3. Check standard platform default exams
-        if (!found) {
-          found = defaultPublishedExams.find(
-            (item) =>
-              item.accessToken === rawToken ||
-              item.joinCode?.toUpperCase() === rawToken.toUpperCase() ||
-              String(item.id) === rawToken
-          );
+        // 2. Check teacher's local exams store if created in teacher workspace
+        if (!found && !isServerOffline) {
+          try {
+            const stored = localStorage.getItem("testify_teacher_exams");
+            if (stored) {
+              const list: ExamRecord[] = JSON.parse(stored);
+              found = list.find(
+                (item) =>
+                  item.accessToken === rawToken ||
+                  item.joinCode?.toUpperCase() === rawToken.toUpperCase() ||
+                  String(item.id) === rawToken
+              );
+            }
+          } catch {}
         }
 
         if (found) {
@@ -202,20 +163,10 @@ export default function StudentExamWaitingRoomPage({
             setEnteredJoinCode(rawToken.toUpperCase());
           }
         } else {
-          // Fallback room if unknown join code
-          setExam({
-            id: rawToken,
-            title: "Private Classroom Exam",
-            subject: "Assessment",
-            description: "Instructor hosted examination session.",
-            duration: 60,
-            totalMarks: 50,
-            passMark: 20,
-            status: "Published",
-            accessType: "FREE",
-            joinCode: rawToken.toUpperCase(),
-            questions: [],
-          });
+          setExam(null);
+          if (isServerOffline) {
+            setConnectionError("Cannot reach the examination server. Please verify your backend server is running on http://localhost:5000.");
+          }
         }
       } catch (err) {
         console.error("Error resolving exam:", err);
@@ -287,6 +238,13 @@ export default function StudentExamWaitingRoomPage({
     return null;
   }, [exam, studentEmail, session, rawToken]);
 
+  // If student has ALREADY completed this exam, directly redirect to Result page (no warning popup)
+  React.useEffect(() => {
+    if (previousSubmission && exam) {
+      router.replace(`/practice/result?examId=${exam.id}&title=${encodeURIComponent(exam.title)}&subject=${encodeURIComponent(exam.subject)}`);
+    }
+  }, [previousSubmission, exam, router]);
+
   const handleStartExam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentName.trim() || !agreeRules) return;
@@ -332,6 +290,7 @@ export default function StudentExamWaitingRoomPage({
           studentEmail: studentEmail.trim(),
           token: rawToken,
           startedAt: new Date().toISOString(),
+          questions: exam?.questions || [],
         })
       );
     } catch {}
@@ -351,6 +310,64 @@ export default function StudentExamWaitingRoomPage({
     );
   }
 
+  const currentUserRole = (session?.user as any)?.role?.toLowerCase() || "";
+  if (currentUserRole === "teacher") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#070E1A]">
+        <div className="max-w-md w-full rounded-3xl bg-white dark:bg-[#080E1A] border border-amber-300 dark:border-amber-800/80 p-8 shadow-xl text-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+            <ShieldAlert className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">Teacher Access Restricted</h2>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            You are currently logged in as a <strong>Teacher ({session?.user?.email})</strong>. Teachers are strictly not permitted to attempt or submit examinations. Examinations are reserved for Student accounts.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Link href="/teacher/dashboard">
+              <Button className="w-full bg-[#152234] text-white font-bold text-xs h-10 rounded-xl">
+                Go to Teacher Workspace
+              </Button>
+            </Link>
+            <Link href="/auth/login">
+              <Button variant="outline" className="w-full font-bold text-xs h-10 rounded-xl">
+                Switch to Student Account
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
+        <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
+          <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">
+            Server Connection Error
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            {connectionError}
+          </p>
+          <div className="flex gap-2 justify-center pt-2">
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-[#0092E3] text-white font-semibold text-xs px-5"
+            >
+              Retry Connection
+            </Button>
+            <Link href="/exam/join">
+              <Button variant="outline" className="text-xs px-5">
+                Back to Join
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!exam) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
@@ -360,13 +377,20 @@ export default function StudentExamWaitingRoomPage({
             Examination Room Not Found
           </h2>
           <p className="text-xs text-slate-500">
-            The exam code or access link is invalid or the session has ended.
+            The exam code or access link is invalid or the examination is no longer active.
           </p>
-          <Link href="/practice">
-            <Button className="bg-[#0092E3] text-white font-semibold text-xs px-5">
-              Browse Practice Hub
-            </Button>
-          </Link>
+          <div className="flex gap-2 justify-center pt-2">
+            <Link href="/exam/join">
+              <Button className="bg-[#0092E3] text-white font-semibold text-xs px-5">
+                Try Another Code
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline" className="text-xs px-5">
+                Back to Home
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -487,13 +511,13 @@ export default function StudentExamWaitingRoomPage({
               </div>
             </div>
 
-            <Link href="/practice/result" className="block w-full">
+            <Link href={`/practice/result?examId=${exam.id}`} className="block w-full">
               <Button
                 type="button"
-                className="w-full bg-[#0092E3] hover:bg-[#007AC9] text-white font-semibold text-xs py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 <BookOpen className="h-4 w-4" />
-                <span>View Your Results & Review Answers</span>
+                <span>Show Result</span>
               </Button>
             </Link>
           </div>
