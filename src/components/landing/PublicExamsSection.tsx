@@ -28,6 +28,8 @@ export interface PublicExamCard {
   subject: string;
   description: string;
   teacherName: string;
+  teacherEmail?: string;
+  teacherId?: string;
   duration: number;
   totalMarks: number;
   passMark: number;
@@ -38,73 +40,6 @@ export interface PublicExamCard {
   accessToken: string;
   status: string;
 }
-
-const defaultPublishedExams: PublicExamCard[] = [
-  {
-    id: "cs-midterm-101",
-    title: "Computer Science Mid Term Exam",
-    subject: "Computer Science",
-    description: "Live assessment covering core CS concepts, data structures, algorithms, and logic.",
-    teacherName: "Prof. Alan Turing",
-    duration: 30,
-    totalMarks: 25,
-    passMark: 10,
-    questionsCount: 10,
-    accessType: "FREE",
-    price: 0,
-    joinCode: "COMPZPN",
-    accessToken: "cs_midterm_101",
-    status: "Published",
-  },
-  {
-    id: "js-mastery-mock",
-    title: "Advanced JavaScript & Web Mock Test",
-    subject: "Computer Science",
-    description: "Certification test covering asynchronous JS, event loop, closures, and React architecture.",
-    teacherName: "Dr. Dan Abramov",
-    duration: 45,
-    totalMarks: 50,
-    passMark: 25,
-    questionsCount: 15,
-    accessType: "PAID",
-    price: 5,
-    joinCode: "JSPREM50",
-    accessToken: "js_mastery_mock",
-    status: "Published",
-  },
-  {
-    id: "math-calculus-202",
-    title: "Calculus & Linear Algebra Assessment",
-    subject: "Mathematics",
-    description: "Comprehensive mathematics paper on differentiation, integration, matrices, and vectors.",
-    teacherName: "Prof. Carl Gauss",
-    duration: 60,
-    totalMarks: 50,
-    passMark: 20,
-    questionsCount: 12,
-    accessType: "FREE",
-    price: 0,
-    joinCode: "MATH7K9",
-    accessToken: "math_calculus_202",
-    status: "Published",
-  },
-  {
-    id: "physics-quantum-301",
-    title: "Quantum Mechanics & Optics Mock",
-    subject: "Physics",
-    description: "Assessment covering wave-particle duality, photonics, and quantum states.",
-    teacherName: "Dr. Richard Feynman",
-    duration: 45,
-    totalMarks: 40,
-    passMark: 20,
-    questionsCount: 10,
-    accessType: "PAID",
-    price: 5,
-    joinCode: "PHYQNT75",
-    accessToken: "physics_quantum_301",
-    status: "Published",
-  },
-];
 
 export default function PublicExamsSection() {
   const router = useRouter();
@@ -119,26 +54,93 @@ export default function PublicExamsSection() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Purge any stale legacy test purchases and detect completed submissions for this user
+    const currentEmail = (session?.user?.email || "").trim().toLowerCase();
+    const currentUserId = session?.user?.id;
+
+    // Purge any stale legacy test purchases
     if (typeof window !== "undefined") {
       try {
         localStorage.removeItem("testify_student_purchases");
-        localStorage.removeItem("testify_purchased_records");
 
-        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
-        const currentEmail = (session?.user?.email || "").trim().toLowerCase();
-        const currentUserId = session?.user?.id;
+        if (!currentEmail && !currentUserId) {
+          setCompletedExamIds([]);
+        } else {
+          const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+          const completed = storedSubs
+            .filter((s: any) =>
+              (currentEmail && s.studentEmail && s.studentEmail.trim().toLowerCase() === currentEmail) ||
+              (currentUserId && s.studentId && s.studentId === currentUserId)
+            )
+            .flatMap((s: any) => [
+              String(s.examId || ""),
+              String(s.id || ""),
+              String(s.token || ""),
+              String(s.accessToken || ""),
+              String(s.joinCode || ""),
+              String(s.title || "").toLowerCase(),
+              String(s.examTitle || "").toLowerCase()
+            ].filter(Boolean));
 
-        const completed = storedSubs
-          .filter((s: any) =>
-            (currentEmail && s.studentEmail && s.studentEmail.trim().toLowerCase() === currentEmail) ||
-            (currentUserId && s.studentId && s.studentId === currentUserId)
-          )
-          .map((s: any) => String(s.examId || s.id));
-
-        setCompletedExamIds(completed);
+          setCompletedExamIds(completed);
+        }
       } catch {}
     }
+
+    // Sync backend submissions asynchronously
+    async function syncBackendSubmissions() {
+      if (!currentEmail && !currentUserId) return;
+      try {
+        const res = await examService.getMySubmissions();
+        if (res && res.data && res.data.length > 0) {
+          const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+          const apiSubsConverted = res.data.map((sub: any) => ({
+            id: String(sub._id || sub.examId),
+            examId: String(sub.examId),
+            title: (sub.exam as any)?.title || sub.title || "Completed Assessment",
+            subject: (sub.exam as any)?.subject || sub.subject || "General",
+            duration: `${(sub.exam as any)?.durationMinutes || 60} mins`,
+            schedule: `Completed on ${new Date(sub.submittedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+            status: "Completed",
+            score: `${sub.score || 0}%`,
+            percentage: sub.score || 0,
+            isPassed: Boolean(sub.passed),
+            studentEmail: currentEmail,
+            studentId: currentUserId,
+            token: String(sub.examId),
+            completedAt: sub.submittedAt || new Date().toISOString(),
+            timeTakenSeconds: 300,
+            correctAnswers: sub.answers ? sub.answers.filter((a: any) => a.isCorrect).length : 0,
+            totalQuestions: sub.answers ? sub.answers.length : 10,
+          }));
+
+          const merged = [...storedSubs];
+          apiSubsConverted.forEach((apiItem) => {
+            if (!merged.some((m: any) => String(m.examId) === String(apiItem.examId) && ((currentEmail && m.studentEmail === currentEmail) || (currentUserId && m.studentId === currentUserId)))) {
+              merged.unshift(apiItem);
+            }
+          });
+          localStorage.setItem("testify_student_submissions", JSON.stringify(merged));
+
+          const userOnlySubs = merged.filter((s: any) =>
+            (currentEmail && s.studentEmail && s.studentEmail.trim().toLowerCase() === currentEmail) ||
+            (currentUserId && s.studentId && s.studentId === currentUserId)
+          );
+
+          const updatedCompleted = userOnlySubs.flatMap((s: any) => [
+            String(s.examId || ""),
+            String(s.id || ""),
+            String(s.token || ""),
+            String(s.accessToken || ""),
+            String(s.joinCode || ""),
+            String(s.title || "").toLowerCase(),
+            String(s.examTitle || "").toLowerCase()
+          ].filter(Boolean));
+
+          setCompletedExamIds(updatedCompleted);
+        }
+      } catch {}
+    }
+    syncBackendSubmissions();
 
     async function loadPublicExams() {
       let list: PublicExamCard[] = [];
@@ -156,13 +158,15 @@ export default function PublicExamsSection() {
                 title: e.title,
                 subject: e.subject || "General",
                 description: e.description || "Official assessment hosted on Testify platform.",
-                teacherName: "Certified Instructor",
+                teacherName: e.teacherName || e.creatorName || (e.teacherEmail ? e.teacherEmail.split("@")[0] : "Certified Instructor"),
+                teacherEmail: e.teacherEmail || e.createdBy || "",
+                teacherId: e.teacherId || e.creatorId || "",
                 duration: e.duration || 60,
                 totalMarks: e.totalMarks || 50,
                 passMark: e.passMark || 20,
                 questionsCount: e.questions?.length || 10,
                 accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
-                price: Number(e.price) > 0 ? Number(e.price) : 5,
+                price: Number(e.price) > 0 ? Number(e.price) : 0,
                 joinCode: e.joinCode || "CSE101",
                 accessToken: e.accessToken || String(e.id),
                 status: e.status || "Published",
@@ -174,7 +178,7 @@ export default function PublicExamsSection() {
       // 2. Fetch from Backend API
       try {
         const res = await examService.getAllExams();
-        if (res.data && res.data.length > 0) {
+        if (res.data) {
           const apiList: PublicExamCard[] = res.data
             .filter((e: any) => e.status === "PUBLISHED" || e.status === "Published")
             .map((e: any) => ({
@@ -182,14 +186,16 @@ export default function PublicExamsSection() {
               title: e.title,
               subject: e.subject || e.category || "General",
               description: e.description || "Official examination hosted on Testify.",
-              teacherName: "Certified Instructor",
+              teacherName: (e.createdBy as any)?.name || e.teacherName || "Certified Instructor",
+              teacherEmail: (e.createdBy as any)?.email || e.teacherEmail || "",
+              teacherId: (e.createdBy as any)?._id || (e.createdBy as any)?.id || e.teacherId || "",
               duration: e.durationMinutes || 60,
               totalMarks: e.totalMarks || 50,
               passMark: Math.round(((e.totalMarks || 50) * (e.passPercentage || 40)) / 100),
-              questionsCount: e.questions?.length || 10,
+              questionsCount: e.questions?.length || 0,
               accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
-              price: Number(e.price) > 0 ? Number(e.price) : 5,
-              joinCode: e.joinCode || "TST101",
+              price: Number(e.price) > 0 ? Number(e.price) : 0,
+              joinCode: e.joinCode || String(e._id),
               accessToken: e.accessToken || String(e._id),
               status: "Published",
             }));
@@ -202,16 +208,61 @@ export default function PublicExamsSection() {
         }
       } catch {}
 
-      // 3. If no custom exams created yet, load standard platform exams
-      if (list.length === 0) {
-        list = defaultPublishedExams;
-      }
-
       setExams(list);
       setIsLoaded(true);
     }
     loadPublicExams();
-  }, []);
+  }, [session?.user?.email, session?.user?.id]);
+
+  const isExamCompleted = (exam: PublicExamCard) => {
+    const currentEmail = (session?.user?.email || "").trim().toLowerCase();
+    const currentUserId = session?.user?.id;
+
+    if (!currentEmail && !currentUserId) {
+      return false; // Guests have not completed any exam under an account
+    }
+
+    const idStr = String(exam.id);
+    const tokenStr = String(exam.accessToken || "");
+    const codeStr = String(exam.joinCode || "");
+    const titleStr = String(exam.title || "").toLowerCase();
+
+    if (
+      completedExamIds.includes(idStr) ||
+      (tokenStr && completedExamIds.includes(tokenStr)) ||
+      (codeStr && completedExamIds.includes(codeStr)) ||
+      (titleStr && completedExamIds.includes(titleStr))
+    ) {
+      return true;
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+        return storedSubs.some((s: any) => {
+          const sEmail = (s.studentEmail || "").trim().toLowerCase();
+          const sUserId = s.studentId || s.userId;
+
+          const matchUser =
+            (currentEmail && sEmail && sEmail === currentEmail) ||
+            (currentUserId && sUserId && sUserId === currentUserId);
+
+          if (!matchUser) return false;
+
+          const sExamId = String(s.examId || s.id || s.token || "");
+          const sTitle = String(s.title || s.examTitle || "").trim().toLowerCase();
+          return (
+            sExamId === idStr ||
+            sExamId === tokenStr ||
+            sExamId === codeStr ||
+            (sTitle && titleStr && (sTitle === titleStr || sTitle.includes(titleStr) || titleStr.includes(sTitle)))
+          );
+        });
+      } catch {}
+    }
+
+    return false;
+  };
 
   const subjects = ["All", ...Array.from(new Set(exams.map((e) => e.subject)))];
 
@@ -256,6 +307,24 @@ export default function PublicExamsSection() {
         </div>
 
         {/* Filter & Search Bar */}
+        {session?.user?.role === "teacher" && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <strong className="font-bold">Teacher Access Notice:</strong> You are browsing published examinations. Teacher accounts are strictly prohibited from taking or attempting exams.
+              </div>
+            </div>
+            <Link href="/teacher/exams">
+              <Button size="sm" className="bg-[#152234] hover:bg-[#0f1926] text-white text-xs font-bold shrink-0 rounded-xl">
+                Go to Teacher Dashboard
+              </Button>
+            </Link>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           {/* Subject Pills */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -373,9 +442,9 @@ export default function PublicExamsSection() {
                         {exam.subject}
                       </span>
 
-                      {completedExamIds.includes(String(exam.id)) || completedExamIds.includes(exam.accessToken) ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+                      {isExamCompleted(exam) ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Completed
                         </span>
                       ) : isPaid ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#0092E3] dark:text-cyan-300 border border-blue-200/80 dark:border-blue-800/80">
@@ -424,14 +493,18 @@ export default function PublicExamsSection() {
 
                   {/* Card Footer Button */}
                   <div className="pt-4 mt-2 border-t border-slate-100 dark:border-slate-800">
-                    {completedExamIds.includes(String(exam.id)) || completedExamIds.includes(exam.accessToken) ? (
-                      <Link href="/practice/result" className="block w-full">
+                    {session?.user?.role === "teacher" ? (
+                      <div className="w-full py-2.5 px-3 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 font-bold text-xs flex items-center justify-center gap-2 shadow-2xs">
+                        <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>Teachers Cannot Take Exams</span>
+                      </div>
+                    ) : isExamCompleted(exam) ? (
+                      <Link href={`/practice/result?examId=${exam.id}&title=${encodeURIComponent(exam.title)}&subject=${encodeURIComponent(exam.subject)}`} className="block w-full">
                         <Button
-                          variant="outline"
-                          className="w-full text-xs font-semibold py-2.5 rounded-xl border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                          className="w-full text-xs font-bold py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
                         >
                           <BookOpen className="h-3.5 w-3.5" />
-                          <span>View My Result</span>
+                          <span>Show Result</span>
                         </Button>
                       </Link>
                     ) : isPaid ? (

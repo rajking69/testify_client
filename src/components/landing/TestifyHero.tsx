@@ -129,7 +129,7 @@ export default function TestifyHero() {
                       ? "/teacher/dashboard"
                       : activeRoleView === "admin"
                       ? "/admin/dashboard"
-                      : "/auth/login"
+                      : "/student/dashboard"
                   }
                   className="inline-flex items-center justify-center rounded-full border-2 border-cyan-200/90 dark:border-slate-700 bg-white/95 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-800 text-[#0B2238] dark:text-slate-100 font-bold text-xs sm:text-sm px-5 py-3 shadow-sm hover:shadow-md transition-all whitespace-nowrap"
                 >
@@ -145,15 +145,27 @@ export default function TestifyHero() {
               transition={{ duration: 0.6, delay: 0.5 }}
               className="pt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
             >
-              <motion.span whileHover={{ y: -2, scale: 1.03 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-cyan-200/80 dark:border-cyan-500/30 shadow-xs text-slate-800 dark:text-slate-200">
+              <motion.a
+                href="#security"
+                whileHover={{ y: -2, scale: 1.03 }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-cyan-200/80 dark:border-cyan-500/30 shadow-xs text-slate-800 dark:text-slate-200 cursor-pointer hover:border-cyan-500 transition-colors"
+              >
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#00A3C4]" /> AI Proctoring
-              </motion.span>
-              <motion.span whileHover={{ y: -2, scale: 1.03 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-amber-200/80 dark:border-amber-500/30 shadow-xs text-slate-800 dark:text-slate-200">
+              </motion.a>
+              <motion.a
+                href="#why-testify"
+                whileHover={{ y: -2, scale: 1.03 }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-amber-200/80 dark:border-amber-500/30 shadow-xs text-slate-800 dark:text-slate-200 cursor-pointer hover:border-amber-500 transition-colors"
+              >
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#E8922C]" /> Automated Grading
-              </motion.span>
-              <motion.span whileHover={{ y: -2, scale: 1.03 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-blue-200/80 dark:border-blue-500/30 shadow-xs text-slate-800 dark:text-slate-200">
+              </motion.a>
+              <motion.a
+                href="#features"
+                whileHover={{ y: -2, scale: 1.03 }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-blue-200/80 dark:border-blue-500/30 shadow-xs text-slate-800 dark:text-slate-200 cursor-pointer hover:border-blue-500 transition-colors"
+              >
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#00A3C4]" /> Real-Time Analytics
-              </motion.span>
+              </motion.a>
             </motion.div>
           </motion.div>
 
@@ -176,9 +188,9 @@ export default function TestifyHero() {
                     <span className="h-2.5 w-2.5 rounded-full bg-[#EF5350]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#FFA726]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#66BB6A]" />
-                    <span className="ml-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                    <Link href={`/${activeRoleView}/dashboard`} className="ml-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono hover:underline">
                       testify.edu/{activeRoleView}/portal
-                    </span>
+                    </Link>
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 dark:border-emerald-800 shadow-2xs">
                     <Shield className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> AI Proctoring is Active
@@ -200,15 +212,15 @@ export default function TestifyHero() {
                       <div className="col-span-4 bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] dark:from-slate-900 dark:to-slate-950 border-r border-[#E9EFF4] dark:border-slate-800 p-3 space-y-3">
                         <div className="space-y-1">
                           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Teacher Controls</p>
-                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#0B2238] dark:bg-blue-600 text-white font-semibold shadow-xs">
-                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank (48 Questions)
-                          </div>
-                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
-                            <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitor (32)
-                          </div>
-                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium">
+                          <Link href="/teacher/question-bank" className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#0B2238] dark:bg-blue-600 text-white font-semibold shadow-xs hover:opacity-90 transition-opacity">
+                            <FileText className="h-3.5 w-3.5 text-[#00A3C4] dark:text-cyan-200" /> Question Bank Studio
+                          </Link>
+                          <Link href="/teacher/dashboard" className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors">
+                            <Users className="h-3.5 w-3.5 text-blue-500" /> Live Monitoring
+                          </Link>
+                          <Link href="/teacher/exams" className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors">
                             <Clock className="h-3.5 w-3.5 text-amber-500" /> Exam Scheduling
-                          </div>
+                          </Link>
                         </div>
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                           <span className="text-[10px] font-bold uppercase text-slate-400">AI Evaluation</span>
@@ -222,8 +234,10 @@ export default function TestifyHero() {
                       <div className="col-span-8 p-4 space-y-3 bg-white dark:bg-slate-900">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                           <div>
-                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">Computer Science Midterm</h4>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">Teacher Workspace • 32 Students</p>
+                            <Link href="/teacher/exams" className="font-bold text-slate-900 dark:text-white text-sm hover:text-[#00A3C4] transition-colors">
+                              Computer Science Assessment
+                            </Link>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">Teacher Workspace • Live Roster</p>
                           </div>
                           <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                             Active
@@ -233,7 +247,7 @@ export default function TestifyHero() {
                         <div className="p-3 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-[#FCFDFE] to-[#F3F8FC] dark:from-slate-800/90 dark:to-slate-900/90 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Question 1: Data Structures</span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">2.0 Marks</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Standard Mark</span>
                           </div>
                           <p className="text-slate-700 dark:text-slate-300 text-[11px]">
                             Which data structure operates on a Last-In, First-Out (LIFO) order?
@@ -245,8 +259,8 @@ export default function TestifyHero() {
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-[10px]">
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">32 Submissions • 0 Violations</span>
-                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">100% Integrity Score</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">Real-Time Submissions</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Proctor Shield Active</span>
                         </div>
                       </div>
                     </motion.div>
@@ -264,29 +278,31 @@ export default function TestifyHero() {
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <div>
-                          <h4 className="font-bold text-slate-900 dark:text-white text-sm">Student Exam Room</h4>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Candidate: Alex Morgan (ID: ST-8921)</p>
+                          <Link href="/student/exams" className="font-bold text-slate-900 dark:text-white text-sm hover:text-[#00A3C4] transition-colors">
+                            Student Exam Room
+                          </Link>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Candidate Session (Active Session)</p>
                         </div>
                         <span className="bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-bold px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-800 text-[11px]">
-                          ⏱ 28:45 Remaining
+                          ⏱ Live Countdown
                         </span>
                       </div>
 
                       <div className="p-3.5 rounded-xl border border-amber-100 dark:border-amber-900/40 bg-gradient-to-br from-[#FFFDF9] to-[#FFF8F0] dark:from-slate-800/90 dark:to-slate-900/90 space-y-2">
-                        <span className="font-bold text-slate-900 dark:text-white text-[11px]">Question 14 of 40</span>
+                        <span className="font-bold text-slate-900 dark:text-white text-[11px]">Active Question</span>
                         <p className="text-slate-700 dark:text-slate-300 text-[11px]">
                           Explain the primary difference between synchronous and asynchronous execution in JavaScript.
                         </p>
                         <div className="p-2 rounded-md bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px]">
-                          Type response here... (Automatically saved every 5 seconds)
+                          Type response here... (Auto-saved continuously)
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-1">
-                        <span>Questions Answered: <strong className="text-slate-900 dark:text-white">14 / 40</strong></span>
-                        <button className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#00A3C4] to-[#008BB0] dark:from-cyan-500 dark:to-blue-600 text-[#0B2238] dark:text-white font-bold shadow-xs">
+                        <span>Answer Progress: <strong className="text-slate-900 dark:text-white">Continuous Auto-Save</strong></span>
+                        <Link href="/practice" className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#00A3C4] to-[#008BB0] dark:from-cyan-500 dark:to-blue-600 text-[#0B2238] dark:text-white font-bold shadow-xs hover:opacity-90 transition-opacity inline-block">
                           Next Question →
-                        </button>
+                        </Link>
                       </div>
                     </motion.div>
                   )}
@@ -303,7 +319,9 @@ export default function TestifyHero() {
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <div>
-                          <h4 className="font-bold text-slate-900 dark:text-white text-sm">Institutional Admin Oversight</h4>
+                          <Link href="/admin/dashboard" className="font-bold text-slate-900 dark:text-white text-sm hover:text-[#00A3C4] transition-colors">
+                            Institutional Admin Oversight
+                          </Link>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">Campus-Wide Assessment Overview</p>
                         </div>
                         <span className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-2.5 py-0.5 rounded-md border border-purple-200 dark:border-purple-800 text-[10px]">
@@ -312,25 +330,25 @@ export default function TestifyHero() {
                       </div>
 
                       <div className="grid grid-cols-3 gap-2.5 text-center">
-                        <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-slate-800/80 border border-blue-200/80 dark:border-slate-700">
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Total Students</p>
-                          <p className="text-sm font-extrabold text-[#0B2238] dark:text-white">4,250</p>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-slate-800/80 border border-purple-200/80 dark:border-slate-700">
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Active Teachers</p>
-                          <p className="text-sm font-extrabold text-[#0B2238] dark:text-white">180</p>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-slate-800/80 border border-emerald-200/80 dark:border-slate-700">
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Live Exams</p>
-                          <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">12 Live</p>
-                        </div>
+                        <Link href="/admin/users" className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-slate-800/80 border border-blue-200/80 dark:border-slate-700 hover:border-blue-400 transition-colors block">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Students Roster</p>
+                          <p className="text-sm font-extrabold text-[#0B2238] dark:text-white">Enrolled</p>
+                        </Link>
+                        <Link href="/admin/users" className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-slate-800/80 border border-purple-200/80 dark:border-slate-700 hover:border-purple-400 transition-colors block">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Faculty Roster</p>
+                          <p className="text-sm font-extrabold text-[#0B2238] dark:text-white">Active</p>
+                        </Link>
+                        <Link href="/admin/exams" className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-slate-800/80 border border-emerald-200/80 dark:border-slate-700 hover:border-emerald-400 transition-colors block">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Active Exams</p>
+                          <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">Real-Time</p>
+                        </Link>
                       </div>
 
                       <div className="p-2.5 rounded-xl bg-[#F0F7FB] dark:bg-slate-800/80 border border-[#D5DFE8] dark:border-slate-700 text-[#0B2238] dark:text-slate-200 flex items-center justify-between text-[11px]">
                         <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
-                          <Sparkles className="h-3.5 w-3.5 text-[#00A3C4]" /> AI Integrity Score across all rooms:
+                          <Sparkles className="h-3.5 w-3.5 text-[#00A3C4]" /> AI Integrity Engine:
                         </span>
-                        <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">99.4%</span>
+                        <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">Verified</span>
                       </div>
                     </motion.div>
                   )}
