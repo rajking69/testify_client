@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { PracticeResult } from "@/lib/practice/practice-types";
 
-export default function PracticeResultPage() {
+function PracticeResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { lastResult } = usePractice();
@@ -520,5 +520,13 @@ export default function PracticeResultPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function PracticeResultPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Loading Assessment Results...</div>}>
+      <PracticeResultContent />
+    </Suspense>
   );
 }
