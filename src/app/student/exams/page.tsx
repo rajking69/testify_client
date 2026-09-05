@@ -29,13 +29,16 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { examService } from "@/services/exam.service";
 import { StudentExamPurchaseModal } from "@/components/student/StudentExamPurchaseModal";
+import { authClient } from "@/lib/auth-client";
 
-interface MarketplaceExam {
+export interface MarketplaceExam {
   id: string;
   title: string;
   subject: string;
   description: string;
   teacherName: string;
+  teacherEmail?: string;
+  teacherId?: string;
   duration: number;
   totalMarks: number;
   passMark: number;
@@ -53,8 +56,10 @@ const defaultMarketplaceExams: MarketplaceExam[] = [];
 
 export default function StudentExamsMarketplacePage() {
   const router = useRouter();
+  const { data: session } = authClient.useSession();
   const [exams, setExams] = useState<MarketplaceExam[]>([]);
   const [purchasedExamIds, setPurchasedExamIds] = useState<string[]>([]);
+  const [completedExamIds, setCompletedExamIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("All");
   const [typeFilter, setTypeFilter] = useState<"ALL" | "FREE" | "PAID">("ALL");
@@ -75,15 +80,98 @@ export default function StudentExamsMarketplacePage() {
   useEffect(() => {
     async function loadExamsData() {
       try {
-        // 1. Load Verified Stripe Purchases (cs_...)
+        // 1. Load Completed Submissions
+        const currentEmail = (session?.user?.email || "").trim().toLowerCase();
+        const currentUserId = session?.user?.id;
+
         if (typeof window !== "undefined") {
           localStorage.removeItem("testify_student_purchases");
+          try {
+            if (!currentEmail && !currentUserId) {
+              setCompletedExamIds([]);
+            } else {
+              const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+              const completed = storedSubs
+                .filter((s: any) =>
+                  (currentEmail && s.studentEmail && s.studentEmail.trim().toLowerCase() === currentEmail) ||
+                  (currentUserId && s.studentId && s.studentId === currentUserId)
+                )
+                .flatMap((s: any) => [
+                  String(s.examId || ""),
+                  String(s.id || ""),
+                  String(s.token || ""),
+                  String(s.accessToken || ""),
+                  String(s.joinCode || ""),
+                  String(s.title || "").toLowerCase(),
+                  String(s.examTitle || "").toLowerCase()
+                ].filter(Boolean));
+              setCompletedExamIds(completed);
+            }
+          } catch {}
+        }
+
+        // Sync from Backend Submissions API
+        if (currentEmail || currentUserId) {
+          try {
+            const res = await examService.getMySubmissions();
+            if (res && res.data && res.data.length > 0) {
+              const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+              const apiSubsConverted = res.data.map((sub: any) => ({
+                id: String(sub._id || sub.examId),
+                examId: String(sub.examId),
+                title: (sub.exam as any)?.title || sub.title || "Completed Assessment",
+                subject: (sub.exam as any)?.subject || sub.subject || "General",
+                duration: `${(sub.exam as any)?.durationMinutes || 60} mins`,
+                schedule: `Completed on ${new Date(sub.submittedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+                status: "Completed",
+                score: `${sub.score || 0}%`,
+                percentage: sub.score || 0,
+                isPassed: Boolean(sub.passed),
+                studentEmail: currentEmail,
+                studentId: currentUserId,
+                token: String(sub.examId),
+                completedAt: sub.submittedAt || new Date().toISOString(),
+                timeTakenSeconds: 300,
+                correctAnswers: sub.answers ? sub.answers.filter((a: any) => a.isCorrect).length : 0,
+                totalQuestions: sub.answers ? sub.answers.length : 10,
+              }));
+
+              const merged = [...storedSubs];
+              apiSubsConverted.forEach((apiItem) => {
+                if (!merged.some((m: any) => String(m.examId) === String(apiItem.examId) && ((currentEmail && m.studentEmail === currentEmail) || (currentUserId && m.studentId === currentUserId)))) {
+                  merged.unshift(apiItem);
+                }
+              });
+              localStorage.setItem("testify_student_submissions", JSON.stringify(merged));
+
+              const userOnlySubs = merged.filter((s: any) =>
+                (currentEmail && s.studentEmail && s.studentEmail.trim().toLowerCase() === currentEmail) ||
+                (currentUserId && s.studentId && s.studentId === currentUserId)
+              );
+
+              const updatedCompleted = userOnlySubs.flatMap((s: any) => [
+                String(s.examId || ""),
+                String(s.id || ""),
+                String(s.token || ""),
+                String(s.accessToken || ""),
+                String(s.joinCode || ""),
+                String(s.title || "").toLowerCase(),
+                String(s.examTitle || "").toLowerCase()
+              ].filter(Boolean));
+
+              setCompletedExamIds(updatedCompleted);
+            }
+          } catch {}
         }
         const storedRecords = localStorage.getItem("testify_purchased_records");
         if (storedRecords) {
           const records = JSON.parse(storedRecords);
           const validIds = records
-            .filter((r: any) => r.paymentStatus === "SUCCESS" && r.paymentProvider === "STRIPE" && r.transactionId?.startsWith("cs_"))
+            .filter((r: any) =>
+              r.paymentStatus === "SUCCESS" &&
+              ((currentEmail && r.studentEmail && r.studentEmail.trim().toLowerCase() === currentEmail) ||
+                (currentUserId && r.studentId && r.studentId === currentUserId))
+            )
             .map((r: any) => String(r.examId));
           setPurchasedExamIds(validIds);
         } else {
@@ -103,13 +191,15 @@ export default function StudentExamsMarketplacePage() {
               title: t.title,
               subject: t.subject || "General",
               description: t.description || "Instructor published examination.",
-              teacherName: "Your Instructor",
+              teacherName: t.teacherName || t.creatorName || (t.teacherEmail ? t.teacherEmail.split("@")[0] : "Your Instructor"),
+              teacherEmail: t.teacherEmail || t.createdBy || "",
+              teacherId: t.teacherId || t.creatorId || "",
               duration: t.duration || 60,
               totalMarks: t.totalMarks || 50,
               passMark: t.passMark || 20,
               questionsCount: t.questions?.length || 0,
-              accessType: (t.accessType === "PAID" || t.accessType === "paid") ? "PAID" : "FREE",
-              price: t.price || 0,
+              accessType: (t.accessType === "PAID" || t.accessType === "paid" || Number(t.price) > 0) ? "PAID" : "FREE",
+              price: Number(t.price) || 0,
               rating: 5.0,
               enrollmentCount: 0,
               joinCode: t.joinCode || "TST123",
@@ -121,7 +211,7 @@ export default function StudentExamsMarketplacePage() {
         // 3. Also fetch live from backend API
         try {
           const res = await examService.getAllExams();
-          if (res.data && res.data.length > 0) {
+          if (res.data) {
             const apiExams: MarketplaceExam[] = res.data
               .filter((t: any) => t.isPublished !== false && t.status !== "Draft")
               .map((t: any) => ({
@@ -129,16 +219,18 @@ export default function StudentExamsMarketplacePage() {
                 title: t.title,
                 subject: t.subject || t.category || "General",
                 description: t.description || "Instructor published examination.",
-                teacherName: "Certified Instructor",
+                teacherName: (t.createdBy as any)?.name || t.teacherName || "Certified Instructor",
+                teacherEmail: (t.createdBy as any)?.email || t.teacherEmail || "",
+                teacherId: (t.createdBy as any)?._id || (t.createdBy as any)?.id || t.teacherId || "",
                 duration: t.durationMinutes || 60,
                 totalMarks: t.totalMarks || 50,
                 passMark: Math.round((t.totalMarks || 50) * (t.passPercentage || 40) / 100),
                 questionsCount: t.questions?.length || 0,
-                accessType: (t.accessType === "PAID" || t.accessType === "paid") ? "PAID" : "FREE",
-                price: t.price || 0,
+                accessType: (t.accessType === "PAID" || t.accessType === "paid" || Number(t.price) > 0) ? "PAID" : "FREE",
+                price: Number(t.price) || 0,
                 rating: 5.0,
                 enrollmentCount: 0,
-                joinCode: t.joinCode || "CSE101",
+                joinCode: t.joinCode || String(t._id),
                 accessToken: t.accessToken || String(t._id),
                 status: "Published",
               }));
@@ -158,7 +250,57 @@ export default function StudentExamsMarketplacePage() {
       }
     }
     loadExamsData();
-  }, []);
+  }, [session?.user?.email, session?.user?.id]);
+
+  const isExamCompleted = (exam: MarketplaceExam) => {
+    const currentEmail = (session?.user?.email || "").trim().toLowerCase();
+    const currentUserId = session?.user?.id;
+
+    if (!currentEmail && !currentUserId) {
+      return false; // Guests have not completed any exam under an account
+    }
+
+    const idStr = String(exam.id);
+    const tokenStr = String(exam.accessToken || "");
+    const codeStr = String(exam.joinCode || "");
+    const titleStr = String(exam.title || "").toLowerCase();
+
+    if (
+      completedExamIds.includes(idStr) ||
+      (tokenStr && completedExamIds.includes(tokenStr)) ||
+      (codeStr && completedExamIds.includes(codeStr)) ||
+      (titleStr && completedExamIds.includes(titleStr))
+    ) {
+      return true;
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
+        return storedSubs.some((s: any) => {
+          const sEmail = (s.studentEmail || "").trim().toLowerCase();
+          const sUserId = s.studentId || s.userId;
+
+          const matchUser =
+            (currentEmail && sEmail && sEmail === currentEmail) ||
+            (currentUserId && sUserId && sUserId === currentUserId);
+
+          if (!matchUser) return false;
+
+          const sExamId = String(s.examId || s.id || s.token || "");
+          const sTitle = String(s.title || s.examTitle || "").trim().toLowerCase();
+          return (
+            sExamId === idStr ||
+            sExamId === tokenStr ||
+            sExamId === codeStr ||
+            (sTitle && titleStr && (sTitle === titleStr || sTitle.includes(titleStr) || titleStr.includes(sTitle)))
+          );
+        });
+      } catch {}
+    }
+
+    return false;
+  };
 
   const subjects = ["All", ...Array.from(new Set(exams.map((e) => e.subject)))];
 
@@ -341,7 +483,11 @@ export default function StudentExamsMarketplacePage() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {isPaid ? (
+                      {isExamCompleted(exam) ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          <CheckCircle2 className="h-3 w-3" /> Completed
+                        </span>
+                      ) : isPaid ? (
                         isPurchased ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                             <CheckCircle2 className="h-3 w-3" /> Purchased
@@ -396,7 +542,16 @@ export default function StudentExamsMarketplacePage() {
 
                   {/* Footer Action Button */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                    {isPaid && !isPurchased ? (
+                    {isExamCompleted(exam) ? (
+                      <Link href={`/practice/result?examId=${exam.id}&title=${encodeURIComponent(exam.title)}&subject=${encodeURIComponent(exam.subject)}`} className="block w-full">
+                        <Button
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                          <span>Show Result</span>
+                        </Button>
+                      </Link>
+                    ) : isPaid && !isPurchased ? (
                       <Button
                         type="button"
                         onClick={() => setPurchasingExam(exam)}
