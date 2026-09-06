@@ -1,23 +1,36 @@
 "use client";
 
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import React, { useEffect } from "react";
+import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import type { ThemeProviderProps } from "next-themes";
 
-// next-themes renders an inline <script> to prevent theme flicker.
-// React 19 warns about script tags inside components.
-// The warning is a false positive — the script runs correctly during SSR.
-if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  const orig = console.error;
-  console.error = (...args: unknown[]) => {
-    if (
-      typeof args[0] === "string" &&
-      args[0].includes("Encountered a script tag")
-    )
-      return;
-    orig.apply(console, args);
-  };
+function ThemeSync() {
+  const { resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (resolvedTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+      root.setAttribute("data-theme", "dark");
+      root.style.colorScheme = "dark";
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+      root.setAttribute("data-theme", "light");
+      root.style.colorScheme = "light";
+    }
+  }, [resolvedTheme]);
+
+  return null;
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+  return (
+    <NextThemesProvider {...props}>
+      <ThemeSync />
+      {children}
+    </NextThemesProvider>
+  );
 }

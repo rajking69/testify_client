@@ -72,9 +72,9 @@ export function isQuestion(value: unknown): value is Question {
     question.type === "mcq"
       ? Array.isArray(options) &&
         options.length >= 2 &&
-        answers.every((answer) => options.includes(answer))
+        answers.every((answer) => answer !== undefined && options.includes(answer))
       : question.type === "true_false"
-        ? answers.length === 1 && ["true", "false"].includes(answers[0])
+        ? answers.length === 1 && answers[0] !== undefined && ["true", "false"].includes(answers[0])
         : true;
 
   return (

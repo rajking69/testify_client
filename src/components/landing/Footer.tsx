@@ -134,7 +134,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/teacher/questions"
+                  href="/teacher/question-bank"
                   className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                 >
                   Question Bank

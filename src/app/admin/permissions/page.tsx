@@ -8,11 +8,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/admin/utils";
-import { mockPermissionMatrix } from "@/lib/admin/mock-data";
 import { PermissionMatrix, PermissionScope } from "@/lib/admin/types";
 
 export default function AdminPermissionsPage() {
-  const [permissions, setPermissions] = useState<PermissionMatrix[]>(mockPermissionMatrix);
+  const [permissions, setPermissions] = useState<PermissionMatrix[]>([]);
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [newRoleModal, setNewRoleModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");

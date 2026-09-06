@@ -6,10 +6,10 @@ export const authConfig = {
   user: {
     additionalFields: {
       role: {
-        type: roles,
+        type: "string" as const,
         required: false,
         defaultValue: "student",
-        input: false,
+        input: true,
         returned: true,
       },
     },

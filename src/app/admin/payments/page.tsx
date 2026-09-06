@@ -24,7 +24,7 @@ import {
   formatRelativeTime,
   cn,
 } from "@/lib/admin/utils";
-import { mockPayments } from "@/lib/admin/mock-data";
+import { adminService } from "@/services/admin.service";
 import {
   Payment,
   PaymentStatus,
@@ -43,16 +43,33 @@ export default function AdminPaymentsPage() {
     status: undefined,
   });
 
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
+  // Fetch real payments from backend if available
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getPayments()
+      .then((res) => {
+        if (isMounted && res.data && res.data.purchases) {
+          setPayments(res.data.purchases);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter payments
-  const filteredPayments = mockPayments.filter((payment) => {
+  const filteredPayments = payments.filter((payment) => {
     if (filters.status && payment.status !== filters.status) return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();
       return (
         payment.userName.toLowerCase().includes(search) ||
-        payment.userEmail.toLowerCase().includes(search) ||
+        (payment.userEmail || "").toLowerCase().includes(search) ||
         payment.transactionId.toLowerCase().includes(search)
       );
     }
@@ -68,14 +85,14 @@ export default function AdminPaymentsPage() {
 
   // Stats
   const stats = {
-    total: mockPayments.length,
-    success: mockPayments.filter((p) => p.status === "success").length,
-    pending: mockPayments.filter((p) => p.status === "pending").length,
-    failed: mockPayments.filter((p) => p.status === "failed").length,
-    totalRevenue: mockPayments
+    total: payments.length,
+    success: payments.filter((p) => p.status === "success").length,
+    pending: payments.filter((p) => p.status === "pending").length,
+    failed: payments.filter((p) => p.status === "failed").length,
+    totalRevenue: payments
       .filter((p) => p.status === "success")
       .reduce((sum, p) => sum + p.amount, 0),
-    pendingRevenue: mockPayments
+    pendingRevenue: payments
       .filter((p) => p.status === "pending")
       .reduce((sum, p) => sum + p.amount, 0),
   };
@@ -88,7 +105,7 @@ export default function AdminPaymentsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-sm font-mono text-slate-700 dark:text-slate-300">
-          {value}
+          {String(value || "")}
         </span>
       ),
     },
@@ -96,13 +113,13 @@ export default function AdminPaymentsPage() {
       key: "userName",
       header: "Customer",
       sortable: true,
-      render: (value, payment) => (
+      render: (_, payment) => (
         <div>
           <p className="font-medium text-slate-900 dark:text-white">
             {payment.userName}
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            {payment.userEmail}
+            {payment.userEmail || ""}
           </p>
         </div>
       ),
@@ -113,7 +130,7 @@ export default function AdminPaymentsPage() {
       sortable: true,
       render: (value, payment) => (
         <span className="text-slate-900 dark:text-white font-medium">
-          {formatCurrency(value, payment.currency)}
+          {formatCurrency(Number(value || 0), payment.currency)}
         </span>
       ),
     },
@@ -121,24 +138,27 @@ export default function AdminPaymentsPage() {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          {value === "success" && (
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-          )}
-          {value === "pending" && <Clock className="h-4 w-4 text-amber-600" />}
-          {value === "failed" && <XCircle className="h-4 w-4 text-rose-600" />}
-          <Badge className={getStatusColor(value)}>
-            {value.charAt(0).toUpperCase() + value.slice(1)}
-          </Badge>
-        </div>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <div className="flex items-center gap-2">
+            {str === "success" && (
+              <CheckCircle className="h-4 w-4 text-emerald-600" />
+            )}
+            {str === "pending" && <Clock className="h-4 w-4 text-amber-600" />}
+            {str === "failed" && <XCircle className="h-4 w-4 text-rose-600" />}
+            <Badge className={getStatusColor(str)}>
+              {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+            </Badge>
+          </div>
+        );
+      },
     },
     {
       key: "paymentMethod",
       header: "Method",
       render: (value) => (
-        <span className="text-slate-700 dark:text-slate-300">{value}</span>
+        <span className="text-slate-700 dark:text-slate-300">{String(value || "")}</span>
       ),
     },
     {
@@ -147,14 +167,14 @@ export default function AdminPaymentsPage() {
       sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
-          {formatRelativeTime(value)}
+          {value ? formatRelativeTime(String(value)) : "—"}
         </span>
       ),
     },
   ];
 
   // Action menu items
-  const getActionMenuItems = (payment: Payment): ActionMenuItem[] => [
+  const getActionMenuItems = (payment: Payment): ActionMenuItem<Payment>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,
@@ -165,7 +185,7 @@ export default function AdminPaymentsPage() {
           {
             label: "Download Invoice",
             icon: <Download className="h-4 w-4" />,
-            onClick: (p) => console.log("Download invoice", p.invoiceUrl),
+            onClick: (p: Payment) => console.log("Download invoice", p.invoiceUrl),
           },
         ]
       : []),
@@ -174,7 +194,7 @@ export default function AdminPaymentsPage() {
           {
             label: "Retry Payment",
             icon: <RefreshCw className="h-4 w-4" />,
-            onClick: (p) => console.log("Retry payment", p.id),
+            onClick: (p: Payment) => console.log("Retry payment", p.id),
           },
         ]
       : []),
@@ -275,10 +295,10 @@ export default function AdminPaymentsPage() {
             </h3>
             <div className="space-y-3">
               {["Credit Card", "Bank Transfer", "PayPal"].map((method) => {
-                const count = mockPayments.filter(
+                const count = payments.filter(
                   (p) => p.paymentMethod === method,
                 ).length;
-                const percentage = (count / mockPayments.length) * 100;
+                const percentage = payments.length > 0 ? (count / payments.length) * 100 : 0;
                 return (
                   <div key={method}>
                     <div className="flex items-center justify-between mb-1">

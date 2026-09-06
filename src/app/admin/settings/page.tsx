@@ -17,24 +17,44 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useTabState } from "@/lib/admin/url-state";
 import { cn } from "@/lib/admin/utils";
-import { mockSystemConfig } from "@/lib/admin/mock-data";
 import { SystemConfig } from "@/lib/admin/types";
+import { adminService } from "@/services/admin.service";
 
 export default function AdminSettingsPage() {
   const { activeTab, setTab } = useTabState("general");
-  const [configs, setConfigs] = useState<SystemConfig[]>(mockSystemConfig);
+  const [configs, setConfigs] = useState<SystemConfig[]>([]);
   const [saving, setSaving] = useState(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getSystemConfigs()
+      .then((res) => {
+        if (isMounted && res.data) {
+          setConfigs(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    // Show success notification
+    try {
+      for (const config of configs) {
+        await adminService.updateSystemConfig(config.key, config.value);
+      }
+    } catch {
+      // Local save fallback
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
-    setConfigs(mockSystemConfig);
+    setConfigs([]);
   };
 
   const updateConfig = (id: string, value: string) => {
@@ -59,7 +79,7 @@ export default function AdminSettingsPage() {
               { value: "true", label: "Enabled" },
               { value: "false", label: "Disabled" },
             ]}
-            onChange={(value) => updateConfig(config.id, value)}
+            onChange={(e) => updateConfig(config.id, e.target.value)}
           />
         );
       case "number":

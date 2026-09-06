@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,9 +8,8 @@ import {
   Home,
   LogOut,
   ChevronDown,
-  Bell,
-  User,
   Shield,
+  Target,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -25,27 +24,62 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
   const user = session?.user;
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const userRole = user?.role || "teacher";
+  const [customProfile, setCustomProfile] = useState<{ name?: string; image?: string }>({});
+
+  useEffect(() => {
+    const syncProfile = () => {
+      try {
+        const userEmail = user?.email;
+        if (userEmail) {
+          const userSpecific = localStorage.getItem(`testify_custom_profile_${userEmail}`);
+          if (userSpecific) {
+            setCustomProfile(JSON.parse(userSpecific));
+            return;
+          }
+        }
+        const general = localStorage.getItem("testify_custom_profile");
+        if (general) {
+          const parsed = JSON.parse(general);
+          if (!userEmail || !parsed.email || parsed.email === userEmail) {
+            setCustomProfile(parsed);
+            return;
+          }
+        }
+        setCustomProfile({});
+      } catch {}
+    };
+    syncProfile();
+
+    window.addEventListener("testify_profile_updated", syncProfile);
+    window.addEventListener("storage", syncProfile);
+    return () => {
+      window.removeEventListener("testify_profile_updated", syncProfile);
+      window.removeEventListener("storage", syncProfile);
+    };
+  }, [user?.email]);
+
+  const activeName = customProfile.name || user?.name;
+  const activeImage = customProfile.image || user?.image;
+
+  const userRole = (user as { role?: string })?.role || "student";
   const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
-  // Role-specific color configuration
-  const roleConfig = {
+  const roleMeta = {
     teacher: {
-      gradient: "from-indigo-600 to-blue-600",
-      accent: "indigo",
+      gradient: "from-[#0B2238] to-[#00A3C4]",
+      accent: "#00A3C4",
     },
     admin: {
-      gradient: "from-purple-600 to-indigo-600",
-      accent: "purple",
+      gradient: "from-[#152234] to-[#5B67F7]",
+      accent: "#5B67F7",
     },
     student: {
-      gradient: "from-cyan-600 to-teal-600",
-      accent: "cyan",
+      gradient: "from-[#0B2238] to-[#00CBB8]",
+      accent: "#00CBB8",
     },
   };
 
-  const config =
-    roleConfig[userRole as keyof typeof roleConfig] || roleConfig.teacher;
+  const config = roleMeta[userRole as keyof typeof roleMeta] || roleMeta.student;
 
   const getPageTitle = () => {
     if (!pathname) return `${roleDisplay} Dashboard`;
@@ -54,72 +88,84 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
     const lastSegment =
       segments[segments.length - 1].charAt(0).toUpperCase() +
       segments[segments.length - 1].slice(1).toLowerCase();
-    return `${lastSegment} Dashboard`;
+    return `${lastSegment.replace(/-/g, " ")}`;
+  };
+
+  const handleLogout = async () => {
+    await authClient.signOut();
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 bg-white/75 dark:bg-[#060B14]/75 backdrop-blur-2xl px-4 sm:px-6 transition-colors">
       {/* Left: Mobile Sidebar Trigger & Breadcrumb Title */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button
           onClick={onOpenMobileSidebar}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 lg:hidden transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 lg:hidden transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         <div className="flex flex-col">
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-display">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 font-display uppercase tracking-wider">
             <span>{roleDisplay}</span>
             <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300 font-medium">
+            <span className="text-[#00A3C4] dark:text-cyan-400">
               {getPageTitle()}
             </span>
           </div>
-          <h1 className="text-lg font-bold font-display text-[#152234] dark:text-white tracking-tight">
+          <h1 className="text-base sm:text-lg font-bold font-display text-[#0B2238] dark:text-white tracking-tight">
             {getPageTitle()}
           </h1>
         </div>
       </div>
 
-      {/* Right: Landing Link, Theme Toggle & User Dropdown */}
-      <div className="flex items-center gap-3">
+      {/* Right: Landing Link, Practice Link, Theme Toggle & User Dropdown */}
+      <div className="flex items-center gap-2 sm:gap-3">
         <Link
           href="/"
-          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors shadow-2xs"
           title="Return to Public Landing Page"
         >
           <Home className="h-3.5 w-3.5" />
-          <span>Landing Page</span>
+          <span>Home</span>
+        </Link>
+        <Link
+          href="/practice"
+          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+          title="Go to Practice Mode"
+        >
+          <Target className="h-3.5 w-3.5" />
+          <span>Practice</span>
         </Link>
 
         {/* Animated Theme Toggle */}
         <ThemeToggle />
 
-        <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
-          title="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#0092E3] ring-2 ring-white dark:ring-slate-950"></span>
-        </button>
-
         {/* User Profile Dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowDropdown((prev) => !prev)}
-            className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+            className="flex items-center gap-2 rounded-xl p-1 sm:p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
           >
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr ${config.gradient} text-xs font-bold text-white shadow-sm`}
-            >
-              {user?.name
-                ? user.name.charAt(0).toUpperCase()
-                : roleDisplay.charAt(0)}
-            </div>
-            <span className="hidden md:inline-block text-xs font-semibold text-slate-700 dark:text-slate-200">
-              {user?.name || roleDisplay}
+            {activeImage ? (
+              <img
+                src={activeImage}
+                alt={activeName || "User"}
+                className="h-8 w-8 rounded-xl object-cover border border-cyan-500/30 shadow-2xs"
+              />
+            ) : (
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr ${config.gradient} text-xs font-bold text-white shadow-sm`}
+              >
+                {activeName
+                  ? activeName.charAt(0).toUpperCase()
+                  : roleDisplay.charAt(0)}
+              </div>
+            )}
+            <span className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200">
+              {activeName || roleDisplay}
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>
@@ -130,53 +176,30 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowDropdown(false)}
               />
-              <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 p-2 shadow-xl border border-slate-100 dark:border-slate-800 card-hover-effect">
+              <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-2 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                  <p className="text-xs font-bold font-display text-[#152234] dark:text-white truncate">
-                    {user?.name || `${roleDisplay} Profile`}
+                  <p className="text-xs font-bold font-display text-[#0B2238] dark:text-white truncate">
+                    {activeName || `${roleDisplay} Profile`}
                   </p>
                   <p className="text-[11px] text-slate-400 truncate">
                     {user?.email || `${userRole}@testify.com`}
                   </p>
                 </div>
-
-                <div className="py-1">
-                  <Link
-                    href={`/profile/${userRole}`}
-                    onClick={() => setShowDropdown(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <User className="h-4 w-4 text-slate-400" />
-                    Profile Settings
-                  </Link>
+                <div className="pt-1 space-y-0.5">
                   <Link
                     href={`/${userRole}/dashboard`}
                     onClick={() => setShowDropdown(false)}
                     className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Shield className="h-4 w-4 text-slate-400" />
-                    Dashboard
+                    <span>Dashboard</span>
                   </Link>
-                  <Link
-                    href="/"
-                    onClick={() => setShowDropdown(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <Home className="h-4 w-4 text-slate-400" />
-                    Public Landing Page
-                  </Link>
-                </div>
-
-                <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
                   <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      authClient.signOut();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
-                    Sign Out
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
 import { getStatusColor, formatCurrency, formatRelativeTime, cn } from "@/lib/admin/utils";
-import { mockSubscriptions } from "@/lib/admin/mock-data";
+import { adminService } from "@/services/admin.service";
 import { Subscription, SubscriptionTier, TableColumn, ActionMenuItem } from "@/lib/admin/types";
 
 export default function AdminSubscriptionsPage() {
@@ -20,10 +20,26 @@ export default function AdminSubscriptionsPage() {
     status: undefined,
   });
 
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
+  React.useEffect(() => {
+    let isMounted = true;
+    adminService
+      .getPayments()
+      .then((res) => {
+        if (isMounted && res.data && res.data.subscriptions) {
+          setSubscriptions(res.data.subscriptions);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter subscriptions
-  const filteredSubscriptions = mockSubscriptions.filter((sub) => {
+  const filteredSubscriptions = subscriptions.filter((sub) => {
     if (filters.tier && sub.tier !== filters.tier) return false;
     if (filters.status && sub.status !== filters.status) return false;
     if (filters.search) {
@@ -42,12 +58,12 @@ export default function AdminSubscriptionsPage() {
 
   // Stats
   const stats = {
-    total: mockSubscriptions.length,
-    active: mockSubscriptions.filter((s) => s.status === "active").length,
-    free: mockSubscriptions.filter((s) => s.tier === "free").length,
-    pro: mockSubscriptions.filter((s) => s.tier === "pro").length,
-    institutional: mockSubscriptions.filter((s) => s.tier === "institutional").length,
-    monthlyRevenue: mockSubscriptions
+    total: subscriptions.length,
+    active: subscriptions.filter((s) => s.status === "active").length,
+    free: subscriptions.filter((s) => s.tier === "free").length,
+    pro: subscriptions.filter((s) => s.tier === "pro").length,
+    institutional: subscriptions.filter((s) => s.tier === "institutional").length,
+    monthlyRevenue: subscriptions
       .filter((s) => s.status === "active")
       .reduce((sum, s) => sum + s.amount, 0),
   };
@@ -69,27 +85,33 @@ export default function AdminSubscriptionsPage() {
       key: "tier",
       header: "Plan",
       sortable: true,
-      render: (value) => (
-        <Badge
-          className={cn(
-            value === "free" && "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/60 dark:text-slate-300 dark:border-slate-800",
-            value === "pro" && "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
-            value === "institutional" && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
-          )}
-        >
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <Badge
+            className={cn(
+              str === "free" && "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/60 dark:text-slate-300 dark:border-slate-800",
+              str === "pro" && "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
+              str === "institutional" && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
+            )}
+          >
+            {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (value) => (
-        <Badge className={getStatusColor(value)}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </Badge>
-      ),
+      render: (value) => {
+        const str = String(value || "");
+        return (
+          <Badge className={getStatusColor(str)}>
+            {str ? str.charAt(0).toUpperCase() + str.slice(1) : ""}
+          </Badge>
+        );
+      },
     },
     {
       key: "amount",
@@ -97,7 +119,7 @@ export default function AdminSubscriptionsPage() {
       sortable: true,
       render: (value, sub) => (
         <span className="text-slate-700 dark:text-slate-300 font-medium">
-          {formatCurrency(value, sub.currency)}
+          {formatCurrency(Number(value || 0), sub.currency)}
         </span>
       ),
     },
@@ -108,7 +130,7 @@ export default function AdminSubscriptionsPage() {
       render: (value) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <Calendar className="h-3 w-3" />
-          {new Date(value).toLocaleDateString()}
+          {new Date(String(value)).toLocaleDateString()}
         </div>
       ),
     },
@@ -119,7 +141,7 @@ export default function AdminSubscriptionsPage() {
       render: (value) => (
         <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
           <Calendar className="h-3 w-3" />
-          {new Date(value).toLocaleDateString()}
+          {new Date(String(value)).toLocaleDateString()}
         </div>
       ),
     },
@@ -135,7 +157,7 @@ export default function AdminSubscriptionsPage() {
   ];
 
   // Action menu items
-  const getActionMenuItems = (subscription: Subscription): ActionMenuItem[] => [
+  const getActionMenuItems = (subscription: Subscription): ActionMenuItem<Subscription>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,

@@ -21,15 +21,15 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center justify-center font-semibold text-btn rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
+    "inline-flex items-center justify-center font-semibold text-btn rounded-xl whitespace-nowrap shrink-0 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
 
   const variants = {
     primary:
-      "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/20 focus:ring-blue-500",
+      "bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-sm shadow-[#0092E3]/20 focus:ring-[#0092E3]",
     secondary:
       "bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 focus:ring-indigo-400",
     outline:
-      "border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-blue-500",
+      "border border-slate-200/90 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-xs focus:ring-[#0092E3]",
     ghost:
       "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-slate-400",
     danger:
@@ -38,7 +38,7 @@ export function Button({
 
   const sizes = {
     sm: "px-3 py-1.5 text-xs gap-1.5",
-    md: "px-4 py-2.5 text-sm gap-2",
+    md: "px-4 py-2.5 text-xs sm:text-sm gap-2",
     lg: "px-6 py-3 text-base gap-2.5",
   };
 
@@ -50,7 +50,7 @@ export function Button({
     >
       {isLoading ? (
         <svg
-          className="h-4 w-4 animate-spin text-current"
+          className="h-4 w-4 animate-spin text-current shrink-0"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -69,10 +69,10 @@ export function Button({
           ></path>
         </svg>
       ) : (
-        leftIcon
+        leftIcon && <span className="inline-flex items-center shrink-0">{leftIcon}</span>
       )}
-      <span>{children}</span>
-      {!isLoading && rightIcon}
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">{children}</span>
+      {!isLoading && rightIcon && <span className="inline-flex items-center shrink-0">{rightIcon}</span>}
     </button>
   );
 }

@@ -151,20 +151,21 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         name: formData.name,
+        role: formData.role,
         fetchOptions: {
           body: {
             role: formData.role,
           },
         },
-      });
+      } as any);
 
       if (result.error) {
         toast.error(
           result.error.message || "Registration failed. Please try again.",
         );
       } else {
-        toast.success("Account created successfully!");
-        router.push("/");
+        toast.success(`Welcome to Testify! Registered as ${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}.`);
+        router.push(`/${formData.role}/dashboard`);
       }
     } catch (err: unknown) {
       const errorMessage =
@@ -193,7 +194,7 @@ export default function RegisterPage() {
     try {
       await socialSignIn({
         provider: "google",
-        callbackURL: process.env.FRONTEND_URL
+        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -208,7 +209,7 @@ export default function RegisterPage() {
     try {
       await socialSignIn({
         provider: "github",
-        callbackURL: process.env.FRONTEND_URL
+        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
       });
     } catch (err: unknown) {
       const errorMessage =
