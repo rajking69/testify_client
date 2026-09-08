@@ -173,16 +173,27 @@ export function getPaginationInfo(
   page: number,
   pageSize: number,
 ) {
+  if (!total || total <= 0 || !pageSize || pageSize <= 0) {
+    return {
+      totalPages: 0,
+      startIndex: 0,
+      endIndex: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    };
+  }
+
   const totalPages = Math.ceil(total / pageSize);
-  const startIndex = (page - 1) * pageSize + 1;
-  const endIndex = Math.min(page * pageSize, total);
+  const validPage = Math.max(1, Math.min(page, totalPages));
+  const startIndex = (validPage - 1) * pageSize + 1;
+  const endIndex = Math.min(validPage * pageSize, total);
 
   return {
     totalPages,
     startIndex,
     endIndex,
-    hasNextPage: page < totalPages,
-    hasPrevPage: page > 1,
+    hasNextPage: validPage < totalPages,
+    hasPrevPage: validPage > 1,
   };
 }
 
