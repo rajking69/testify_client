@@ -18,19 +18,58 @@ export const adminService = {
     return handleResponse<{ success: boolean; data: any }>(res);
   },
 
-  async getUsers(params: { role?: string; search?: string; page?: number; limit?: number } = {}): Promise<{ success: boolean; count: number; total: number; page: number; totalPages: number; data: any[] }> {
+  async getUsers(params: {
+    role?: string;
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number | string;
+  } = {}): Promise<{
+    success: boolean;
+    count: number;
+    total: number;
+    page: number;
+    totalPages: number;
+    stats?: {
+      total: number;
+      active: number;
+      suspended: number;
+      deactivated: number;
+      teachers: number;
+      students: number;
+      admins: number;
+    };
+    data: any[];
+  }> {
     const query = new URLSearchParams();
-    if (params.role) query.append("role", params.role);
-    if (params.search) query.append("search", params.search);
-    if (params.page) query.append("page", String(params.page));
-    if (params.limit) query.append("limit", String(params.limit));
+    if (params.role && params.role !== "all") query.append("role", params.role);
+    if (params.search && params.search.trim()) query.append("search", params.search.trim());
+    if (params.status && params.status !== "all") query.append("status", params.status);
+    if (params.page !== undefined) query.append("page", String(params.page));
+    if (params.limit !== undefined) query.append("limit", String(params.limit));
 
     const res = await fetch(`${API_BASE_URL}/admin/users?${query.toString()}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return handleResponse<{ success: boolean; count: number; total: number; page: number; totalPages: number; data: any[] }>(res);
+    return handleResponse<{
+      success: boolean;
+      count: number;
+      total: number;
+      page: number;
+      totalPages: number;
+      stats?: {
+        total: number;
+        active: number;
+        suspended: number;
+        deactivated: number;
+        teachers: number;
+        students: number;
+        admins: number;
+      };
+      data: any[];
+    }>(res);
   },
 
   async updateUser(id: string, payload: { role?: string; status?: string }): Promise<{ success: boolean; message: string; data: any }> {
