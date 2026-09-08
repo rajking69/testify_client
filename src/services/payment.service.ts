@@ -72,4 +72,13 @@ export const paymentService = {
     });
     return handleResponse<TeacherPremiumStatusResponse>(res);
   },
+
+  async getTeacherRevenue(): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/payments/teacher/revenue`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return handleResponse<any>(res);
+  },
 };
