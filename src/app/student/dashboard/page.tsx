@@ -50,7 +50,7 @@ import { authClient } from "@/lib/auth-client";
 import { examService } from "@/services/exam.service";
 import { purchaseService, ExamPurchaseRecord } from "@/services/purchase.service";
 import { StudentInvoiceModal } from "@/components/student/StudentInvoiceModal";
-
+import { studentService } from "@/services/student.service";
 interface EnrolledExamItem {
   id: string;
   title: string;
@@ -99,265 +99,41 @@ export default function StudentDashboardPage() {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
   useEffect(() => {
-    const loadInvoices = () => {
+    const fetchDashboardData = async () => {
+      if (!session?.user) return;
       try {
-        const userEmail = session?.user?.email?.trim().toLowerCase();
-        const userId = session?.user?.id;
-        const userName = session?.user?.name || "Student Scholar";
-
-        if (!userEmail && !userId) {
-          setStudentInvoices([]);
-          return;
-        }
-
-        let purchases = purchaseService.getPurchasedExams();
-
-        // Check if student has any completed exam transcripts in localStorage and link to purchase invoices if paid
-        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
-        const studentAttempts = purchaseService.getStudentAttempts(userEmail);
-        const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
-
-        const myTranscripts = [...storedSubs, ...studentAttempts].filter((sub: any) => {
-          const subEmail = (sub.studentEmail || "").trim().toLowerCase();
-          const subUserId = sub.studentId || sub.userId;
-          return (
-            (userEmail && subEmail && subEmail === userEmail) ||
-            (userId && subUserId && subUserId === userId)
-          );
-        });
-
-        myTranscripts.forEach((sub: any) => {
-          const examIdStr = String(sub.examId || sub.id || sub.token || "");
-          const examTitleStr = sub.title || sub.examTitle || sub.subject || "Certified Assessment Pass";
-
-          const existsInPurchases = purchases.some(
-            (p: any) =>
-              (String(p.examId) === examIdStr ||
-                (p.examTitle && examTitleStr && p.examTitle.trim().toLowerCase() === examTitleStr.trim().toLowerCase())) &&
-              ((userEmail && p.studentEmail && p.studentEmail.trim().toLowerCase() === userEmail) ||
-                (userId && p.studentId === userId))
-          );
-
-          if (!existsInPurchases && examIdStr) {
-            const matched = storedExams.find(
-              (e: any) =>
-                String(e.id || e._id || e.code) === String(examIdStr) ||
-                (e.title && examTitleStr && e.title.trim().toLowerCase() === examTitleStr.trim().toLowerCase())
-            );
-
-            const synthPrice = matched?.price && Number(matched.price) > 0 ? Number(matched.price) : 50;
-            const teacherId = matched?.teacherId || matched?.teacherEmail || matched?.createdBy || "certified_instructor";
-            const teacherEmail = matched?.teacherEmail || matched?.createdBy || "";
-
-            const syntheticInvoice = {
-              id: `INV-${String(examIdStr).slice(-6) || Date.now().toString().slice(-6)}`,
-              studentId: userId || "student_verified",
-              studentName: userName,
-              studentEmail: userEmail,
-              examId: examIdStr,
-              examTitle: matched?.title || examTitleStr,
-              teacherId: teacherId,
-              teacherEmail: teacherEmail,
-              amount: synthPrice,
-              currency: "USD",
-              paymentProvider: "STRIPE",
-              transactionId: `cs_stripe_${String(examIdStr).slice(-8) || Date.now().toString().slice(-8)}`,
-              paymentStatus: "SUCCESS",
-              purchasedAt: sub.completedAt || sub.submittedAt || sub.submissionTime || new Date().toISOString(),
-              accessStatus: "ACTIVE",
-            };
-            purchases.push(syntheticInvoice as any);
-            purchaseService.recordPurchase(syntheticInvoice as any);
-          }
-        });
-
-        // Filter purchases strictly belonging to the currently logged in student account
-        const myPurchases = purchases.filter((p: any) => {
-          const pEmail = (p.studentEmail || "").trim().toLowerCase();
-          const pId = p.studentId || p.userId;
-          return (userEmail && pEmail && pEmail === userEmail) || (userId && pId && pId === userId);
-        });
-
-        setStudentInvoices(myPurchases);
-      } catch {
-        setStudentInvoices([]);
-      }
-    };
-    loadInvoices();
-    window.addEventListener("storage", loadInvoices);
-    window.addEventListener("testify_exam_submitted", loadInvoices);
-    return () => {
-      window.removeEventListener("storage", loadInvoices);
-      window.removeEventListener("testify_exam_submitted", loadInvoices);
-    };
-  }, [session?.user?.email, session?.user?.id, session?.user?.name]);
-
-  useEffect(() => {
-    const calculateStats = () => {
-      try {
-        const storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
-        const attemptSubs = purchaseService.getStudentAttempts();
-
-        attemptSubs.forEach((att) => {
-          if (!storedSubs.some((s: any) => String(s.id || s.examId) === String(att.id || att.examId))) {
-            storedSubs.push({
-              id: att.id,
-              examId: att.examId,
-              title: att.examTitle,
-              subject: att.subject,
-              duration: `${att.durationMinutes} mins`,
-              schedule: `Completed on ${new Date(att.submissionTime || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-              status: "Completed",
-              score: `${Math.round((att.score / (att.totalMarks || 1)) * 100)}%`,
-              percentage: Math.round((att.score / (att.totalMarks || 1)) * 100),
-              studentEmail: att.studentEmail,
-              studentName: att.studentName,
-              completedAt: att.submissionTime || new Date().toISOString(),
-              timeTakenSeconds: att.durationMinutes * 60,
-            });
-          }
-        });
-
-        const userEmail = session?.user?.email?.trim().toLowerCase();
-        const userId = session?.user?.id;
-        const userSubs = storedSubs.filter((s: any) => {
-          if (!userEmail && !userId) return false;
-          const sEmail = (s.studentEmail || "").trim().toLowerCase();
-          const sId = s.studentId || s.userId;
-          return (userEmail && sEmail && sEmail === userEmail) || (userId && sId && sId === userId);
-        });
-
-        const count = userSubs.length;
-        const avg = count > 0 ? Math.round(userSubs.reduce((acc: number, s: any) => acc + (parseFloat(s.percentage || s.score) || 0), 0) / count) : 0;
-
-        const hist = JSON.parse(localStorage.getItem("testify_practice_history") || "[]");
-        const practiceSolvedCount = hist.reduce((acc: number, h: any) => acc + (h.totalQuestions || 10), 0);
-        const totalSeconds = userSubs.reduce((acc: number, s: any) => acc + (s.timeTakenSeconds || 600), 0);
-        const studyHours = Math.round((totalSeconds / 3600) * 10) / 10;
-
-        setDashboardStats({
-          completedExams: count,
-          averageScore: avg,
-          practiceSolved: practiceSolvedCount || count * 10,
-          practiceSessionsCount: hist.length || count,
-          activeStudyTimeHours: studyHours > 0 ? studyHours : count > 0 ? Math.round(count * 0.5 * 10) / 10 : 0,
-        });
-      } catch (err) {
-        console.error("Failed to calculate stats", err);
-      }
-    };
-
-    const syncLiveAssessments = async () => {
-      try {
-        const userEmail = session?.user?.email?.trim().toLowerCase();
-        const userId = session?.user?.id;
-        let storedSubs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
-        const attemptSubs = purchaseService.getStudentAttempts();
-
-        attemptSubs.forEach((att) => {
-          if (!storedSubs.some((s: any) => String(s.id || s.examId) === String(att.id || att.examId))) {
-            storedSubs.push({
-              id: att.id,
-              examId: att.examId,
-              title: att.examTitle,
-              subject: att.subject,
-              duration: `${att.durationMinutes} mins`,
-              schedule: `Completed on ${new Date(att.submissionTime || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-              status: "Completed",
-              score: `${Math.round((att.score / (att.totalMarks || 1)) * 100)}%`,
-              percentage: Math.round((att.score / (att.totalMarks || 1)) * 100),
-              studentEmail: att.studentEmail,
-              studentName: att.studentName,
-              token: att.examId,
-              completedAt: att.submissionTime || new Date().toISOString(),
-            });
-          }
-        });
-
-        const renderSubmissions = (subs: any[]) => {
-          const userSubs = subs.filter((s: any) => {
-            if (!userEmail && !userId) return false;
-            const sEmail = (s.studentEmail || "").trim().toLowerCase();
-            const sId = s.studentId || s.userId;
-            return (
-              (userEmail && sEmail && sEmail === userEmail) ||
-              (userId && sId && sId === userId)
-            );
+        const statsRes = await studentService.getDashboardStats();
+        if (statsRes && statsRes.data) {
+          setDashboardStats({
+            completedExams: statsRes.data.completedExams || 0,
+            averageScore: statsRes.data.averageScore || 0,
+            practiceSolved: statsRes.data.practiceSolved || 0,
+            practiceSessionsCount: statsRes.data.practiceSessionsCount || 0,
+            activeStudyTimeHours: statsRes.data.activeStudyTimeHours || 0,
           });
-
-          let completedList: EnrolledExamItem[] = userSubs.map((sub: any) => ({
-            id: String(sub.id || sub.examId),
-            examId: String(sub.examId || sub.id),
-            title: sub.title || "Live Assessment Examination",
-            subject: sub.subject || "General",
-            schedule: sub.schedule || `Completed on ${new Date(sub.completedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-            duration: sub.duration || "60 mins",
-            status: "Completed",
-            score: sub.score || `${sub.percentage}%`,
-            percentage: typeof sub.percentage === "number" ? sub.percentage : parseInt(sub.score || "0"),
-            token: sub.token || sub.id,
-          }));
-
-          setLiveAssessmentItems(completedList);
-        };
-
-        renderSubmissions(storedSubs);
-
-        try {
-          const res = await examService.getMySubmissions();
-          if (res && res.data && res.data.length > 0) {
-            const apiSubsConverted = res.data.map((sub: any) => ({
-              id: String(sub._id || sub.examId),
-              examId: String(sub.examId),
-              title: (sub.exam as any)?.title || sub.title || "Completed Assessment",
-              subject: (sub.exam as any)?.subject || sub.subject || "General",
-              duration: `${(sub.exam as any)?.durationMinutes || 60} mins`,
-              schedule: `Completed on ${new Date(sub.submittedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          
+          if (statsRes.data.recentSubmissions) {
+            setLiveAssessmentItems(statsRes.data.recentSubmissions.map((sub: any) => ({
+              id: sub.id,
+              examId: sub.id,
+              title: sub.title || "Assessment",
+              subject: sub.category || "General",
+              schedule: `Completed on ${new Date(sub.completedAt || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+              duration: "60 mins",
               status: "Completed",
               score: `${sub.score || 0}%`,
               percentage: sub.score || 0,
-              isPassed: Boolean(sub.passed),
-              studentEmail: userEmail || "",
-              studentId: session?.user?.id || "",
-              token: String(sub.examId),
-              completedAt: sub.submittedAt || new Date().toISOString(),
-              timeTakenSeconds: 300,
-              correctAnswers: sub.answers ? sub.answers.filter((a: any) => a.isCorrect).length : 0,
-              totalQuestions: sub.answers ? sub.answers.length : 10,
-            }));
-
-            const merged = [...storedSubs];
-            apiSubsConverted.forEach((apiItem) => {
-              if (!merged.some((m: any) => String(m.examId) === String(apiItem.examId))) {
-                merged.unshift(apiItem);
-              }
-            });
-            localStorage.setItem("testify_student_submissions", JSON.stringify(merged));
-            renderSubmissions(merged);
+              token: sub.id,
+            })));
           }
-        } catch {}
-      } catch {
-        setLiveAssessmentItems([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data", err);
       }
     };
 
-    calculateStats();
-    syncLiveAssessments();
-
-    const handleSync = () => {
-      calculateStats();
-      syncLiveAssessments();
-    };
-
-    window.addEventListener("testify_exam_submitted", handleSync);
-    window.addEventListener("storage", handleSync);
-    window.addEventListener("focus", handleSync);
-    return () => {
-      window.removeEventListener("testify_exam_submitted", handleSync);
-      window.removeEventListener("storage", handleSync);
-      window.removeEventListener("focus", handleSync);
-    };
-  }, [session?.user?.email]);
+    fetchDashboardData();
+  }, [session?.user]);
 
   useEffect(() => {
     const syncStudentData = () => {
