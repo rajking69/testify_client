@@ -88,158 +88,62 @@ export default function TeacherDashboardPage() {
   const displayedName = customProfile.name || session?.user?.name || "Instructor";
   const displayedImage = customProfile.image || session?.user?.image;
 
-  React.useEffect(() => {
-    if (session?.user?.email) {
-      const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
-      const myExams = storedExams.filter((e: any) => {
-        const eTeacher = (e.teacherEmail || e.createdBy || "").trim().toLowerCase();
-        const uEmail = (session.user.email || "").trim().toLowerCase();
-        return eTeacher === uEmail || e.teacherId === session.user.id;
-      });
-      const earnings = purchaseService.getTeacherEarnings(session.user.email || session.user.id, myExams);
-      setTeacherEarnings(earnings);
-    }
-  }, [session?.user?.email, session?.user?.id]);
-
-  React.useEffect(() => {
-    let isMounted = true;
-
-    // Synchronously populate invoice state from hook data to ensure zero render delay
-    if (session?.user?.email) {
-      const userEmail = session.user.email;
-      let isPremiumActive = hasPremium;
-      let expiryDateStr = expiryDateFormatted || "Sep 5, 2027";
-      let daysLeft = daysRemaining > 0 ? daysRemaining : 365;
-      let startDateStr = new Date(Date.now() - Math.max(0, 365 - daysLeft) * 86400000).toISOString();
-      let planTitle = "Teacher Premium - Annual Instructor Membership";
-      let priceAmount = 20.0;
-      let txnId = `cs_stripe_sub_${session?.user?.id ? String(session.user.id).slice(-8) : "active_2026"}`;
-
-      if (isPremiumActive) {
-        const invoiceId = `INV-SUB-${
-          session?.user?.id ? String(session.user.id).slice(-6).toUpperCase() : "TEACHER-88"
-        }`;
-        setTeacherInvoices([
-          {
-            id: invoiceId,
-            teacherName: displayedName,
-            teacherEmail: userEmail,
-            planName: planTitle,
-            amount: priceAmount,
-            currency: "USD",
-            paymentProvider: "Stripe Secured Payment",
-            transactionId: txnId,
-            paymentStatus: "PAID IN FULL",
-            purchasedAt: startDateStr,
-            expiryDate: expiryDateStr,
-            daysRemaining: daysLeft > 0 ? daysLeft : 365,
-            accessStatus: "ACTIVE",
-          },
-        ]);
-      }
-    }
-
-    const verifyBackendInvoices = async () => {
-      try {
-        const userEmail = session?.user?.email;
-        if (!userEmail) return;
-
-        const backendStatus = await paymentService.getTeacherPremiumStatus();
-        if (backendStatus?.success && backendStatus.data) {
-          if (backendStatus.data.isPremium || backendStatus.data.premiumStatus === "active") {
-            let planTitle = backendStatus.data.planName || "Teacher Premium - Annual Instructor Membership";
-            let priceAmount = backendStatus.data.price || 20.0;
-            let txnId = backendStatus.data.stripeSubscriptionId || `cs_stripe_sub_${session?.user?.id ? String(session.user.id).slice(-8) : "active_2026"}`;
-            let expiryDateStr = expiryDateFormatted || "Sep 5, 2027";
-            let daysLeft = daysRemaining > 0 ? daysRemaining : 365;
-
-            if (backendStatus.data.premiumExpiresAt) {
-              const expDate = new Date(backendStatus.data.premiumExpiresAt);
-              expiryDateStr = expDate.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
-              const diffMs = expDate.getTime() - Date.now();
-              daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-            }
-
-            const invoiceId = `INV-SUB-${
-              session?.user?.id ? String(session.user.id).slice(-6).toUpperCase() : "TEACHER-88"
-            }`;
-
-            if (isMounted) {
-              setTeacherInvoices([
-                {
-                  id: invoiceId,
-                  teacherName: displayedName,
-                  teacherEmail: userEmail,
-                  planName: planTitle,
-                  amount: priceAmount,
-                  currency: "USD",
-                  paymentProvider: "Stripe Secured Payment",
-                  transactionId: txnId,
-                  paymentStatus: "PAID IN FULL",
-                  purchasedAt: new Date(Date.now() - Math.max(0, 365 - daysLeft) * 86400000).toISOString(),
-                  expiryDate: expiryDateStr,
-                  daysRemaining: daysLeft > 0 ? daysLeft : 365,
-                  accessStatus: "ACTIVE",
-                },
-              ]);
-            }
-          }
-        }
-      } catch {}
-    };
-
-    verifyBackendInvoices();
-    window.addEventListener("testify_subscription_updated", verifyBackendInvoices);
-    return () => {
-      isMounted = false;
-      window.removeEventListener("testify_subscription_updated", verifyBackendInvoices);
-    };
-  }, [session?.user?.email, session?.user?.id, hasPremium, daysRemaining, expiryDateFormatted, displayedName]);
-
   const [recentExamsList, setRecentExamsList] = React.useState<any[]>([]);
 
   React.useEffect(() => {
-    const syncDashboardData = () => {
+    let isMounted = true;
+    
+    const fetchDashboardData = async () => {
+      if (!session?.user) return;
       try {
-        const userEmail = session?.user?.email;
-        if (userEmail) {
-          const userSpecific = localStorage.getItem(`testify_custom_profile_${userEmail}`);
-          if (userSpecific) {
-            setCustomProfile(JSON.parse(userSpecific));
-          } else {
-            setCustomProfile({});
-          }
-
-          const storedExams = localStorage.getItem("testify_teacher_exams");
-          if (storedExams) {
-            const all: any[] = JSON.parse(storedExams);
-            const my = all.filter((e: any) => {
-              const eTeacher = (e.teacherEmail || e.createdBy || "").trim().toLowerCase();
-              const uEmail = (userEmail || "").trim().toLowerCase();
-              return eTeacher === uEmail || e.teacherId === session?.user?.id;
-            });
-            setMyExamsCount(my.length);
-            setRecentExamsList(my.slice(0, 4));
-          } else {
-            setMyExamsCount(0);
-            setRecentExamsList([]);
-          }
-        } else {
-          setCustomProfile({});
-          setMyExamsCount(0);
-          setRecentExamsList([]);
+        const revRes = await paymentService.getTeacherRevenue();
+        if (revRes && revRes.data && isMounted) {
+          setTeacherEarnings(revRes.data);
+          setMyExamsCount(revRes.data.paidExamsCount || 0);
+          setRecentExamsList(revRes.data.examBreakdown || []);
         }
-      } catch {}
-    };
-    syncDashboardData();
 
-    window.addEventListener("testify_profile_updated", syncDashboardData);
-    return () => window.removeEventListener("testify_profile_updated", syncDashboardData);
-  }, [session?.user?.email, session?.user?.id]);
+        const backendStatus = await paymentService.getTeacherPremiumStatus();
+        if (backendStatus?.success && backendStatus.data && isMounted) {
+          if (backendStatus.data.isPremium || backendStatus.data.premiumStatus === "active") {
+            let daysLeft = 365;
+            let expiryDateStr = "Active Subscription";
+            if (backendStatus.data.premiumExpiresAt) {
+              const expDate = new Date(backendStatus.data.premiumExpiresAt);
+              expiryDateStr = expDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+              daysLeft = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+            }
+
+            setTeacherInvoices([
+              {
+                id: `INV-SUB-${session.user.id ? String(session.user.id).slice(-6).toUpperCase() : "TEACHER-88"}`,
+                teacherName: displayedName,
+                teacherEmail: session.user.email,
+                planName: backendStatus.data.planName || "Teacher Premium",
+                amount: backendStatus.data.price || 20.0,
+                currency: "USD",
+                paymentProvider: "Stripe Secured Payment",
+                transactionId: backendStatus.data.stripeSubscriptionId || "active_txn",
+                paymentStatus: "PAID IN FULL",
+                purchasedAt: new Date(Date.now() - Math.max(0, 365 - daysLeft) * 86400000).toISOString(),
+                expiryDate: expiryDateStr,
+                daysRemaining: daysLeft > 0 ? daysLeft : 365,
+                accessStatus: "ACTIVE",
+              },
+            ]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch teacher dashboard data", err);
+      }
+    };
+
+    fetchDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user, displayedName]);
 
   // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
