@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ChevronUp,
   ChevronDown,
@@ -9,6 +9,8 @@ import {
   Filter,
   Download,
   RefreshCw,
+  X,
+  RotateCcw,
 } from "lucide-react";
 import { cn, formatNumber, getPaginationInfo } from "@/lib/admin/utils";
 import { TableColumn, ActionMenuItem, FilterState } from "@/lib/admin/types";
@@ -20,6 +22,7 @@ interface AdminTableProps<T> {
   columns: TableColumn<T>[];
   filters?: FilterState;
   onFilterChange?: (filters: Partial<FilterState>) => void;
+  onClearFilters?: () => void;
   total?: number;
   loading?: boolean;
   searchable?: boolean;
@@ -35,6 +38,7 @@ export function AdminTable<T extends object>({
   columns,
   filters,
   onFilterChange,
+  onClearFilters,
   total,
   loading = false,
   searchable = true,
@@ -48,6 +52,42 @@ export function AdminTable<T extends object>({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [localSearch, setLocalSearch] = useState(filters?.search || "");
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    setLocalSearch(filters?.search || "");
+  }, [filters?.search]);
+
+  const activeFilterCount = [
+    Boolean(localSearch || (filters?.search && filters.search.trim() !== "")),
+    Boolean(filters?.status),
+    Boolean(filters?.role),
+    Boolean(filters?.tier),
+    Boolean(filters?.category),
+    Boolean(filters?.type),
+    Boolean(filters?.difficulty),
+  ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
+
+  const handleClearFilters = () => {
+    setLocalSearch("");
+    if (onClearFilters) {
+      onClearFilters();
+    } else {
+      onFilterChange?.({
+        search: "",
+        status: undefined,
+        role: undefined,
+        tier: undefined,
+        category: undefined,
+        type: undefined,
+        difficulty: undefined,
+        sortBy: undefined,
+        sortOrder: undefined,
+        page: 1,
+      });
+    }
+  };
 
   const handleSort = (key: string) => {
     if (sortColumn === key) {
@@ -64,7 +104,7 @@ export function AdminTable<T extends object>({
 
   const handleSearch = (value: string) => {
     setLocalSearch(value);
-    onFilterChange?.({ search: value });
+    onFilterChange?.({ search: value, page: 1 });
   };
 
   const handleRefresh = () => {
@@ -86,19 +126,46 @@ export function AdminTable<T extends object>({
               placeholder="Search..."
               value={localSearch}
               onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-8"
             />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={() => handleSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         )}
 
         <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearFilters}
+              className="text-xs text-rose-600 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-900/60 dark:hover:bg-rose-950/30 transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Clear Filters
+            </Button>
+          )}
           <Button
-            variant="outline"
+            variant={showFilters || hasActiveFilters ? "primary" : "outline"}
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
+            className="relative"
           >
-            <Filter className="h-4 w-4 mr-2" />
+            <Filter className="h-4 w-4 mr-1.5" />
             Filters
+            {activeFilterCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -179,6 +246,35 @@ export function AdminTable<T extends object>({
               </select>
             </div>
           </div>
+
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {hasActiveFilters
+                ? `${activeFilterCount} filter${activeFilterCount > 1 ? "s" : ""} applied`
+                : "No filters applied"}
+            </span>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Reset all filters
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="text-xs"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -257,6 +353,17 @@ export function AdminTable<T extends object>({
                     <p className="text-slate-500 dark:text-slate-400">
                       {emptyMessage}
                     </p>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearFilters}
+                        className="mt-3 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-900/60 transition-colors"
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1.5" />
+                        Clear filters
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -297,55 +404,101 @@ export function AdminTable<T extends object>({
       </div>
 
       {/* Pagination */}
-      {paginationInfo && paginationInfo.totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            Showing {formatNumber(paginationInfo.startIndex)} to{" "}
-            {formatNumber(paginationInfo.endIndex ?? 0)} of {formatNumber(total ?? 0)}{" "}
-            results
+      {paginationInfo && (total !== undefined ? total > 0 : paginationInfo.totalPages > 0) && (
+        <div className="flex flex-wrap items-center justify-between mt-4 gap-3">
+          <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+            <span>
+              Showing {formatNumber(paginationInfo.startIndex)} to{" "}
+              {formatNumber(paginationInfo.endIndex ?? 0)} of {formatNumber(total ?? 0)}{" "}
+              results
+            </span>
+            {onFilterChange && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Rows:</span>
+                <select
+                  value={filters?.pageSize && filters.pageSize >= 1000 ? "all" : (filters?.pageSize || 10)}
+                  onChange={(e) => {
+                    const newSize = e.target.value === "all" ? 10000 : Number(e.target.value);
+                    onFilterChange({ pageSize: newSize, page: 1 });
+                  }}
+                  className="px-2 py-1 text-xs border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!paginationInfo.hasNextPage}
-              onClick={() =>
-                onFilterChange?.({ page: (filters?.page || 1) - 1 })
-              }
-            >
-              Previous
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from(
-                { length: Math.min(5, paginationInfo.totalPages) },
-                (_, i) => {
-                  const pageNum = i + 1;
-                  const isActive = pageNum === (filters?.page || 1);
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={isActive ? "primary" : "outline"}
-                      size="sm"
-                      className="w-8 h-8 p-0"
-                      onClick={() => onFilterChange?.({ page: pageNum })}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                },
-              )}
+          {paginationInfo.totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!paginationInfo.hasPrevPage}
+                onClick={() =>
+                  onFilterChange?.({ page: Math.max(1, (filters?.page || 1) - 1) })
+                }
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const current = filters?.page || 1;
+                  const totalP = paginationInfo.totalPages;
+                  let pageItems: (number | string)[] = [];
+
+                  if (totalP <= 7) {
+                    pageItems = Array.from({ length: totalP }, (_, i) => i + 1);
+                  } else if (current <= 4) {
+                    pageItems = [1, 2, 3, 4, 5, "...", totalP];
+                  } else if (current >= totalP - 3) {
+                    pageItems = [1, "...", totalP - 4, totalP - 3, totalP - 2, totalP - 1, totalP];
+                  } else {
+                    pageItems = [1, "...", current - 1, current, current + 1, "...", totalP];
+                  }
+
+                  return pageItems.map((item, idx) => {
+                    if (item === "...") {
+                      return (
+                        <span
+                          key={`ellipsis-${idx}`}
+                          className="px-1.5 py-1 text-xs text-slate-400 dark:text-slate-500 select-none"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    const pageNum = Number(item);
+                    const isActive = pageNum === current;
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={isActive ? "primary" : "outline"}
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => onFilterChange?.({ page: pageNum })}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  });
+                })()}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!paginationInfo.hasNextPage}
+                onClick={() =>
+                  onFilterChange?.({ page: Math.min(paginationInfo.totalPages, (filters?.page || 1) + 1) })
+                }
+              >
+                Next
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!paginationInfo.hasNextPage}
-              onClick={() =>
-                onFilterChange?.({ page: (filters?.page || 1) + 1 })
-              }
-            >
-              Next
-            </Button>
-          </div>
+          )}
         </div>
       )}
     </div>
