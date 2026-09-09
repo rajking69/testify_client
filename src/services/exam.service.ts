@@ -13,8 +13,14 @@ export interface ExamItem {
   passPercentage: number;
   accessType: ExamAccessType;
   price?: number;
+  startDateTime?: string;
+  endDateTime?: string;
+  date?: string;
+  joinCode?: string;
+  accessToken?: string;
   questions: any[];
   status: ExamStatus;
+  isPublished?: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
