@@ -28,15 +28,26 @@ function PracticeResultContent() {
   const targetExamId = searchParams.get("examId") || searchParams.get("id");
   const targetTitle = searchParams.get("title");
   const targetSubject = searchParams.get("subject");
+  const targetEmail = searchParams.get("email") || searchParams.get("studentEmail");
+  const targetStudentId = searchParams.get("studentId");
   const scoreParam = searchParams.get("score");
   const totalParam = searchParams.get("total");
 
   useEffect(() => {
-    // 1. If targetExamId or targetTitle is provided in URL params, lookup matching submission
-    if (targetExamId || targetTitle) {
+    // 1. If targetExamId, targetTitle, targetEmail, or targetStudentId is provided in URL params, lookup matching submission
+    if (targetExamId || targetTitle || targetEmail || targetStudentId) {
       try {
         const subs = JSON.parse(localStorage.getItem("testify_student_submissions") || "[]");
         const found = subs.find((s: any) => {
+          const emailMatch =
+            targetEmail &&
+            s.studentEmail &&
+            s.studentEmail.trim().toLowerCase() === targetEmail.trim().toLowerCase();
+
+          const studentIdMatch =
+            targetStudentId &&
+            (String(s.studentId) === targetStudentId || String(s.id) === targetStudentId);
+
           const idMatch =
             (targetExamId && String(s.examId) === String(targetExamId)) ||
             (targetExamId && String(s.id) === String(targetExamId)) ||
@@ -51,7 +62,7 @@ function PracticeResultContent() {
              s.title.trim().toLowerCase().includes(targetTitle.trim().toLowerCase()) ||
              targetTitle.trim().toLowerCase().includes(s.title.trim().toLowerCase()));
 
-          return idMatch || titleMatch;
+          return emailMatch || studentIdMatch || idMatch || titleMatch;
         });
 
         if (found) {

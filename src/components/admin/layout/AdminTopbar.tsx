@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -199,11 +199,17 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
                 className="h-8 w-8 rounded-xl object-cover border border-purple-300 dark:border-purple-700 shadow-2xs"
               />
             ) : (
-              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#152234] to-[#5B67F7] text-white flex items-center justify-center text-xs font-bold shadow-sm">
+              <div
+                suppressHydrationWarning
+                className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#152234] to-[#5B67F7] text-white flex items-center justify-center text-xs font-bold shadow-sm"
+              >
                 {activeName ? activeName.charAt(0).toUpperCase() : "A"}
               </div>
             )}
-            <span className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200">
+            <span
+              suppressHydrationWarning
+              className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200"
+            >
               {activeName || "Admin"}
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />

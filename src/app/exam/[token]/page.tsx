@@ -32,6 +32,8 @@ interface ExamRecord {
   subject: string;
   description: string;
   date?: string;
+  startDateTime?: string;
+  endDateTime?: string;
   duration: number;
   totalMarks: number;
   passMark: number;
@@ -88,7 +90,7 @@ export default function StudentExamWaitingRoomPage({
           if (singleRes && singleRes.data) {
             const match = singleRes.data;
             found = {
-              id: String(match._id),
+              id: String(match._id || (match as any).id || (match as any).examId),
               title: match.title,
               subject: match.subject || match.category || "General",
               description: match.description || "Instructor published examination.",
@@ -99,27 +101,31 @@ export default function StudentExamWaitingRoomPage({
               accessType: (String(match.accessType).toUpperCase() === "PAID" || Number(match.price) > 0) ? "PAID" : "FREE",
               price: match.price || 0,
               joinCode: (match as any).joinCode || rawToken,
-              accessToken: (match as any).accessToken || String(match._id),
+              accessToken: (match as any).accessToken || String(match._id || (match as any).id),
+              startDateTime: (match as any).startDateTime || (match as any).date,
+              endDateTime: (match as any).endDateTime,
               questions: match.questions || [],
             };
           }
         } catch {
-          // If direct ID lookup fails, search across all exams (for joinCode / accessToken)
+          // If direct ID lookup fails, search public exams
         }
 
+        // 2. Search public exams list (accessible to any guest/student)
         if (!found) {
           try {
-            const res = await examService.getAllExams();
-            if (res.data && res.data.length > 0) {
-              const match: any = res.data.find(
+            const pubRes = await examService.getPublicExams();
+            if (pubRes.data && pubRes.data.length > 0) {
+              const match: any = pubRes.data.find(
                 (item: any) =>
                   String(item._id) === rawToken ||
+                  String(item.id) === rawToken ||
                   item.accessToken === rawToken ||
                   (item.joinCode && item.joinCode.toUpperCase() === rawToken.toUpperCase())
               );
               if (match) {
                 found = {
-                  id: String(match._id),
+                  id: String(match._id || match.id),
                   title: match.title,
                   subject: match.subject || match.category || "General",
                   description: match.description || "Instructor published examination.",
@@ -129,20 +135,58 @@ export default function StudentExamWaitingRoomPage({
                   status: "Published",
                   accessType: (String(match.accessType).toUpperCase() === "PAID" || Number(match.price) > 0) ? "PAID" : "FREE",
                   price: match.price || 0,
-                  joinCode: match.joinCode || "CSE101",
-                  accessToken: match.accessToken || String(match._id),
+                  joinCode: match.joinCode || rawToken,
+                  accessToken: match.accessToken || String(match._id || match.id),
+                  startDateTime: match.startDateTime || match.date,
+                  endDateTime: match.endDateTime,
+                  questions: match.questions || [],
+                };
+              }
+            }
+          } catch {}
+        }
+
+        // 3. Search all exams list
+        if (!found) {
+          try {
+            const res = await examService.getAllExams();
+            if (res.data && res.data.length > 0) {
+              const match: any = res.data.find(
+                (item: any) =>
+                  String(item._id) === rawToken ||
+                  String(item.id) === rawToken ||
+                  item.accessToken === rawToken ||
+                  (item.joinCode && item.joinCode.toUpperCase() === rawToken.toUpperCase())
+              );
+              if (match) {
+                found = {
+                  id: String(match._id || match.id),
+                  title: match.title,
+                  subject: match.subject || match.category || "General",
+                  description: match.description || "Instructor published examination.",
+                  duration: match.durationMinutes || 60,
+                  totalMarks: match.totalMarks || 50,
+                  passMark: Math.round((match.totalMarks || 50) * (match.passPercentage || 40) / 100),
+                  status: "Published",
+                  accessType: (String(match.accessType).toUpperCase() === "PAID" || Number(match.price) > 0) ? "PAID" : "FREE",
+                  price: match.price || 0,
+                  joinCode: match.joinCode || rawToken,
+                  accessToken: match.accessToken || String(match._id || match.id),
+                  startDateTime: match.startDateTime || match.date,
+                  endDateTime: match.endDateTime,
                   questions: match.questions || [],
                 };
               }
             }
           } catch (apiErr: any) {
-            console.error("Failed to load exam from API:", apiErr);
-            isServerOffline = true;
+            if (apiErr?.message?.includes("fetch") || apiErr?.message?.includes("network")) {
+              isServerOffline = true;
+            }
           }
         }
 
-        // 2. Check teacher's local exams store if created in teacher workspace
-        if (!found && !isServerOffline) {
+        // 4. Check teacher's local exams store if created in teacher workspace
+        if (!found) {
           try {
             const stored = localStorage.getItem("testify_teacher_exams");
             if (stored) {
@@ -290,6 +334,8 @@ export default function StudentExamWaitingRoomPage({
           studentEmail: studentEmail.trim(),
           token: rawToken,
           startedAt: new Date().toISOString(),
+          startDateTime: exam?.startDateTime,
+          endDateTime: exam?.endDateTime,
           questions: exam?.questions || [],
         })
       );
@@ -567,6 +613,31 @@ export default function StudentExamWaitingRoomPage({
         ) : (
           /* 3. Student Verification Form (Only available after payment is completed or for free classroom exams) */
           <form onSubmit={handleStartExam} className="space-y-4 pt-1">
+            {/* Schedule Window Alerts */}
+            {exam?.startDateTime && !isNaN(new Date(exam.startDateTime).getTime()) && new Date() < new Date(exam.startDateTime) && (
+              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-cyan-950/60 border border-blue-200 dark:border-cyan-800 text-xs space-y-1.5">
+                <div className="font-bold text-[#0092E3] dark:text-cyan-400 flex items-center gap-1.5">
+                  <Clock className="h-4 w-4" />
+                  Upcoming Examination Room
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                  This examination is scheduled to begin on <strong>{new Date(exam.startDateTime).toLocaleString()}</strong>. The exam room will unlock automatically once the scheduled start time is reached.
+                </p>
+              </div>
+            )}
+
+            {exam?.endDateTime && !isNaN(new Date(exam.endDateTime).getTime()) && new Date() > new Date(exam.endDateTime) && (
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs space-y-1.5">
+                <div className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4" />
+                  Examination Closed
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                  The deadline for this examination was <strong>{new Date(exam.endDateTime).toLocaleString()}</strong>. Submissions are no longer accepted.
+                </p>
+              </div>
+            )}
+
             {!isPaid && (
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
                 <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
@@ -642,14 +713,35 @@ export default function StudentExamWaitingRoomPage({
             </div>
 
             {/* Start CTA */}
-            <Button
-              type="submit"
-              disabled={!studentName.trim() || !agreeRules || isStarting}
-              className="w-full bg-[#0092E3] hover:bg-[#007AC9] text-white font-semibold text-xs py-3 rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span>{isStarting ? "Initializing Assessment Engine..." : "Enter Examination Room"}</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            {(() => {
+              const now = new Date();
+              const isFuture = Boolean(exam?.startDateTime && !isNaN(new Date(exam.startDateTime).getTime()) && now < new Date(exam.startDateTime));
+              const isExpired = Boolean(exam?.endDateTime && !isNaN(new Date(exam.endDateTime).getTime()) && now > new Date(exam.endDateTime));
+              const isDisabled = !studentName.trim() || !agreeRules || isStarting || isFuture || isExpired;
+
+              return (
+                <Button
+                  type="submit"
+                  disabled={isDisabled}
+                  className={`w-full font-semibold text-xs py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all ${
+                    isFuture || isExpired
+                      ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed"
+                      : "bg-[#0092E3] hover:bg-[#007AC9] text-white cursor-pointer"
+                  }`}
+                >
+                  <span>
+                    {isStarting
+                      ? "Initializing Assessment Engine..."
+                      : isFuture
+                        ? "Room Locked (Starts at Scheduled Time)"
+                        : isExpired
+                          ? "Examination Concluded"
+                          : "Enter Examination Room"}
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              );
+            })()}
           </form>
         )}
       </motion.div>

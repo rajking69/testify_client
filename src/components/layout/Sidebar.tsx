@@ -80,11 +80,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: <Activity className="h-5 w-5" />,
     },
     {
-      label: "Evaluation",
-      href: "/teacher/evaluation",
-      icon: <FileCheck2 className="h-5 w-5" />,
-    },
-    {
       label: "Results",
       href: "/teacher/results",
       icon: <BarChart3 className="h-5 w-5" />,

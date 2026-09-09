@@ -23,6 +23,8 @@ interface ExamRecord {
   subject: string;
   description: string;
   date: string;
+  startDateTime?: string;
+  endDateTime?: string;
   duration: number;
   totalMarks: number;
   passMark: number;
@@ -60,43 +62,88 @@ export default function ExamQuestionSetupPage({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Load Exam Record from LocalStorage
+  // Load Exam Record from LocalStorage and Backend API
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("testify_teacher_exams");
-      if (stored) {
-        const list: ExamRecord[] = JSON.parse(stored);
-        const target = list.find((item) => String(item.id) === String(examId));
-        if (target) {
-          setExam(target);
-          setQuestions(target.questions || []);
-        } else {
-          // If not in storage, create a default draft fallback
-          const fallbackExam: ExamRecord = {
-            id: examId,
-            title: "Examination Paper",
-            subject: "Computer Science",
-            description: "Comprehensive mid-term evaluation assessment.",
-            date: "Today, 3:00 PM",
-            duration: 60,
-            totalMarks: 50,
-            passMark: 20,
-            studentsCount: 0,
-            status: "Draft",
-            questions: [],
-          };
-          setExam(fallbackExam);
-          setQuestions([]);
+    let isMounted = true;
+
+    async function loadData() {
+      let initialTarget: ExamRecord | null = null;
+      try {
+        const stored = localStorage.getItem("testify_teacher_exams");
+        if (stored) {
+          const list: ExamRecord[] = JSON.parse(stored);
+          const target = list.find((item) => String(item.id) === String(examId));
+          if (target) {
+            initialTarget = target;
+            if (isMounted) {
+              setExam(target);
+              setQuestions(target.questions || []);
+            }
+          }
         }
+      } catch (err) {
+        console.error("Error reading local exam data:", err);
       }
-    } catch (err) {
-      console.error("Error reading exam data:", err);
-    } finally {
-      setIsLoaded(true);
+
+      // Also fetch latest from backend database
+      try {
+        const res = await examService.getExamById(examId);
+        if (res && res.data && isMounted) {
+          const apiItem = res.data;
+          const merged: ExamRecord = {
+            id: apiItem._id || examId,
+            title: apiItem.title || initialTarget?.title || "Examination Paper",
+            subject: apiItem.subject || apiItem.category || initialTarget?.subject || "Computer Science",
+            description: apiItem.description || initialTarget?.description || "Comprehensive mid-term evaluation assessment.",
+            date: apiItem.date || (apiItem.startDateTime ? new Date(apiItem.startDateTime).toLocaleDateString() : (initialTarget?.date || "Today, 3:00 PM")),
+            startDateTime: apiItem.startDateTime || initialTarget?.startDateTime,
+            endDateTime: apiItem.endDateTime || initialTarget?.endDateTime,
+            duration: apiItem.durationMinutes || initialTarget?.duration || 60,
+            totalMarks: apiItem.totalMarks || initialTarget?.totalMarks || 50,
+            passMark: initialTarget?.passMark || Math.round((apiItem.totalMarks || 50) * (apiItem.passPercentage || 40) / 100),
+            studentsCount: initialTarget?.studentsCount || 0,
+            status: (apiItem.status === "PUBLISHED" || (apiItem as any).isPublished) ? "Published" : (initialTarget?.status || "Draft"),
+            joinCode: apiItem.joinCode || initialTarget?.joinCode,
+            accessToken: apiItem.accessToken || initialTarget?.accessToken,
+            questions: (apiItem.questions && apiItem.questions.length > 0) ? apiItem.questions : (initialTarget?.questions || []),
+          };
+          setExam(merged);
+          setQuestions(merged.questions || []);
+          return;
+        }
+      } catch {
+        // Backend offline or fallback
+      }
+
+      if (!initialTarget && isMounted) {
+        const fallbackExam: ExamRecord = {
+          id: examId,
+          title: "Examination Paper",
+          subject: "Computer Science",
+          description: "Comprehensive mid-term evaluation assessment.",
+          date: "Today, 3:00 PM",
+          duration: 60,
+          totalMarks: 50,
+          passMark: 20,
+          studentsCount: 0,
+          status: "Draft",
+          questions: [],
+        };
+        setExam(fallbackExam);
+        setQuestions([]);
+      }
     }
+
+    loadData().finally(() => {
+      if (isMounted) setIsLoaded(true);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [examId]);
 
-  // Sync updated exam and questions back to localStorage
+  // Sync updated exam and questions back to localStorage and backend
   const syncExamData = (updatedExam: ExamRecord, updatedQuestions: QuestionItem[]) => {
     setExam(updatedExam);
     setQuestions(updatedQuestions);
@@ -125,7 +172,9 @@ export default function ExamQuestionSetupPage({
           description: updatedExam.description,
           durationMinutes: updatedExam.duration,
           totalMarks: updatedExam.totalMarks,
-          status: updatedExam.status === "Published" ? "PUBLISHED" : "DRAFT",
+          status: (updatedExam.status === "Published" || updatedExam.status === "Ready" || updatedExam.status === "Scheduled") ? "PUBLISHED" : "DRAFT",
+          joinCode: updatedExam.joinCode,
+          accessToken: updatedExam.accessToken,
           questions: updatedQuestions,
         });
       } catch {}

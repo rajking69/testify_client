@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -157,6 +157,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
               />
             ) : (
               <div
+                suppressHydrationWarning
                 className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr ${config.gradient} text-xs font-bold text-white shadow-sm`}
               >
                 {activeName
@@ -164,7 +165,10 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
                   : roleDisplay.charAt(0)}
               </div>
             )}
-            <span className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200">
+            <span
+              suppressHydrationWarning
+              className="hidden md:inline-block text-xs font-bold text-slate-800 dark:text-slate-200"
+            >
               {activeName || roleDisplay}
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />

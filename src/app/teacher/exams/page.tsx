@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +21,7 @@ import {
   Sparkles,
   Crown,
   Share2,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -36,12 +37,109 @@ import { examService } from "@/services/exam.service";
 import { useTeacherSubscription } from "@/lib/subscription-sync";
 import { authClient } from "@/lib/auth-client";
 
+export type ExamTimingStatus = "live" | "upcoming" | "finished" | "draft";
+
+// Helper to count real-time students who took / submitted this exam
+export function getExamCandidatesCount(exam: ExamItem): number {
+  let count = exam.studentsCount || 0;
+  if (typeof window === "undefined") return count;
+  try {
+    const rawSubs = localStorage.getItem("testify_student_submissions");
+    if (rawSubs) {
+      const subs = JSON.parse(rawSubs);
+      const matched = subs.filter((sub: any) => {
+        const matchId =
+          (sub.examId && String(sub.examId) === String(exam.id)) ||
+          (sub.id && String(sub.id) === String(exam.id));
+        const matchToken =
+          exam.accessToken &&
+          (sub.token === exam.accessToken || sub.accessToken === exam.accessToken);
+        const matchTitle =
+          (sub.title && exam.title && sub.title.trim().toLowerCase() === exam.title.trim().toLowerCase()) ||
+          (sub.exam && exam.title && sub.exam.trim().toLowerCase() === exam.title.trim().toLowerCase());
+        return matchId || matchToken || matchTitle;
+      });
+      count = Math.max(count, matched.length);
+    }
+  } catch {}
+  return count;
+}
+
+export function getExamTimingStatus(exam: ExamItem, now: Date = new Date()): ExamTimingStatus {
+  if (exam.status === "Draft") {
+    return "draft";
+  }
+
+  // 1. Precise ISO timestamps
+  if (exam.startDateTime) {
+    const start = new Date(exam.startDateTime);
+    if (!isNaN(start.getTime())) {
+      let end: Date;
+      if (exam.endDateTime) {
+        const parsedEnd = new Date(exam.endDateTime);
+        end = !isNaN(parsedEnd.getTime()) ? parsedEnd : new Date(start.getTime() + (exam.duration || 60) * 60 * 1000);
+      } else {
+        end = new Date(start.getTime() + (exam.duration || 60) * 60 * 1000);
+      }
+
+      if (now < start) {
+        return "upcoming";
+      } else if (now >= start && now <= end) {
+        return "live";
+      } else {
+        return "finished";
+      }
+    }
+  }
+
+  // 2. Text heuristics
+  const dateStr = (exam.date || "").trim();
+  if (dateStr.toLowerCase() === "active") {
+    return "live";
+  }
+
+  // 3. Time range string like "Sep 9, 02:29 PM - 03:07 PM"
+  if (dateStr.includes("-") && (dateStr.includes("AM") || dateStr.includes("PM") || dateStr.includes(":"))) {
+    try {
+      const parts = dateStr.split(",");
+      if (parts.length >= 2) {
+        const datePart = parts[0].trim();
+        const times = parts[1].split("-");
+        if (times.length === 2) {
+          const startStr = times[0].trim();
+          const endStr = times[1].trim();
+          const curYear = now.getFullYear();
+          const s = new Date(`${datePart}, ${curYear} ${startStr}`);
+          const e = new Date(`${datePart}, ${curYear} ${endStr}`);
+          if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+            if (now < s) return "upcoming";
+            if (now >= s && now <= e) return "live";
+            return "finished";
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 4. Default fallback by status
+  if (exam.status === "Scheduled") {
+    return "upcoming";
+  }
+  if (exam.status === "Published" || exam.status === "Ready") {
+    return "live";
+  }
+
+  return "finished";
+}
+
 export interface ExamItem {
   id: string;
   title: string;
   subject: string;
   description: string;
   date: string;
+  startDateTime?: string;
+  endDateTime?: string;
   duration: number; // in minutes
   totalMarks: number;
   passMark: number;
@@ -58,6 +156,67 @@ export interface ExamItem {
   questions?: any[];
 }
 
+// Robust deduplication utility guaranteeing unique exams per teacher
+export function deduplicateExams(exams: ExamItem[]): ExamItem[] {
+  const seenIds = new Set<string>();
+  const seenCodes = new Set<string>();
+  const seenTokens = new Set<string>();
+  const seenTitles = new Map<string, ExamItem>();
+
+  const result: ExamItem[] = [];
+
+  for (const exam of exams) {
+    if (!exam || !exam.title) continue;
+
+    const teacher = (exam.teacherEmail || exam.createdBy || "").toLowerCase().trim();
+    const cleanTitle = exam.title.trim().toLowerCase();
+    const titleKey = `${teacher}::${cleanTitle}`;
+
+    // 1. Direct ID match
+    if (exam.id && seenIds.has(exam.id)) {
+      continue;
+    }
+
+    // 2. Direct joinCode match
+    if (exam.joinCode && seenCodes.has(exam.joinCode.toLowerCase())) {
+      continue;
+    }
+
+    // 3. Direct accessToken match
+    if (exam.accessToken && seenTokens.has(exam.accessToken)) {
+      continue;
+    }
+
+    // 4. Same teacher + same title match
+    if (seenTitles.has(titleKey)) {
+      const existing = seenTitles.get(titleKey)!;
+      if (existing.subject === "General" && exam.subject && exam.subject !== "General") {
+        existing.subject = exam.subject;
+      }
+      if ((existing.date === "Active" || !existing.date) && exam.date && exam.date !== "Active") {
+        existing.date = exam.date;
+      }
+      if (exam.startDateTime) existing.startDateTime = exam.startDateTime;
+      if (exam.endDateTime) existing.endDateTime = exam.endDateTime;
+      if (exam.questions && exam.questions.length > (existing.questions?.length || 0)) {
+        existing.questions = exam.questions;
+      }
+      if (exam.id && exam.id.length === 24 && existing.id.length !== 24) {
+        existing.id = exam.id;
+      }
+      continue;
+    }
+
+    if (exam.id) seenIds.add(exam.id);
+    if (exam.joinCode) seenCodes.add(exam.joinCode.toLowerCase());
+    if (exam.accessToken) seenTokens.add(exam.accessToken);
+    seenTitles.set(titleKey, exam);
+    result.push(exam);
+  }
+
+  return result;
+}
+
 export default function TeacherExamsPage() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
@@ -69,6 +228,50 @@ export default function TeacherExamsPage() {
   const { hasPremium, daysRemaining, expiryDateFormatted, refresh: refreshSubscription } = useTeacherSubscription(session);
   const [editingExam, setEditingExam] = useState<ExamItem | null>(null);
   const [sharingExam, setSharingExam] = useState<ExamItem | null>(null);
+
+  // Real-time ticking state for dynamic live/upcoming/finished evaluation
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [selectedFilter, setSelectedFilter] = useState<"all" | "live" | "upcoming" | "finished">("all");
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 10000); // Check and refresh status every 10 seconds in real time
+    return () => clearInterval(timer);
+  }, []);
+
+  // Real-time dynamic count of total, live, upcoming, and finished exams
+  const stats = useMemo(() => {
+    let live = 0;
+    let upcoming = 0;
+    let finished = 0;
+    let draft = 0;
+    let totalCandidates = 0;
+
+    examsList.forEach((exam) => {
+      totalCandidates += getExamCandidatesCount(exam);
+      const timing = getExamTimingStatus(exam, currentTime);
+      if (timing === "live") live++;
+      else if (timing === "upcoming") upcoming++;
+      else if (timing === "finished") finished++;
+      else if (timing === "draft") draft++;
+    });
+
+    return {
+      total: examsList.length,
+      totalCandidates,
+      live,
+      upcoming,
+      finished,
+      draft,
+    };
+  }, [examsList, currentTime]);
+
+  // Dynamic filter for active view
+  const displayedExams = useMemo(() => {
+    if (selectedFilter === "all") return examsList;
+    return examsList.filter((exam) => getExamTimingStatus(exam, currentTime) === selectedFilter);
+  }, [examsList, selectedFilter, currentTime]);
 
   // Load exams belonging strictly to the currently logged in teacher
   React.useEffect(() => {
@@ -90,27 +293,65 @@ export default function TeacherExamsPage() {
           const res = await examService.getAllExams();
           if (res.data && res.data.length > 0 && userEmail) {
             const apiExams: ExamItem[] = res.data
-              .filter((item: any) => item.creatorEmail === userEmail || item.teacherId === (session?.user as any)?.id)
-              .map((item: any) => ({
-                id: item._id,
-                title: item.title,
-                subject: item.subject || item.category || "General",
-                description: item.description || "",
-                date: "Active",
-                duration: item.durationMinutes || 60,
-                totalMarks: item.totalMarks || 50,
-                passMark: Math.round((item.totalMarks || 50) * (item.passPercentage || 40) / 100),
-                studentsCount: 0,
-                status: item.status === "PUBLISHED" ? "Published" : "Draft",
-                accessType: item.accessType === "PAID" ? "PAID" : "FREE",
-                price: item.price || 0,
-                teacherEmail: userEmail,
-                createdBy: userEmail,
-                questions: item.questions || [],
-              }));
+              .filter((item: any) => item.teacherEmail === userEmail || item.creatorEmail === userEmail || item.teacherId === (session?.user as any)?.id)
+              .map((item: any) => {
+                let formattedDate = item.date;
+                if (!formattedDate && item.startDateTime) {
+                  try {
+                    const sDate = new Date(item.startDateTime);
+                    if (item.endDateTime) {
+                      const eDate = new Date(item.endDateTime);
+                      formattedDate = `${sDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${sDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${eDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    } else {
+                      formattedDate = sDate.toLocaleDateString();
+                    }
+                  } catch {}
+                }
 
+                return {
+                  id: item._id,
+                  title: item.title,
+                  subject: item.subject || item.category || "General",
+                  description: item.description || "",
+                  date: formattedDate || (item.startDateTime ? new Date(item.startDateTime).toLocaleDateString() : "Active"),
+                  startDateTime: item.startDateTime,
+                  endDateTime: item.endDateTime,
+                  duration: item.durationMinutes || 60,
+                  totalMarks: item.totalMarks || 50,
+                  passMark: Math.round((item.totalMarks || 50) * (item.passPercentage || 40) / 100),
+                  studentsCount: item.totalEnrolled || 0,
+                  status: (item.status === "PUBLISHED" || item.isPublished) ? "Published" : "Draft",
+                  accessType: (item.accessType === "PAID" || Number(item.price) > 0) ? "PAID" : "FREE",
+                  price: item.price || 0,
+                  joinCode: item.joinCode,
+                  accessToken: item.accessToken,
+                  teacherEmail: userEmail,
+                  createdBy: userEmail,
+                  questions: item.questions || [],
+                };
+              });
+
+            // Merge apiExams with myExams intelligently without creating duplicate cards
             apiExams.forEach((ae) => {
-              if (!myExams.some((m) => m.id === ae.id)) {
+              const localIndex = myExams.findIndex(
+                (m) =>
+                  m.id === ae.id ||
+                  (m.joinCode && ae.joinCode && m.joinCode.toLowerCase() === ae.joinCode.toLowerCase()) ||
+                  (m.accessToken && ae.accessToken && m.accessToken === ae.accessToken) ||
+                  (m.title.trim().toLowerCase() === ae.title.trim().toLowerCase())
+              );
+
+              if (localIndex >= 0) {
+                const local = myExams[localIndex];
+                myExams[localIndex] = {
+                  ...ae,
+                  ...local,
+                  id: ae.id, // Prefer permanent MongoDB ID
+                  subject: (local.subject && local.subject !== "General") ? local.subject : ae.subject,
+                  date: (local.date && local.date !== "Active") ? local.date : ae.date,
+                  questions: (local.questions && local.questions.length > 0) ? local.questions : ae.questions,
+                };
+              } else {
                 myExams.unshift(ae);
               }
             });
@@ -119,7 +360,19 @@ export default function TeacherExamsPage() {
           // Backend offline fallback
         }
 
-        setExamsList(myExams);
+        const cleanList = deduplicateExams(myExams);
+        setExamsList(cleanList);
+
+        // Permanently purge any duplicate records in localStorage
+        try {
+          const stored = localStorage.getItem("testify_teacher_exams");
+          let allExams: ExamItem[] = stored ? JSON.parse(stored) : [];
+          if (userEmail) {
+            allExams = allExams.filter((e) => e.teacherEmail !== userEmail && e.createdBy !== userEmail);
+          }
+          allExams = [...cleanList, ...allExams];
+          localStorage.setItem("testify_teacher_exams", JSON.stringify(deduplicateExams(allExams)));
+        } catch {}
       } catch {
         setExamsList([]);
       } finally {
@@ -131,7 +384,8 @@ export default function TeacherExamsPage() {
 
   // Sync to localStorage on state change preserving other teachers' data
   const updateExamsState = (newList: ExamItem[]) => {
-    setExamsList(newList);
+    const cleanList = deduplicateExams(newList);
+    setExamsList(cleanList);
     try {
       const userEmail = session?.user?.email;
       const stored = localStorage.getItem("testify_teacher_exams");
@@ -141,9 +395,9 @@ export default function TeacherExamsPage() {
       if (userEmail) {
         allExams = allExams.filter((e) => e.teacherEmail !== userEmail && e.createdBy !== userEmail);
       }
-      allExams = [...newList, ...allExams];
+      allExams = [...cleanList, ...allExams];
 
-      localStorage.setItem("testify_teacher_exams", JSON.stringify(allExams));
+      localStorage.setItem("testify_teacher_exams", JSON.stringify(deduplicateExams(allExams)));
     } catch {
       // Fallback
     }
@@ -154,6 +408,8 @@ export default function TeacherExamsPage() {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
+  const [startDateTime, setStartDateTime] = useState("");
+  const [endDateTime, setEndDateTime] = useState("");
   const [duration, setDuration] = useState(60);
   const [totalMarks, setTotalMarks] = useState(100);
   const [passMark, setPassMark] = useState(40);
@@ -161,6 +417,25 @@ export default function TeacherExamsPage() {
   const [accessType, setAccessType] = useState<"FREE" | "PAID">("FREE");
   const [price, setPrice] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const getDefaultDateTimeLocal = (plusMinutes = 0) => {
+    const now = new Date(Date.now() + plusMinutes * 60 * 1000);
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
+  const autoCalculateEnd = (startVal: string, durationMins: number) => {
+    if (!startVal) return "";
+    try {
+      const d = new Date(startVal);
+      if (!isNaN(d.getTime())) {
+        const end = new Date(d.getTime() + durationMins * 60 * 1000);
+        const tzOffset = end.getTimezoneOffset() * 60000;
+        return new Date(end.getTime() - tzOffset).toISOString().slice(0, 16);
+      }
+    } catch {}
+    return "";
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -174,11 +449,16 @@ export default function TeacherExamsPage() {
       return;
     }
 
+    const defaultStart = getDefaultDateTimeLocal(0);
+    const defaultEnd = autoCalculateEnd(defaultStart, 60);
+
     setEditingExam(null);
     setTitle("");
     setSubject("");
     setDescription("");
     setDate("Today, 3:00 PM");
+    setStartDateTime(defaultStart);
+    setEndDateTime(defaultEnd);
     setDuration(60);
     setTotalMarks(50);
     setPassMark(20);
@@ -194,6 +474,8 @@ export default function TeacherExamsPage() {
     setSubject(exam.subject);
     setDescription(exam.description);
     setDate(exam.date);
+    setStartDateTime(exam.startDateTime || "");
+    setEndDateTime(exam.endDateTime || "");
     setDuration(exam.duration);
     setTotalMarks(exam.totalMarks);
     setPassMark(exam.passMark);
@@ -218,7 +500,21 @@ export default function TeacherExamsPage() {
       return;
     }
 
+    if (startDateTime && endDateTime && new Date(endDateTime) <= new Date(startDateTime)) {
+      showToast("End Date & Time must be strictly after Start Date & Time.");
+      return;
+    }
+
     const finalPrice = accessType === "PAID" ? Number(price) : 0;
+
+    let formattedSchedule = date;
+    if (startDateTime && endDateTime) {
+      try {
+        const sDate = new Date(startDateTime);
+        const eDate = new Date(endDateTime);
+        formattedSchedule = `${sDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${sDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${eDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      } catch {}
+    }
 
     if (editingExam) {
       const updated: ExamItem[] = examsList.map((item) =>
@@ -228,7 +524,9 @@ export default function TeacherExamsPage() {
               title: title.trim(),
               subject: subject.trim(),
               description: description.trim(),
-              date,
+              date: formattedSchedule || date,
+              startDateTime,
+              endDateTime,
               duration: Number(duration),
               totalMarks: Number(totalMarks),
               passMark: Number(passMark),
@@ -248,11 +546,15 @@ export default function TeacherExamsPage() {
           category: subject.trim(),
           subject: subject.trim(),
           description: description.trim(),
+          startDateTime,
+          endDateTime,
           durationMinutes: Number(duration),
           totalMarks: Number(totalMarks),
           passPercentage: Math.round(((Number(passMark) || 20) / (Number(totalMarks) || 50)) * 100),
           accessType,
           price: finalPrice,
+          joinCode: editingExam.joinCode,
+          accessToken: editingExam.accessToken,
           status: status === "Published" ? "PUBLISHED" : status === "Scheduled" ? "PUBLISHED" : "DRAFT",
         });
       } catch {}
@@ -269,11 +571,15 @@ export default function TeacherExamsPage() {
           category: subject.trim(),
           subject: subject.trim(),
           description: description.trim(),
+          startDateTime,
+          endDateTime,
           durationMinutes: Number(duration) || 60,
           totalMarks: Number(totalMarks) || 50,
           passPercentage: Math.round(((Number(passMark) || 20) / (Number(totalMarks) || 50)) * 100),
           accessType,
           price: finalPrice,
+          joinCode,
+          accessToken,
           status: status === "Published" ? "PUBLISHED" : status === "Scheduled" ? "PUBLISHED" : "DRAFT",
           questions: [],
         });
@@ -287,7 +593,9 @@ export default function TeacherExamsPage() {
         title: title.trim(),
         subject: subject.trim(),
         description: description.trim(),
-        date: date || "Scheduled Soon",
+        date: formattedSchedule || date || "Scheduled Soon",
+        startDateTime,
+        endDateTime,
         duration: Number(duration) || 60,
         totalMarks: Number(totalMarks) || 50,
         passMark: Number(passMark) || 20,
@@ -429,6 +737,133 @@ export default function TeacherExamsPage() {
         </Button>
       </div>
 
+      {/* Real-time Exam Metric Statistics Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Total Exams */}
+        <div
+          onClick={() => setSelectedFilter("all")}
+          className={`p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border transition-all cursor-pointer backdrop-blur-xl shadow-xs hover:shadow-lg ${
+            selectedFilter === "all"
+              ? "border-[#0092E3] ring-2 ring-[#0092E3]/20 bg-blue-50/30"
+              : "border-slate-200/80 dark:border-slate-800 hover:border-[#0092E3]/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Exams</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/50 text-[#0092E3] flex items-center justify-center">
+              <Layers className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-black text-[#152234] dark:text-white font-display">
+              {stats.total}
+            </span>
+            <span className="text-[11px] font-bold text-[#0092E3]">
+              {stats.totalCandidates} {stats.totalCandidates === 1 ? "Candidate" : "Candidates"}
+            </span>
+          </div>
+        </div>
+
+        {/* 2. Live Now */}
+        <div
+          onClick={() => setSelectedFilter("live")}
+          className={`p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border transition-all cursor-pointer backdrop-blur-xl shadow-xs hover:shadow-lg ${
+            selectedFilter === "live"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/30"
+              : "border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Live Now
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-100 dark:border-emerald-900/50 text-emerald-600 flex items-center justify-center">
+              <Activity className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-black text-emerald-600 font-display">
+              {stats.live}
+            </span>
+            <span className="text-[11px] font-bold text-emerald-600">
+              Active Ongoing
+            </span>
+          </div>
+        </div>
+
+        {/* 3. Upcoming */}
+        <div
+          onClick={() => setSelectedFilter("upcoming")}
+          className={`p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border transition-all cursor-pointer backdrop-blur-xl shadow-xs hover:shadow-lg ${
+            selectedFilter === "upcoming"
+              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30"
+              : "border-slate-200/80 dark:border-slate-800 hover:border-amber-500/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Upcoming</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-100 dark:border-amber-900/50 text-amber-600 flex items-center justify-center">
+              <Clock className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-black text-amber-600 font-display">
+              {stats.upcoming}
+            </span>
+            <span className="text-[11px] font-bold text-amber-600">
+              Scheduled Ahead
+            </span>
+          </div>
+        </div>
+
+        {/* 4. Finished */}
+        <div
+          onClick={() => setSelectedFilter("finished")}
+          className={`p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border transition-all cursor-pointer backdrop-blur-xl shadow-xs hover:shadow-lg ${
+            selectedFilter === "finished"
+              ? "border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/30"
+              : "border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Finished</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 flex items-center justify-center">
+              <FileCheck2 className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-black text-indigo-600 font-display">
+              {stats.finished}
+            </span>
+            <span className="text-[11px] font-bold text-indigo-600">
+              Ended / Past
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Filter Strip if a specific card was clicked */}
+      {selectedFilter !== "all" && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <span>Filtered by:</span>
+            <Badge variant="info" className="capitalize text-xs font-bold px-2.5 py-0.5">
+              {selectedFilter} Exams ({displayedExams.length})
+            </Badge>
+          </div>
+          <button
+            onClick={() => setSelectedFilter("all")}
+            className="text-xs font-bold text-[#0092E3] hover:underline cursor-pointer"
+          >
+            Show All Exams ({examsList.length})
+          </button>
+        </div>
+      )}
+
       {/* Exam List Grid */}
       {examsList.length === 0 ? (
         <Card className="p-12 text-center flex flex-col items-center justify-center gap-3">
@@ -441,16 +876,54 @@ export default function TeacherExamsPage() {
             Create First Exam
           </Button>
         </Card>
+      ) : displayedExams.length === 0 ? (
+        <Card className="p-12 text-center flex flex-col items-center justify-center gap-3 bg-white/80 dark:bg-slate-900/80 rounded-3xl border border-slate-200/80 dark:border-slate-800">
+          <ClipboardList className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 capitalize">
+            No {selectedFilter} Examinations
+          </h3>
+          <p className="text-xs text-slate-500 max-w-sm">
+            There are currently no examinations under the &quot;{selectedFilter}&quot; filter.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => setSelectedFilter("all")}>
+            Show All Exams ({examsList.length})
+          </Button>
+        </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {examsList.map((exam) => (
+          {displayedExams.map((exam) => {
+            const timingStatus = getExamTimingStatus(exam, currentTime);
+            return (
           <Card key={exam.id} hoverEffect className="flex flex-col justify-between bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
             <CardHeader className="p-5 pb-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-[#0092E3] dark:bg-cyan-950/60 dark:text-cyan-400">
                   <ClipboardList className="h-5 w-5" />
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {/* Real-time timing badge */}
+                  {timingStatus === "live" && (
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      LIVE
+                    </span>
+                  )}
+                  {timingStatus === "upcoming" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300">
+                      <Clock className="w-2.5 h-2.5 text-amber-600" />
+                      UPCOMING
+                    </span>
+                  )}
+                  {timingStatus === "finished" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300">
+                      <FileCheck2 className="w-2.5 h-2.5 text-slate-500" />
+                      FINISHED
+                    </span>
+                  )}
+
                   {exam.accessType === "PAID" ? (
                     <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                       Paid • ${exam.price || 50}
@@ -505,6 +978,27 @@ export default function TeacherExamsPage() {
                   <Layers className="h-3.5 w-3.5" /> {exam.questions?.length || 0} Questions
                 </span>
               </div>
+
+              {/* Candidates Attended Attendance Strip */}
+              {(() => {
+                const candidates = getExamCandidatesCount(exam);
+                return (
+                  <Link
+                    href="/teacher/results"
+                    className="flex items-center justify-between px-3 py-2 rounded-2xl bg-blue-50/70 hover:bg-blue-100/70 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-100/80 dark:border-blue-900/50 text-[11px] transition-all group cursor-pointer"
+                    title="View candidate submissions & answer sheets in Results"
+                  >
+                    <span className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                      <Users className="h-3.5 w-3.5 text-[#0092E3] group-hover:scale-110 transition-transform" />
+                      Candidates Attended:
+                    </span>
+                    <span className="font-extrabold text-[#0092E3] dark:text-cyan-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-xl border border-blue-100 dark:border-slate-800 shadow-2xs flex items-center gap-1">
+                      {candidates} {candidates === 1 ? "Student" : "Students"}
+                      <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </span>
+                  </Link>
+                );
+              })()}
 
               {/* Ultra-Clean Single Row Action Footer */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -562,8 +1056,9 @@ export default function TeacherExamsPage() {
                 </Link>
               </div>
             </CardContent>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     )}
 
@@ -588,29 +1083,62 @@ export default function TeacherExamsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Subject / Course <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Quantum Mechanics"
-                required
-              />
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Subject / Course <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g. Quantum Mechanics"
+              required
+            />
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-blue-50/40 dark:bg-cyan-950/20 border border-blue-100 dark:border-cyan-900/50 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-[#0092E3]" />
+                  Start Date & Time <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={startDateTime}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setStartDateTime(val);
+                    if (!endDateTime || new Date(endDateTime) <= new Date(val)) {
+                      setEndDateTime(autoCalculateEnd(val, duration));
+                    }
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  End Date & Time <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={endDateTime}
+                  onChange={(e) => setEndDateTime(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Schedule Date & Time
-              </label>
-              <Input
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                placeholder="e.g. Tomorrow, 2:00 PM"
-              />
-            </div>
+            {startDateTime && endDateTime && new Date(endDateTime) <= new Date(startDateTime) ? (
+              <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1.5 rounded-lg border border-rose-200">
+                ⚠️ End Date & Time must be after Start Date & Time.
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                ℹ️ When the End Date & Time arrives, student exams will automatically save and submit.
+              </p>
+            )}
           </div>
 
           {/* Exam Access & Pricing Section */}
