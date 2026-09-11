@@ -3,8 +3,12 @@ import { authClient } from "@/lib/auth-client";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 async function handleResponse(res: Response) {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  let data: any = {};
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok || data.success === false) {
     throw new Error(data.message || `Request failed with status ${res.status}`);
   }
   return data;
