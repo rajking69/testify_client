@@ -35,35 +35,9 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                var observer = new MutationObserver(function(mutations) {
-                  for (var i = 0; i < mutations.length; i++) {
-                    var m = mutations[i];
-                    if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked') {
-                      m.target.removeAttribute('bis_skin_checked');
-                    }
-                  }
-                });
-                observer.observe(document.documentElement, {
-                  attributes: true,
-                  subtree: true,
-                  attributeFilter: ['bis_skin_checked']
-                });
-                window.addEventListener('load', function() {
-                  setTimeout(function() { observer.disconnect(); }, 3000);
-                });
-              } catch (e) {}
-            `,
-          }}
-        />
-      </head>
       <body
-        className="min-h-full flex flex-col font-sans bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-300"
         suppressHydrationWarning
+        className="min-h-full flex flex-col font-sans bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-300"
       >
         <ThemeProvider
           attribute="class"

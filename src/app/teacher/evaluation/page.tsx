@@ -1,5 +1,5 @@
-import { EvaluationPanel } from "@/components/teacher/TeacherWorkflowPanel";
+import { redirect } from "next/navigation";
 
 export default function TeacherEvaluationPage() {
-  return <EvaluationPanel />;
+  redirect("/teacher/results");
 }

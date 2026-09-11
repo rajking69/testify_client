@@ -24,6 +24,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   if (!mounted) {
     return (
       <div
+        suppressHydrationWarning
         className={`w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse ${className}`}
       />
     );

@@ -45,6 +45,8 @@ export default function PublicExamsSection() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const [exams, setExams] = useState<PublicExamCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("All");
   const [typeFilter, setTypeFilter] = useState<"ALL" | "FREE" | "PAID">("ALL");
@@ -52,6 +54,85 @@ export default function PublicExamsSection() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [completedExamIds, setCompletedExamIds] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const loadPublicExams = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      let list: PublicExamCard[] = [];
+
+      // 1. Fetch from Backend Public Exam API (returns all free + paid published exams)
+      const res = await examService.getPublicExams();
+      if (res && res.data) {
+        const apiList: PublicExamCard[] = res.data
+          .filter((e: any) => e.isPublished !== false && (e.status === "PUBLISHED" || e.status === "Published" || !e.status))
+          .map((e: any) => ({
+            id: String(e.id || e.examId || e._id),
+            title: e.title,
+            subject: e.subject || e.category || "General",
+            description: e.description || "Official examination hosted on Testify.",
+            teacherName: e.teacherName || (e.createdBy as any)?.name || "Certified Instructor",
+            teacherEmail: e.teacherEmail || (e.createdBy as any)?.email || "",
+            teacherId: e.teacherId || (e.createdBy as any)?._id || "",
+            duration: e.duration || e.durationMinutes || 60,
+            totalMarks: e.totalMarks || 50,
+            passMark: e.passMarks || e.passMark || Math.round(((e.totalMarks || 50) * 0.4)),
+            questionsCount: e.questions?.length || 0,
+            accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
+            price: Number(e.price) > 0 ? Number(e.price) : 0,
+            joinCode: e.joinCode || String(e.id || e._id),
+            accessToken: e.accessToken || String(e.id || e._id),
+            status: "Published",
+          }));
+
+        list = apiList;
+      }
+
+      // Merge local teacher exams if present in localStorage
+      if (typeof window !== "undefined") {
+        try {
+          const stored = localStorage.getItem("testify_teacher_exams");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            const localPublished = parsed
+              .filter((e: any) => e.status === "Published" || e.status === "Scheduled" || e.status === "Ready")
+              .map((e: any) => ({
+                id: String(e.id),
+                title: e.title,
+                subject: e.subject || "General",
+                description: e.description || "Official assessment hosted on Testify platform.",
+                teacherName: e.teacherName || e.creatorName || (e.teacherEmail ? e.teacherEmail.split("@")[0] : "Certified Instructor"),
+                teacherEmail: e.teacherEmail || e.createdBy || "",
+                teacherId: e.teacherId || e.creatorId || "",
+                duration: e.duration || 60,
+                totalMarks: e.totalMarks || 50,
+                passMark: e.passMark || 20,
+                questionsCount: e.questions?.length || 10,
+                accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
+                price: Number(e.price) > 0 ? Number(e.price) : 0,
+                joinCode: e.joinCode || "CSE101",
+                accessToken: e.accessToken || String(e.id),
+                status: e.status || "Published",
+              }));
+
+            localPublished.forEach((item: any) => {
+              if (!list.some((l) => l.id === item.id)) {
+                list.push(item);
+              }
+            });
+          }
+        } catch {}
+      }
+
+      setExams(list);
+    } catch (err: any) {
+      console.error("Failed to load public exams:", err);
+      setErrorMessage(err?.message || "Failed to load exams. Please check your internet connection.");
+    } finally {
+      setIsLoading(false);
+      setIsLoaded(true);
+    }
+  };
 
   useEffect(() => {
     const currentEmail = (session?.user?.email || "").trim().toLowerCase();
@@ -141,76 +222,6 @@ export default function PublicExamsSection() {
       } catch {}
     }
     syncBackendSubmissions();
-
-    async function loadPublicExams() {
-      let list: PublicExamCard[] = [];
-
-      // 1. Load from Teacher LocalStorage Exams
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem("testify_teacher_exams");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            list = parsed
-              .filter((e: any) => e.status === "Published" || e.status === "Scheduled" || e.status === "Ready")
-              .map((e: any) => ({
-                id: String(e.id),
-                title: e.title,
-                subject: e.subject || "General",
-                description: e.description || "Official assessment hosted on Testify platform.",
-                teacherName: e.teacherName || e.creatorName || (e.teacherEmail ? e.teacherEmail.split("@")[0] : "Certified Instructor"),
-                teacherEmail: e.teacherEmail || e.createdBy || "",
-                teacherId: e.teacherId || e.creatorId || "",
-                duration: e.duration || 60,
-                totalMarks: e.totalMarks || 50,
-                passMark: e.passMark || 20,
-                questionsCount: e.questions?.length || 10,
-                accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
-                price: Number(e.price) > 0 ? Number(e.price) : 0,
-                joinCode: e.joinCode || "CSE101",
-                accessToken: e.accessToken || String(e.id),
-                status: e.status || "Published",
-              }));
-          }
-        } catch {}
-      }
-
-      // 2. Fetch from Backend API
-      try {
-        const res = await examService.getAllExams();
-        if (res.data) {
-          const apiList: PublicExamCard[] = res.data
-            .filter((e: any) => e.status === "PUBLISHED" || e.status === "Published")
-            .map((e: any) => ({
-              id: String(e._id),
-              title: e.title,
-              subject: e.subject || e.category || "General",
-              description: e.description || "Official examination hosted on Testify.",
-              teacherName: (e.createdBy as any)?.name || e.teacherName || "Certified Instructor",
-              teacherEmail: (e.createdBy as any)?.email || e.teacherEmail || "",
-              teacherId: (e.createdBy as any)?._id || (e.createdBy as any)?.id || e.teacherId || "",
-              duration: e.durationMinutes || 60,
-              totalMarks: e.totalMarks || 50,
-              passMark: Math.round(((e.totalMarks || 50) * (e.passPercentage || 40)) / 100),
-              questionsCount: e.questions?.length || 0,
-              accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
-              price: Number(e.price) > 0 ? Number(e.price) : 0,
-              joinCode: e.joinCode || String(e._id),
-              accessToken: e.accessToken || String(e._id),
-              status: "Published",
-            }));
-
-          apiList.forEach((item) => {
-            if (!list.some((l) => l.id === item.id)) {
-              list.unshift(item);
-            }
-          });
-        }
-      } catch {}
-
-      setExams(list);
-      setIsLoaded(true);
-    }
     loadPublicExams();
   }, [session?.user?.email, session?.user?.id]);
 

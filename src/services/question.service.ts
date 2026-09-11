@@ -62,7 +62,7 @@ export interface QuestionPayload {
   status?: QuestionStatus;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "@/lib/api-config";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await res.json();

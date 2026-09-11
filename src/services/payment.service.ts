@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "@/lib/api-config";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
@@ -73,12 +73,15 @@ export const paymentService = {
     return handleResponse<TeacherPremiumStatusResponse>(res);
   },
 
-  async getTeacherRevenue(): Promise<any> {
+  /**
+   * Fetches verified teacher revenue and sales statistics from the backend.
+   */
+  async getTeacherRevenue(): Promise<{ success: boolean; data: any }> {
     const res = await fetch(`${API_BASE_URL}/payments/teacher/revenue`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return handleResponse<any>(res);
+    return handleResponse<{ success: boolean; data: any }>(res);
   },
 };

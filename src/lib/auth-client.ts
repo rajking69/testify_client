@@ -2,19 +2,14 @@ import { createAuthClient } from "better-auth/react";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import { emailOTPClient } from "better-auth/client/plugins";
 import { authConfig } from "./auth-types";
+import { getAuthBaseUrl } from "./api-config";
 
-const sanitizeUrl = (rawUrl?: string): string => {
-  if (!rawUrl) return "https://testify-server-5ta4.onrender.com";
-  let cleaned = rawUrl.trim().replace(/^["'\\]+|["'\\]+$/g, "").trim();
-  if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
-    cleaned = `https://${cleaned}`;
-  }
-  return cleaned.replace(/\/+$/, "");
-};
-
-// Create typed auth client with inferred additional fields
+// Create typed auth client with inferred additional fields and credentials enabled
 export const authClient = createAuthClient({
-  baseURL: sanitizeUrl(process.env.NEXT_PUBLIC_BETTER_AUTH_URL),
+  baseURL: getAuthBaseUrl(),
+  fetchOptions: {
+    credentials: "include",
+  },
   plugins: [inferAdditionalFields<typeof authConfig>(), emailOTPClient()],
 });
 
