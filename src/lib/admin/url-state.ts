@@ -108,8 +108,6 @@ export function useFilterState(defaultFilters: Partial<FilterState>) {
       category: undefined,
       type: undefined,
       difficulty: undefined,
-      sortBy: undefined,
-      sortOrder: undefined,
       page: 1,
       pageSize: state.pageSize || 10,
     });
