@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
-import { formatRelativeTime, cn } from "@/lib/admin/utils";
+import { formatRelativeTime, cn, sortByKey } from "@/lib/admin/utils";
 import { questionService } from "@/services/question.service";
 import {
   Question,
@@ -36,12 +36,14 @@ export default function AdminQuestionsPage() {
     updateFilters,
     updateSearch,
     updatePagination,
+    clearFilters,
   } = useFilterState({
     type: undefined,
     difficulty: undefined,
   });
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
     null,
   );
@@ -50,12 +52,12 @@ export default function AdminQuestionsPage() {
     question?: Question;
   } | null>(null);
 
-  React.useEffect(() => {
-    let isMounted = true;
+  const fetchQuestions = React.useCallback(() => {
+    setLoading(true);
     questionService
-      .getQuestions({ search: filters.search, questionType: filters.type, difficulty: filters.difficulty })
+      .getQuestions({ limit: "all" })
       .then((res) => {
-        if (isMounted && res.data) {
+        if (res.data) {
           const list: Question[] = res.data.map((item: any) => ({
             id: String(item._id),
             question: item.questionText || item.question || "",
@@ -75,33 +77,50 @@ export default function AdminQuestionsPage() {
           setQuestions(list);
         }
       })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, [filters.search, filters.type, filters.difficulty]);
+      .catch((err) => {
+        console.error("Failed to load questions:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  React.useEffect(() => {
+    fetchQuestions();
+  }, [fetchQuestions]);
 
   // Filter questions
-  const filteredQuestions = questions.filter((question) => {
-    if (filters.type && question.type !== filters.type) return false;
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return (
-        question.question.toLowerCase().includes(search) ||
-        question.subject.toLowerCase().includes(search) ||
-        question.category.toLowerCase().includes(search) ||
-        question.tags.some((tag) => tag.toLowerCase().includes(search))
-      );
-    }
-    return true;
-  });
+  const filteredQuestions = React.useMemo(() => {
+    return questions.filter((question) => {
+      if (filters.type && question.type !== filters.type) return false;
+      if (filters.difficulty && question.difficulty !== filters.difficulty) return false;
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        return (
+          question.question.toLowerCase().includes(search) ||
+          question.subject.toLowerCase().includes(search) ||
+          question.category.toLowerCase().includes(search) ||
+          question.tags.some((tag) => tag.toLowerCase().includes(search))
+        );
+      }
+      return true;
+    });
+  }, [questions, filters.type, filters.difficulty, filters.search]);
+
+  // Sort questions
+  const sortedQuestions = React.useMemo(() => {
+    if (!filters.sortBy) return filteredQuestions;
+    return sortByKey(filteredQuestions, filters.sortBy as keyof Question, filters.sortOrder || "asc");
+  }, [filteredQuestions, filters.sortBy, filters.sortOrder]);
 
   // Pagination
-  const startIndex = (filters.page - 1) * filters.pageSize;
-  const paginatedQuestions = filteredQuestions.slice(
-    startIndex,
-    startIndex + filters.pageSize,
-  );
+  const pageSize = filters.pageSize || 10;
+  const currentPage = filters.page || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedQuestions =
+    pageSize >= 1000
+      ? sortedQuestions
+      : sortedQuestions.slice(startIndex, startIndex + pageSize);
 
   // Stats
   const stats = {
@@ -230,7 +249,16 @@ export default function AdminQuestionsPage() {
     {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
-      onClick: (q) => console.log("Delete question", q.id),
+      onClick: async (q) => {
+        if (typeof window !== "undefined" && window.confirm("Are you sure you want to delete this question?")) {
+          try {
+            await questionService.deleteQuestion(q.id);
+            fetchQuestions();
+          } catch (err) {
+            console.error("Failed to delete question:", err);
+          }
+        }
+      },
       danger: true,
     },
   ];
@@ -286,7 +314,9 @@ export default function AdminQuestionsPage() {
         columns={columns}
         filters={filters}
         onFilterChange={updateFilters}
-        total={filteredQuestions.length}
+        onClearFilters={clearFilters}
+        total={sortedQuestions.length}
+        loading={loading}
         actionMenuItems={getActionMenuItems}
         emptyMessage="No questions found"
       />

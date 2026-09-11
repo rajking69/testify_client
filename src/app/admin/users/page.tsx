@@ -24,13 +24,14 @@ import {
   getInitials,
   formatRelativeTime,
   cn,
+  sortByKey,
 } from "@/lib/admin/utils";
 import {
   showSuccessToast,
   showErrorToast,
   withPromiseToast,
 } from "@/lib/admin/toast";
-import { User, TableColumn, ActionMenuItem } from "@/lib/admin/types";
+import { User, UserRole, UserStatus, TableColumn, ActionMenuItem } from "@/lib/admin/types";
 import { adminService } from "@/services/admin.service";
 
 export default function AdminUsersPage() {
@@ -95,30 +96,38 @@ export default function AdminUsersPage() {
   }, [fetchUsers]);
 
   // Filter users based on tab and filters
-  const filteredUsers = users.filter((user) => {
-    // Tab filtering
-    if (activeTab === "teachers" && user.role !== "teacher") return false;
-    if (activeTab === "students" && user.role !== "student") return false;
-    if (activeTab === "admins" && user.role !== "admin") return false;
+  const filteredUsers = React.useMemo(() => {
+    return users.filter((user) => {
+      // Tab filtering
+      if (activeTab === "teachers" && user.role !== "teacher") return false;
+      if (activeTab === "students" && user.role !== "student") return false;
+      if (activeTab === "admins" && user.role !== "admin") return false;
 
-    // Status filtering
-    if (filters.status && user.status !== filters.status) return false;
+      // Status filtering
+      if (filters.status && user.status !== filters.status) return false;
 
-    // Role filtering
-    if (filters.role && user.role !== filters.role) return false;
+      // Role filtering
+      if (filters.role && user.role !== filters.role) return false;
 
-    // Search filtering
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return (
-        user.name.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search) ||
-        (user.department && user.department.toLowerCase().includes(search))
-      );
-    }
+      // Search filtering
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        return (
+          user.name.toLowerCase().includes(search) ||
+          user.email.toLowerCase().includes(search) ||
+          (user.department && user.department.toLowerCase().includes(search))
+        );
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [users, activeTab, filters.status, filters.role, filters.search]);
+
+  // Sort users
+  const sortedUsers = React.useMemo(() => {
+    if (!filters.sortBy) return filteredUsers;
+    return sortByKey(filteredUsers, filters.sortBy as keyof User, filters.sortOrder || "asc");
+  }, [filteredUsers, filters.sortBy, filters.sortOrder]);
 
   // Pagination
   const pageSize = filters.pageSize || 10;
@@ -126,8 +135,8 @@ export default function AdminUsersPage() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedUsers =
     pageSize >= 1000
-      ? filteredUsers
-      : filteredUsers.slice(startIndex, startIndex + pageSize);
+      ? sortedUsers
+      : sortedUsers.slice(startIndex, startIndex + pageSize);
 
   // Stats
   const stats = {
@@ -157,6 +166,7 @@ export default function AdminUsersPage() {
                 alt={user.name}
                 width={40}
                 height={40}
+                unoptimized
                 className="h-10 w-10 rounded-full object-cover"
               />
             ) : (
@@ -215,6 +225,7 @@ export default function AdminUsersPage() {
     {
       key: "department",
       header: "Department",
+      sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
           {String(value || "—")}
@@ -456,6 +467,7 @@ export default function AdminUsersPage() {
                     alt={selectedUser.name}
                     width={64}
                     height={64}
+                    unoptimized
                     className="h-16 w-16 rounded-full object-cover"
                   />
                 ) : (

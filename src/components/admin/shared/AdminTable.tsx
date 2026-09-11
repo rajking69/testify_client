@@ -48,14 +48,30 @@ export function AdminTable<T extends object>({
   emptyMessage = "No data available",
   className,
 }: AdminTableProps<T>) {
-  const [sortColumn, setSortColumn] = useState<string>("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortColumn, setSortColumn] = useState<string>(filters?.sortBy || "");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(filters?.sortOrder || "asc");
   const [localSearch, setLocalSearch] = useState(filters?.search || "");
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     setLocalSearch(filters?.search || "");
   }, [filters?.search]);
+
+  useEffect(() => {
+    if (filters?.sortBy !== undefined) {
+      setSortColumn(filters.sortBy);
+    } else {
+      setSortColumn("");
+    }
+  }, [filters?.sortBy]);
+
+  useEffect(() => {
+    if (filters?.sortOrder !== undefined) {
+      setSortOrder(filters.sortOrder);
+    } else {
+      setSortOrder("asc");
+    }
+  }, [filters?.sortOrder]);
 
   const activeFilterCount = [
     Boolean(localSearch || (filters?.search && filters.search.trim() !== "")),
@@ -65,12 +81,15 @@ export function AdminTable<T extends object>({
     Boolean(filters?.category),
     Boolean(filters?.type),
     Boolean(filters?.difficulty),
+    Boolean(filters?.sortBy),
   ].filter(Boolean).length;
 
   const hasActiveFilters = activeFilterCount > 0;
 
   const handleClearFilters = () => {
     setLocalSearch("");
+    setSortColumn("");
+    setSortOrder("asc");
     if (onClearFilters) {
       onClearFilters();
     } else {
@@ -90,15 +109,17 @@ export function AdminTable<T extends object>({
   };
 
   const handleSort = (key: string) => {
-    if (sortColumn === key) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(key);
-      setSortOrder("asc");
-    }
+    const isSameColumn = (filters?.sortBy ?? sortColumn) === key;
+    const currentOrder = (filters?.sortOrder ?? sortOrder);
+    const nextOrder: "asc" | "desc" = isSameColumn && currentOrder === "asc" ? "desc" : "asc";
+
+    setSortColumn(key);
+    setSortOrder(nextOrder);
+
     onFilterChange?.({
       sortBy: key,
-      sortOrder: sortOrder === "asc" ? "desc" : "asc",
+      sortOrder: nextOrder,
+      page: 1,
     });
   };
 

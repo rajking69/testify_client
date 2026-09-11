@@ -288,9 +288,10 @@ function PracticeSessionContent() {
         try {
           const apiAnswers = Object.entries(userAnswers).map(([k, v]) => ({
             questionId: String(k),
+            selectedOptionIndex: typeof v === "number" ? v : (!isNaN(Number(v)) ? Number(v) : 0),
             submittedAnswer: String(v),
           }));
-          await examService.submitExam(examIdParam, apiAnswers);
+          await examService.submitExam(examIdParam, apiAnswers, result.timeSpentSeconds || 600);
         } catch (apiErr) {
           console.warn("Backend API exam submission note:", apiErr);
         }

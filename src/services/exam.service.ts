@@ -1,8 +1,9 @@
-export type ExamAccessType = "FREE" | "SUBSCRIBED" | "PAID";
-export type ExamStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type ExamAccessType = "FREE" | "SUBSCRIBED" | "PAID" | "free" | "paid" | "subscription_only";
+export type ExamStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED" | "draft" | "published" | "scheduled" | "completed";
 
 export interface ExamItem {
   _id: string;
+  id?: string;
   title: string;
   description?: string;
   category: string;
@@ -10,12 +11,21 @@ export interface ExamItem {
   topic?: string;
   durationMinutes: number;
   totalMarks: number;
-  passPercentage: number;
+  passMarks?: number;
+  passPercentage?: number;
   accessType: ExamAccessType;
   price?: number;
   questions: any[];
   status: ExamStatus;
-  createdBy: string;
+  isPublished?: boolean;
+  teacherId?: string;
+  teacherName?: string;
+  teacherEmail?: string;
+  createdBy?: string;
+  joinCode?: string;
+  accessToken?: string;
+  enrolledCount?: number;
+  completedCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -153,22 +163,36 @@ export const examService = {
       credentials: "include",
     });
     if (res.status === 403) {
-      throw new Error("Access Denied: Teacher accounts are strictly forbidden from attempting examinations.");
+      let msg = "Access Denied: You do not have permission to start this examination.";
+      try {
+        const body = await res.json();
+        if (body?.message) msg = body.message;
+      } catch {}
+      throw new Error(msg);
     }
     return handleResponse<{ success: boolean; message: string }>(res);
   },
 
-  async submitExam(id: string, answers: Array<{ questionId: string; submittedAnswer: string }>): Promise<{ success: boolean; message: string; data: ExamSubmission }> {
+  async submitExam(
+    id: string,
+    answers: Array<{ questionId: string; selectedOptionIndex?: number; submittedAnswer?: string }>,
+    timeTakenSeconds?: number
+  ): Promise<{ success: boolean; message: string; data?: ExamSubmission; result?: any }> {
     const res = await fetch(`${API_BASE_URL}/exams/${id}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, timeTakenSeconds }),
     });
     if (res.status === 403) {
-      throw new Error("Access Denied: Teacher accounts are strictly forbidden from submitting examination responses.");
+      let msg = "Access Denied: You cannot submit responses for this examination.";
+      try {
+        const body = await res.json();
+        if (body?.message) msg = body.message;
+      } catch {}
+      throw new Error(msg);
     }
-    return handleResponse<{ success: boolean; message: string; data: ExamSubmission }>(res);
+    return handleResponse<{ success: boolean; message: string; data?: ExamSubmission; result?: any }>(res);
   },
 
   async getMySubmissions(): Promise<{ success: boolean; count: number; data: ExamSubmission[] }> {

@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
-import { getStatusColor, formatRelativeTime, cn } from "@/lib/admin/utils";
+import { getStatusColor, formatRelativeTime, cn, sortByKey } from "@/lib/admin/utils";
 import { examService } from "@/services/exam.service";
 import {
   Exam,
@@ -37,71 +37,89 @@ export default function AdminExamsPage() {
     updateFilters,
     updateSearch,
     updatePagination,
+    clearFilters,
   } = useFilterState({
     status: undefined,
   });
 
   const [exams, setExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [examModal, setExamModal] = useState<{
     type: "create" | "edit";
     exam?: Exam;
   } | null>(null);
 
-  React.useEffect(() => {
-    let isMounted = true;
+  const fetchExams = React.useCallback(() => {
+    setLoading(true);
     examService
       .getAllExams()
       .then((res) => {
-        if (isMounted && res.data) {
+        if (res.data) {
           const list: Exam[] = res.data.map((item: any) => ({
-            id: String(item._id),
+            id: String(item._id || item.id),
             title: item.title,
             subject: item.subject || item.category || "General",
-            status: (item.status || "published").toLowerCase() as ExamStatus,
+            status: (item.status || (item.isPublished !== false ? "published" : "draft")).toLowerCase() as ExamStatus,
             durationMinutes: item.durationMinutes || 60,
             totalMarks: item.totalMarks || 50,
-            passMark: Math.round((item.totalMarks || 50) * (item.passPercentage || 40) / 100),
-            questionCount: item.questions?.length || 0,
-            enrolledCount: item.enrolledCount || 0,
+            passMark: item.passMarks || item.passMark || Math.round((item.totalMarks || 50) * 0.4),
+            questionCount: item.questions?.length || item.questionCount || 0,
+            enrolledCount: item.totalEnrolled || item.enrolledCount || 0,
             completedCount: item.completedCount || 0,
             schedule: {
-              startWindow: item.createdAt || new Date().toISOString(),
-              endWindow: item.updatedAt || new Date().toISOString(),
+              startWindow: item.schedule?.startWindow || item.createdAt || new Date().toISOString(),
+              endWindow: item.schedule?.endWindow || item.updatedAt || new Date(Date.now() + 86400000).toISOString(),
             },
-            createdBy: item.createdBy || "Instructor",
+            createdBy: item.teacherName || item.createdBy || "Administrator",
             createdAt: item.createdAt || new Date().toISOString(),
             updatedAt: item.updatedAt || new Date().toISOString(),
           }));
           setExams(list);
         }
       })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
+      .catch((err) => {
+        console.error("Failed to fetch exams:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  React.useEffect(() => {
+    fetchExams();
+  }, [fetchExams]);
+
   // Filter exams
-  const filteredExams = exams.filter((exam) => {
-    if (filters.status && exam.status !== filters.status) return false;
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return (
-        exam.title.toLowerCase().includes(search) ||
-        exam.subject.toLowerCase().includes(search) ||
-        exam.createdBy.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  const filteredExams = React.useMemo(() => {
+    return exams.filter((exam) => {
+      if (filters.status && exam.status !== filters.status) return false;
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        return (
+          exam.title.toLowerCase().includes(search) ||
+          exam.subject.toLowerCase().includes(search) ||
+          exam.createdBy.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [exams, filters.status, filters.search]);
+
+  // Sort exams
+  const sortedExams = React.useMemo(() => {
+    if (!filters.sortBy) return filteredExams;
+    return sortByKey(filteredExams, filters.sortBy as keyof Exam, filters.sortOrder || "asc");
+  }, [filteredExams, filters.sortBy, filters.sortOrder]);
 
   // Pagination
-  const startIndex = (filters.page - 1) * filters.pageSize;
-  const paginatedExams = filteredExams.slice(
-    startIndex,
-    startIndex + filters.pageSize,
-  );
+  const pageSize = filters.pageSize || 10;
+  const currentPage = filters.page || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedExams =
+    pageSize >= 1000
+      ? sortedExams
+      : sortedExams.slice(startIndex, startIndex + pageSize);
 
   // Stats
   const stats = {
@@ -139,6 +157,7 @@ export default function AdminExamsPage() {
     {
       key: "schedule",
       header: "Schedule",
+      sortable: true,
       render: (_, exam) => (
         <div className="text-slate-700 dark:text-slate-300">
           <div className="flex items-center gap-1 text-xs">
@@ -214,58 +233,54 @@ export default function AdminExamsPage() {
     setExamModal({ type: "edit", exam });
   };
 
-  const handleSaveExam = () => {
+  const handleSaveExam = async () => {
     if (!formTitle.trim()) return;
 
     const duration = Number(formDuration) || 60;
     const totalMarks = Number(formMarks) || 50;
     const passMark = Math.round((totalMarks * 40) / 100);
 
-    if (examModal?.type === "create") {
-      const newExam: Exam = {
-        id: `exam_${Date.now()}`,
-        title: formTitle,
-        subject: formSubject || "General",
-        status: formStatus,
-        durationMinutes: duration,
-        totalMarks: totalMarks,
-        passMark: passMark,
-        questionCount: 0,
-        enrolledCount: 0,
-        completedCount: 0,
-        schedule: {
-          startWindow: new Date().toISOString(),
-          endWindow: new Date(Date.now() + 86400000).toISOString(),
-        },
-        createdBy: "Administrator",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setExams((prev) => [newExam, ...prev]);
-    } else if (examModal?.type === "edit" && examModal.exam) {
-      const updatedId = examModal.exam.id;
-      setExams((prev) =>
-        prev.map((e) =>
-          e.id === updatedId
-            ? {
-                ...e,
-                title: formTitle,
-                subject: formSubject,
-                durationMinutes: duration,
-                totalMarks: totalMarks,
-                passMark: passMark,
-                status: formStatus,
-                updatedAt: new Date().toISOString(),
-              }
-            : e
-        )
-      );
+    try {
+      if (examModal?.type === "create") {
+        await examService.createExam({
+          title: formTitle.trim(),
+          category: formSubject.trim() || "General",
+          subject: formSubject.trim() || "General",
+          status: formStatus,
+          isPublished: formStatus !== "draft",
+          durationMinutes: duration,
+          totalMarks: totalMarks,
+          passMarks: passMark,
+          accessType: "free",
+        });
+      } else if (examModal?.type === "edit" && examModal.exam) {
+        await examService.updateExam(examModal.exam.id, {
+          title: formTitle.trim(),
+          category: formSubject.trim() || "General",
+          subject: formSubject.trim() || "General",
+          status: formStatus,
+          isPublished: formStatus !== "draft",
+          durationMinutes: duration,
+          totalMarks: totalMarks,
+          passMarks: passMark,
+        });
+      }
+      fetchExams();
+    } catch (err) {
+      console.error("Failed to save exam:", err);
     }
     setExamModal(null);
   };
 
-  const handleDeleteExam = (id: string) => {
-    setExams((prev) => prev.filter((e) => e.id !== id));
+  const handleDeleteExam = async (id: string) => {
+    if (typeof window !== "undefined" && window.confirm("Are you sure you want to delete this exam?")) {
+      try {
+        await examService.deleteExam(id);
+        fetchExams();
+      } catch (err) {
+        console.error("Failed to delete exam:", err);
+      }
+    }
   };
 
   // Action menu items
@@ -335,7 +350,9 @@ export default function AdminExamsPage() {
         columns={columns}
         filters={filters}
         onFilterChange={updateFilters}
-        total={filteredExams.length}
+        onClearFilters={clearFilters}
+        total={sortedExams.length}
+        loading={loading}
         actionMenuItems={getActionMenuItems}
         emptyMessage="No exams found"
       />

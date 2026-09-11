@@ -25,7 +25,7 @@ export interface QuestionItem {
 
 export interface GetQuestionsParams {
   page?: number;
-  limit?: number;
+  limit?: number | string;
   search?: string;
   category?: string;
   subject?: string;

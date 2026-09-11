@@ -68,6 +68,14 @@ export function useFilterState(defaultFilters: Partial<FilterState>) {
     search: "",
     page: 1,
     pageSize: 10,
+    sortBy: undefined,
+    sortOrder: "asc",
+    status: undefined,
+    role: undefined,
+    tier: undefined,
+    category: undefined,
+    type: undefined,
+    difficulty: undefined,
     ...defaultFilters,
   });
 

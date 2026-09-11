@@ -23,6 +23,7 @@ import {
   formatCurrency,
   formatRelativeTime,
   cn,
+  sortByKey,
 } from "@/lib/admin/utils";
 import { adminService } from "@/services/admin.service";
 import {
@@ -39,6 +40,7 @@ export default function AdminPaymentsPage() {
     updateFilters,
     updateSearch,
     updatePagination,
+    clearFilters,
   } = useFilterState({
     status: undefined,
   });
@@ -63,25 +65,35 @@ export default function AdminPaymentsPage() {
   }, []);
 
   // Filter payments
-  const filteredPayments = payments.filter((payment) => {
-    if (filters.status && payment.status !== filters.status) return false;
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return (
-        payment.userName.toLowerCase().includes(search) ||
-        (payment.userEmail || "").toLowerCase().includes(search) ||
-        payment.transactionId.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  const filteredPayments = React.useMemo(() => {
+    return payments.filter((payment) => {
+      if (filters.status && payment.status !== filters.status) return false;
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        return (
+          payment.userName.toLowerCase().includes(search) ||
+          (payment.userEmail || "").toLowerCase().includes(search) ||
+          payment.transactionId.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [payments, filters.status, filters.search]);
+
+  // Sort payments
+  const sortedPayments = React.useMemo(() => {
+    if (!filters.sortBy) return filteredPayments;
+    return sortByKey(filteredPayments, filters.sortBy as keyof Payment, filters.sortOrder || "asc");
+  }, [filteredPayments, filters.sortBy, filters.sortOrder]);
 
   // Pagination
-  const startIndex = (filters.page - 1) * filters.pageSize;
-  const paginatedPayments = filteredPayments.slice(
-    startIndex,
-    startIndex + filters.pageSize,
-  );
+  const pageSize = filters.pageSize || 10;
+  const currentPage = filters.page || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedPayments =
+    pageSize >= 1000
+      ? sortedPayments
+      : sortedPayments.slice(startIndex, startIndex + pageSize);
 
   // Stats
   const stats = {
@@ -157,6 +169,7 @@ export default function AdminPaymentsPage() {
     {
       key: "paymentMethod",
       header: "Method",
+      sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">{String(value || "")}</span>
       ),
@@ -329,7 +342,8 @@ export default function AdminPaymentsPage() {
         columns={columns}
         filters={filters}
         onFilterChange={updateFilters}
-        total={filteredPayments.length}
+        onClearFilters={clearFilters}
+        total={sortedPayments.length}
         actionMenuItems={getActionMenuItems}
         emptyMessage="No payments found"
       />

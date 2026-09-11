@@ -10,12 +10,12 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useFilterState } from "@/lib/admin/url-state";
-import { getStatusColor, formatCurrency, formatRelativeTime, cn } from "@/lib/admin/utils";
+import { getStatusColor, formatCurrency, formatRelativeTime, cn, sortByKey } from "@/lib/admin/utils";
 import { adminService } from "@/services/admin.service";
 import { Subscription, SubscriptionTier, TableColumn, ActionMenuItem } from "@/lib/admin/types";
 
 export default function AdminSubscriptionsPage() {
-  const { filters, updateFilter, updateFilters, updateSearch, updatePagination } = useFilterState({
+  const { filters, updateFilter, updateFilters, updateSearch, updatePagination, clearFilters } = useFilterState({
     tier: undefined,
     status: undefined,
   });
@@ -39,22 +39,35 @@ export default function AdminSubscriptionsPage() {
   }, []);
 
   // Filter subscriptions
-  const filteredSubscriptions = subscriptions.filter((sub) => {
-    if (filters.tier && sub.tier !== filters.tier) return false;
-    if (filters.status && sub.status !== filters.status) return false;
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return (
-        sub.userName.toLowerCase().includes(search) ||
-        sub.userEmail.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  const filteredSubscriptions = React.useMemo(() => {
+    return subscriptions.filter((sub) => {
+      if (filters.tier && sub.tier !== filters.tier) return false;
+      if (filters.status && sub.status !== filters.status) return false;
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        return (
+          sub.userName.toLowerCase().includes(search) ||
+          sub.userEmail.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [subscriptions, filters.tier, filters.status, filters.search]);
+
+  // Sort subscriptions
+  const sortedSubscriptions = React.useMemo(() => {
+    if (!filters.sortBy) return filteredSubscriptions;
+    return sortByKey(filteredSubscriptions, filters.sortBy as keyof Subscription, filters.sortOrder || "asc");
+  }, [filteredSubscriptions, filters.sortBy, filters.sortOrder]);
 
   // Pagination
-  const startIndex = (filters.page - 1) * filters.pageSize;
-  const paginatedSubscriptions = filteredSubscriptions.slice(startIndex, startIndex + filters.pageSize);
+  const pageSize = filters.pageSize || 10;
+  const currentPage = filters.page || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedSubscriptions =
+    pageSize >= 1000
+      ? sortedSubscriptions
+      : sortedSubscriptions.slice(startIndex, startIndex + pageSize);
 
   // Stats
   const stats = {
@@ -280,7 +293,8 @@ export default function AdminSubscriptionsPage() {
         columns={columns}
         filters={filters}
         onFilterChange={updateFilters}
-        total={filteredSubscriptions.length}
+        onClearFilters={clearFilters}
+        total={sortedSubscriptions.length}
         actionMenuItems={getActionMenuItems}
         emptyMessage="No subscriptions found"
       />
