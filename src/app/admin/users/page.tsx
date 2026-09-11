@@ -309,6 +309,35 @@ export default function AdminUsersPage() {
     const action = actionModal.type;
     const user = actionModal.user;
 
+    if (action === "delete") {
+      const previousUsers = [...users];
+      setUsers(users.filter((u) => u.id !== user.id));
+
+      try {
+        await withPromiseToast(
+          adminService.deleteUser(user.id),
+          {
+            loading: "Deleting user...",
+            success: `Successfully deleted ${user.name}`,
+            error: "Failed to delete user",
+          },
+        );
+
+        showSuccessToast(
+          "User deleted successfully",
+          `${user.name} was permanently removed from the database`,
+        );
+        fetchUsers();
+      } catch (err: any) {
+        setUsers(previousUsers);
+        showErrorToast(err?.message || "Failed to delete user");
+      }
+
+      setActionModal(null);
+      setSuspensionReason("");
+      return;
+    }
+
     const newStatus =
       action === "activate"
         ? "active"
@@ -316,9 +345,7 @@ export default function AdminUsersPage() {
           ? "deactivated"
           : action === "suspend"
             ? "suspended"
-            : action === "delete"
-              ? "deactivated"
-              : user.status;
+            : user.status;
 
     // Optimistic UI update
     const previousUsers = [...users];
@@ -547,8 +574,17 @@ export default function AdminUsersPage() {
         >
           <div className="space-y-4">
             <p className="text-slate-600 dark:text-slate-400">
-              Are you sure you want to {actionModal.type}{" "}
-              <strong>{actionModal.user.name}</strong>?
+              {actionModal.type === "delete" ? (
+                <>
+                  Are you sure you want to permanently delete{" "}
+                  <strong>{actionModal.user.name}</strong>? This action will permanently remove the user from the database and cannot be undone.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to {actionModal.type}{" "}
+                  <strong>{actionModal.user.name}</strong>?
+                </>
+              )}
             </p>
 
             {actionModal.type === "suspend" && (
@@ -584,7 +620,7 @@ export default function AdminUsersPage() {
                 }
                 onClick={handleActionConfirm}
               >
-                Confirm
+                {actionModal.type === "delete" ? "Delete User" : "Confirm"}
               </Button>
             </div>
           </div>
