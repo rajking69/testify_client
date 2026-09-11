@@ -81,15 +81,12 @@ export function AdminTable<T extends object>({
     Boolean(filters?.category),
     Boolean(filters?.type),
     Boolean(filters?.difficulty),
-    Boolean(filters?.sortBy),
   ].filter(Boolean).length;
 
   const hasActiveFilters = activeFilterCount > 0;
 
   const handleClearFilters = () => {
     setLocalSearch("");
-    setSortColumn("");
-    setSortOrder("asc");
     if (onClearFilters) {
       onClearFilters();
     } else {
@@ -101,8 +98,6 @@ export function AdminTable<T extends object>({
         category: undefined,
         type: undefined,
         difficulty: undefined,
-        sortBy: undefined,
-        sortOrder: undefined,
         page: 1,
       });
     }
