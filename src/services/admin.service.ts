@@ -84,4 +84,56 @@ export const adminService = {
   async updateSystemConfig(key: string, value: string): Promise<{ success: boolean; message: string; data: any }> {
     return apiClient.patch(`/admin/settings/${key}`, { value });
   },
+
+  async getSubscriptionOverviewAdmin(): Promise<{
+    success: boolean;
+    stats: {
+      total: number;
+      active: number;
+      pro: number;
+      free: number;
+      institutional: number;
+      monthlyRevenue: number;
+      activePlansCount: number;
+    };
+    plans: any[];
+    subscriptions: any[];
+  }> {
+    return apiClient.get("/subscriptions/admin/overview");
+  },
+
+  async getAllSubscriptionPlansAdmin(): Promise<{ success: boolean; count: number; data: any[] }> {
+    return apiClient.get("/subscriptions/admin/all-plans");
+  },
+
+  async createSubscriptionPlan(payload: {
+    name: string;
+    targetRole: string;
+    interval: string;
+    price: number;
+    durationDays?: number;
+    features?: string[];
+    isActive?: boolean;
+  }): Promise<{ success: boolean; message: string; data: any }> {
+    return apiClient.post("/subscriptions/admin/plans", payload);
+  },
+
+  async updateSubscriptionPlan(
+    id: string,
+    payload: {
+      name?: string;
+      targetRole?: string;
+      interval?: string;
+      price?: number;
+      durationDays?: number;
+      features?: string[];
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; message: string; data: any }> {
+    return apiClient.put(`/subscriptions/admin/plans/${id}`, payload);
+  },
+
+  async deleteSubscriptionPlan(id: string): Promise<{ success: boolean; message: string; data?: any }> {
+    return apiClient.delete(`/subscriptions/admin/plans/${id}`);
+  },
 };
