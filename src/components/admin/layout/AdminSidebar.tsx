@@ -10,6 +10,7 @@ import {
   HelpCircle,
   CreditCard,
   BarChart3,
+  DollarSign,
   Settings,
   ShieldAlert,
   Lock,
@@ -32,6 +33,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  {
+    label: "Revenue",
+    href: "/admin/revenue",
+    icon: <DollarSign className="h-5 w-5" />,
+  },
   {
     label: "Dashboard",
     href: "/admin/dashboard",

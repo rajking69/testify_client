@@ -354,7 +354,7 @@ export default function TeacherRevenuePage() {
             Withdraw (${netRev.toFixed(2)})
           </Button>
 
-          <ThemeToggle className="shrink-0 h-9 w-9 rounded-xl" />
+          
         </div>
       </div>
 

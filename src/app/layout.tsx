@@ -1,3 +1,4 @@
+import { GekkoChatWidget } from "@/components/ai/GekkoChatWidget";
 import type { Metadata } from "next";
 
 import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
@@ -46,6 +47,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <GekkoChatWidget />
           <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
       </body>

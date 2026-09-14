@@ -211,6 +211,7 @@ export function Topbar({ onOpenMobileSidebar }: TopbarProps) {
           )}
         </div>
       </div>
+    
     </header>
   );
 }

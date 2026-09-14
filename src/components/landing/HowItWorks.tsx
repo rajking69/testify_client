@@ -16,28 +16,28 @@ export default function HowItWorks() {
       number: "01",
       icon: <FilePlus2 className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
       title: "Teacher Creates Exam",
-      desc: "Assemble questions from your Question Bank or generate new ones using AI prompts and LaTeX equations.",
+      desc: "Create custom objective questions with multiple choices, mark allocation, time limits, and optional CSV/JSON bulk import.",
       badge: "Step 1",
     },
     {
       number: "02",
       icon: <Send className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
       title: "Distribute Test Code",
-      desc: "Share a 6-digit exam code with your students or auto-schedule it via your connected Google Classroom or LMS.",
+      desc: "Share a unique 6-character access code (e.g. COMPZPN) or provide paid/free exam enrollment directly to registered students.",
       badge: "Step 2",
     },
     {
       number: "03",
       icon: <MonitorPlay className="h-6 w-6 text-[#E8922C] dark:text-amber-400" />,
       title: "Students Attend Test",
-      desc: "Students enter the locked test room on their laptops with auto-saving answers and continuous proctoring checks.",
+      desc: "Students enter the strict examination environment with full-screen enforcement, 1-strike tab lockdown, and live webcam proctoring.",
       badge: "Step 3",
     },
     {
       number: "04",
       icon: <CheckCircle className="h-6 w-6 text-[#00A3C4] dark:text-emerald-400" />,
       title: "Auto-Grade & Analytics",
-      desc: "Instant score generation, AI rubric assistance, and class performance analytics available immediately on submission.",
+      desc: "Instant automated MCQ evaluation, real-time live teacher invigilation matrix, pass/fail status calculation, and Stripe revenue analytics.",
       badge: "Step 4",
     },
   ];
@@ -97,7 +97,7 @@ export default function HowItWorks() {
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                 <span>{s.badge}</span>
-                <span className="text-[#00A3C4] dark:text-cyan-400 font-bold">→</span>
+                <span className="text-[#00A3C4] dark:text-cyan-400 font-bold">&rarr;</span>
               </div>
             </motion.div>
           ))}

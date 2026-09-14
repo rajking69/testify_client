@@ -13,6 +13,7 @@ import {
   Building2,
   Lock,
   TrendingUp,
+  DollarSign,
   BookOpen,
   HelpCircle,
   CreditCard,
@@ -144,6 +145,16 @@ export default function AdminDashboardPage() {
 
   const adminModules = [
     {
+      icon: DollarSign,
+      title: "Revenue Command Center",
+      description: "Track live financial telemetry, total sales, and subscriptions",
+      link: "/admin/revenue",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/80 dark:border-emerald-800",
+      badge: "$ Live Revenue",
+      subtext: "100% Real DB Data",
+    },
+    {
       icon: Users,
       title: "User Management",
       description: "Manage students, instructors, and system administrators",
@@ -268,6 +279,14 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link href="/admin/revenue">
+              <Button
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-lg shadow-emerald-500/25 transition-all cursor-pointer gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                <span>Revenue Center</span>
+              </Button>
+            </Link>
             <Link href="/admin/analytics">
               <Button
                 className="bg-[#5B67F7] hover:bg-[#4F46E5] text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-lg shadow-indigo-500/25 transition-all cursor-pointer"

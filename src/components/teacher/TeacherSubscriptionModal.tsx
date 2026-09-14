@@ -2,29 +2,31 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Sparkles, CheckCircle2, ShieldAlert, LogIn, Loader2, Crown } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
+import { authClient } from "@/lib/auth-client";
 import { paymentService } from "@/services/payment.service";
-import { useSession } from "@/lib/auth-client";
-import { useTeacherSubscription, activateTeacherPremium } from "@/lib/subscription-sync";
-import {
-  Crown,
-  CheckCircle2,
-  Sparkles,
-  ShieldCheck,
-  AlertCircle,
-  LogIn,
-  UserCheck,
-  ArrowRight,
-  ShieldAlert,
-  Loader2,
-} from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
+
+export interface SubscriptionPlanInfo {
+  _id?: string;
+  name: string;
+  targetRole: string;
+  interval: "monthly" | "yearly";
+  price: number;
+  durationDays?: number;
+  features?: string[];
+}
 
 interface TeacherSubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
   initialMessage?: string;
+  selectedPlan?: SubscriptionPlanInfo | null;
 }
 
 export function TeacherSubscriptionModal({
@@ -32,111 +34,170 @@ export function TeacherSubscriptionModal({
   onClose,
   onSuccess,
   initialMessage,
+  selectedPlan,
 }: TeacherSubscriptionModalProps) {
-  const { data: sessionData, isPending } = useSession();
+  const router = useRouter();
+  const { data: sessionData } = authClient.useSession();
   const user = sessionData?.user;
-  const userRole = (user as any)?.role?.toLowerCase() || "";
-
-  const { hasPremium, daysRemaining, expiryDateFormatted } = useTeacherSubscription(sessionData);
-  const isAlreadyActive = hasPremium;
+  const userRole = user?.role;
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Active Subscription State fetched from backend
+  const [isAlreadyActive, setIsAlreadyActive] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState(365);
+  const [expiryDateFormatted, setExpiryDateFormatted] = useState("");
+
+  // Available plans from MongoDB
+  const [allTeacherPlans, setAllTeacherPlans] = useState<any[]>([]);
+  const [activeInterval, setActiveInterval] = useState<"monthly" | "yearly">(
+    selectedPlan?.interval === "monthly" ? "monthly" : "yearly"
+  );
+
+  // Dynamic plan pricing state
+  const [planId, setPlanId] = useState<string | undefined>(selectedPlan?._id);
+  const [planPrice, setPlanPrice] = useState<number>(selectedPlan?.price ?? 199.99);
+  const [planInterval, setPlanInterval] = useState<string>(
+    selectedPlan?.interval === "monthly" ? "month" : "year"
+  );
+  const [planName, setPlanName] = useState<string>(selectedPlan?.name || "Teacher Premium");
+
+  useEffect(() => {
+    if (isOpen) {
+      // 1. Fetch live subscription status from backend
+      paymentService
+        .getTeacherPremiumStatus()
+        .then((res) => {
+          if (res && res.success && res.data) {
+            const active = Boolean(res.data.isPremium || res.data.premiumStatus === "active");
+            setIsAlreadyActive(active);
+
+            if (res.data.premiumExpiresAt) {
+              const expDate = new Date(res.data.premiumExpiresAt);
+              const remaining = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+              setDaysRemaining(remaining);
+              setExpiryDateFormatted(expDate.toLocaleDateString());
+            }
+          }
+        })
+        .catch(() => {});
+
+      // 2. Fetch available plans from MongoDB
+      apiClient
+        .get("/subscriptions/plans")
+        .then((res: any) => {
+          if (res && res.success && Array.isArray(res.data)) {
+            const teacherPlans = res.data.filter(
+              (p: any) => p.targetRole === "teacher" && p.isActive !== false
+            );
+            setAllTeacherPlans(teacherPlans);
+
+            if (selectedPlan && selectedPlan.price !== undefined) {
+              setPlanId(selectedPlan._id);
+              setPlanPrice(selectedPlan.price);
+              const isMon = selectedPlan.interval === "monthly";
+              setActiveInterval(isMon ? "monthly" : "yearly");
+              setPlanInterval(isMon ? "month" : "year");
+              if (selectedPlan.name) setPlanName(selectedPlan.name);
+            } else {
+              const matched =
+                teacherPlans.find((p: any) => p.interval === activeInterval) ||
+                teacherPlans[0];
+
+              if (matched) {
+                setPlanId(matched._id);
+                setPlanPrice(matched.price);
+                const isMon = matched.interval === "monthly";
+                setActiveInterval(isMon ? "monthly" : "yearly");
+                setPlanInterval(isMon ? "month" : "year");
+                setPlanName(matched.name);
+              }
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, selectedPlan]);
+
+  const handleSelectInterval = (interval: "monthly" | "yearly") => {
+    setActiveInterval(interval);
+    const matched = allTeacherPlans.find((p) => p.interval === interval);
+    if (matched) {
+      setPlanId(matched._id);
+      setPlanPrice(matched.price);
+      setPlanInterval(interval === "yearly" ? "year" : "month");
+      setPlanName(matched.name);
+    } else {
+      setPlanInterval(interval === "yearly" ? "year" : "month");
+      setPlanPrice(interval === "yearly" ? 199.99 : 19.99);
+      setPlanName(interval === "yearly" ? "Teacher Yearly Elite" : "Teacher Monthly Pro");
+    }
+  };
+
   const handlePurchase = async () => {
-    // 1. Guard against duplicate payment
-    if (isAlreadyActive) {
-      setErrorMessage(
-        `You already have an active Premium Membership (${daysRemaining} days remaining). Duplicate payments are not permitted.`
-      );
+    if (!user) {
+      window.location.href = "/auth/login?redirect=/teacher/dashboard";
       return;
     }
 
-    // 2. Guard against non-teacher accounts (e.g. Student)
-    if (user && userRole === "student") {
-      setErrorMessage(
-        "Teacher Account Required: You are signed in as a Student. Teacher Premium can only be purchased by Teacher accounts."
-      );
+    if (userRole === "student") {
+      setErrorMessage("Student accounts cannot subscribe to Teacher plans. Please switch to a Teacher account.");
+      return;
+    }
+
+    // STRICT CHECK: Block purchase if subscription is already active
+    if (isAlreadyActive) {
+      setErrorMessage(`Your subscription is already active until ${expiryDateFormatted || "the end of your billing cycle"}. Additional payments are disabled while active.`);
       return;
     }
 
     setIsProcessing(true);
     setErrorMessage(null);
+
     try {
-      // 1. Try Backend Stripe Checkout Endpoint first
-      try {
-        const res = await paymentService.createTeacherPremiumCheckout();
-        if (res.success && res.url) {
-          window.location.href = res.url;
-          return;
-        }
-      } catch (backendErr: any) {
-        console.warn("Backend checkout requires teacher auth or server sync, falling back to Next.js Stripe API:", backendErr);
-      }
-
-      // 2. Direct Next.js Stripe API checkout route (reads STRIPE_SECRET_KEY from .env)
-      if (user?.email && typeof window !== "undefined") {
-        localStorage.setItem("testify_pending_subscription_email", user.email);
-      }
-      const nextRes = await fetch("/api/payments/teacher-premium/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          teacherEmail: user?.email || "instructor@testify.io",
-          teacherName: user?.name || "Testify Instructor",
-        }),
+      const response: any = await apiClient.post("/payments/teacher/premium/checkout", {
+        planId,
+        interval: activeInterval,
+        billingInterval: activeInterval,
+        priceAmount: planPrice,
+        planName: planName,
+        redirectUrl: window.location.origin + "/teacher/exams",
       });
-      const nextData = await nextRes.json();
 
-      if (nextData.success && nextData.url) {
-        window.location.href = nextData.url;
-        return;
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        throw new Error(response.message || "Failed to initialize payment checkout session");
       }
-
-      throw new Error(
-        nextData.message ||
-          "Stripe API credentials missing or invalid in .env. Please check STRIPE_SECRET_KEY."
-      );
     } catch (err: any) {
-      console.error("Payment error:", err);
-      setErrorMessage(err.message || "Failed to start checkout. Please try again.");
-    } finally {
       setIsProcessing(false);
+      setErrorMessage(err.message || "Subscription payment failed or active subscription restriction triggered.");
     }
   };
 
   const premiumFeatures = [
-    "Conduct Unlimited Live Examinations (Free & Paid Papers)",
-    "Instant Shareable Exam Links & Unique Room Join Codes",
-    "Bulk Question Import via Excel, CSV & JSON Engine",
-    "Central Question Bank Repository & 1-Click Reusability",
-    "Live AI Proctoring, Tab Switch Detection & Webcam Telemetry",
-    "Automated MCQ Grading & Student Submission Evaluation",
-    "Exportable Gradebooks, Analytics & Performance Transcripts",
+    "Conduct unlimited online exams with auto-grading",
+    "Access to full question bank & custom category creation",
+    "Live proctoring with tab-switch detection & strict timer",
+    "Instant student result publication & analytics export",
+    "Priority 24/7 Teacher Support",
   ];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Teacher Premium Membership"
-      description="Unlock full examination hosting, live proctoring, and monetization on Testify."
-      size="md"
-    >
-      <div className="space-y-5 pt-1">
-        {/* Error Alert Box */}
+    <Modal isOpen={isOpen} onClose={onClose} title="Upgrade to Teacher Premium" size="lg">
+      <div className="space-y-6 p-1">
         {errorMessage && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2.5">
-            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* 1. Already Active Subscription Card */}
         {isAlreadyActive ? (
-          <div className="p-5 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 space-y-3">
+          <div className="p-5 rounded-3xl bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <div>
@@ -144,17 +205,16 @@ export function TeacherSubscriptionModal({
                   Premium Membership Active
                 </h4>
                 <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                  {daysRemaining} days remaining • Valid until {expiryDateFormatted}
+                  {daysRemaining} days remaining • Valid until {expiryDateFormatted || "Active Period"}
                 </p>
               </div>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2.5">
-              You already have full access to all teacher privileges for 1 full year. Additional payments are denied while your membership remains active.
+              You already have full access to all teacher privileges. Additional payments or renewals are locked until your current plan expires.
             </p>
           </div>
         ) : (
           <>
-            {/* 2. Non-Teacher Role Warning (e.g. Student Logged In) */}
             {user && userRole === "student" && (
               <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-2.5">
                 <div className="flex items-center gap-2 font-bold">
@@ -179,13 +239,12 @@ export function TeacherSubscriptionModal({
               </div>
             )}
 
-            {/* 3. Unauthenticated Warning */}
             {!user && (
               <div className="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
                 <LogIn className="h-4 w-4 text-[#0092E3] shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Not Logged In: </span>
-                  <span>Make sure to log in or register with your Teacher account so your 1-year access is linked directly to your profile.</span>
+                  <span>Make sure to log in or register with your Teacher account so your access is linked directly to your profile.</span>
                 </div>
               </div>
             )}
@@ -197,23 +256,55 @@ export function TeacherSubscriptionModal({
               </div>
             )}
 
-            {/* Pricing Box */}
+            {/* Monthly vs Yearly Plan Selector Toggle */}
+            <div className="p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleSelectInterval("monthly")}
+                className={cn(
+                  "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-center cursor-pointer",
+                  activeInterval === "monthly"
+                    ? "bg-[#0092E3] text-white shadow-md"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Monthly ($19.99/mo)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectInterval("yearly")}
+                className={cn(
+                  "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
+                  activeInterval === "yearly"
+                    ? "bg-[#0092E3] text-white shadow-md"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                <span>Yearly ($199.99/yr)</span>
+                <span className="text-[10px] bg-emerald-400 text-slate-950 px-1.5 py-0.2 rounded-full font-extrabold">
+                  Save 20%
+                </span>
+              </button>
+            </div>
+
+            {/* Dynamic Pricing Box */}
             <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50/80 via-white to-cyan-50/80 dark:from-slate-900 dark:to-slate-950 border border-blue-200/80 dark:border-cyan-800 shadow-sm relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#0092E3] dark:text-cyan-400">
-                    Annual Instructor Plan
+                    Instructor Platform Plan
                   </span>
                   <h3 className="text-xl font-extrabold font-display text-slate-900 dark:text-white mt-0.5">
-                    Teacher Premium
+                    {planName}
                   </h3>
                 </div>
                 <div className="text-right">
                   <span className="text-3xl font-extrabold font-display text-[#0092E3] dark:text-cyan-400">
-                    $20
+                    ${planPrice}
                   </span>
-                  <span className="text-xs text-slate-500 font-medium"> / year</span>
-                  <p className="text-[10px] text-emerald-600 font-bold">Full 1-Year Access</p>
+                  <span className="text-xs text-slate-500 font-medium"> / {planInterval}</span>
+                  <p className="text-[10px] text-emerald-600 font-bold">Full Access</p>
                 </div>
               </div>
 
@@ -230,7 +321,7 @@ export function TeacherSubscriptionModal({
             Everything included in premium
           </p>
           <div className="grid grid-cols-1 gap-2 text-xs">
-            {premiumFeatures.map((feat, idx) => (
+            {premiumFeatures.map((feat: string, idx: number) => (
               <div key={idx} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                 <span className="text-[11px] font-medium">{feat}</span>
@@ -249,7 +340,7 @@ export function TeacherSubscriptionModal({
             <Button
               type="button"
               onClick={onClose}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-5"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-5 cursor-not-allowed opacity-90"
               leftIcon={<CheckCircle2 className="h-4 w-4" />}
             >
               Membership Active ✓
@@ -262,7 +353,7 @@ export function TeacherSubscriptionModal({
               className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-extrabold text-xs px-5 shadow-md shadow-[#0092E3]/20"
               leftIcon={isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             >
-              {isProcessing ? "Redirecting..." : "Upgrade with Stripe • $20.00"}
+              {isProcessing ? "Redirecting..." : `Upgrade with Stripe • $${planPrice}`}
             </Button>
           )}
         </div>

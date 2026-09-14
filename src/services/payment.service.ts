@@ -29,6 +29,19 @@ export interface CheckoutSessionResponse {
 }
 
 export const paymentService = {
+
+  /**
+   * Fetches verified checkout session details from backend.
+   */
+  async getSessionDetails(sessionId: string): Promise<{ success: boolean; data: any }> {
+    const res = await fetch(`${API_BASE_URL}/payments/session/${sessionId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return handleResponse<{ success: boolean; data: any }>(res);
+  },
+
   /**
    * Initializes a Stripe Checkout Session for Teacher Premium ($20/year subscription).
    */
