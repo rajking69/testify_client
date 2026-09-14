@@ -27,6 +27,8 @@ import {
 import { StudentExamPurchaseModal } from "@/components/student/StudentExamPurchaseModal";
 
 interface ExamRecord {
+  scheduleType?: "scheduled" | "flexible";
+  requireCamera?: boolean;
   id: string;
   title: string;
   subject: string;
@@ -95,6 +97,7 @@ export default function StudentExamWaitingRoomPage({
               subject: match.subject || match.category || "General",
               description: match.description || "Instructor published examination.",
               duration: match.durationMinutes || 60,
+              scheduleType: (match as any).scheduleType || ((match as any).startDateTime && (match as any).endDateTime ? "scheduled" : "flexible"),
               totalMarks: match.totalMarks || 50,
               passMark: Math.round((match.totalMarks || 50) * (match.passPercentage || 40) / 100),
               status: "Published",
@@ -336,6 +339,7 @@ export default function StudentExamWaitingRoomPage({
           startedAt: new Date().toISOString(),
           startDateTime: exam?.startDateTime,
           endDateTime: exam?.endDateTime,
+          requireCamera: Boolean(exam?.requireCamera),
           questions: exam?.questions || [],
         })
       );

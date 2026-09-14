@@ -22,6 +22,7 @@ import {
   Crown,
   Share2,
   Users,
+  Camera,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -133,6 +134,7 @@ export function getExamTimingStatus(exam: ExamItem, now: Date = new Date()): Exa
 }
 
 export interface ExamItem {
+  scheduleType?: "flexible" | "scheduled";
   id: string;
   title: string;
   subject: string;
@@ -314,6 +316,7 @@ export default function TeacherExamsPage() {
                   subject: item.subject || item.category || "General",
                   description: item.description || "",
                   date: formattedDate || (item.startDateTime ? new Date(item.startDateTime).toLocaleDateString() : "Active"),
+                  scheduleType: item.scheduleType || (item.startDateTime && item.endDateTime ? "scheduled" : "flexible"),
                   startDateTime: item.startDateTime,
                   endDateTime: item.endDateTime,
                   duration: item.durationMinutes || 60,
@@ -416,6 +419,8 @@ export default function TeacherExamsPage() {
   const [status, setStatus] = useState<"Published" | "Scheduled" | "Draft" | "Ready">("Draft");
   const [accessType, setAccessType] = useState<"FREE" | "PAID">("FREE");
   const [price, setPrice] = useState<number>(0);
+  const [scheduleType, setScheduleType] = useState<"flexible" | "scheduled">("flexible");
+  const [requireCamera, setRequireCamera] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const getDefaultDateTimeLocal = (plusMinutes = 0) => {
@@ -457,8 +462,9 @@ export default function TeacherExamsPage() {
     setSubject("");
     setDescription("");
     setDate("Today, 3:00 PM");
-    setStartDateTime(defaultStart);
-    setEndDateTime(defaultEnd);
+    setScheduleType("flexible");
+    setStartDateTime("");
+    setEndDateTime("");
     setDuration(60);
     setTotalMarks(50);
     setPassMark(20);
@@ -474,6 +480,7 @@ export default function TeacherExamsPage() {
     setSubject(exam.subject);
     setDescription(exam.description);
     setDate(exam.date);
+    setScheduleType(exam.scheduleType || (exam.startDateTime && exam.endDateTime ? "scheduled" : "flexible"));
     setStartDateTime(exam.startDateTime || "");
     setEndDateTime(exam.endDateTime || "");
     setDuration(exam.duration);
@@ -1070,154 +1077,176 @@ export default function TeacherExamsPage() {
         description="Fill in exam details, duration, pass marks, and pricing for your students."
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Exam Title <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Advanced Physics Final Exam"
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+          {/* Row 1: Title & Subject */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Exam Title <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Advanced Physics Final Exam"
+                className="h-9 text-xs"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Subject / Course <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="e.g. Quantum Mechanics"
+                className="h-9 text-xs"
+                required
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Subject / Course <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. Quantum Mechanics"
-              required
-            />
+          {/* Row 2: Access & Pricing + Webcam Proctoring */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Access Model Card */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-800 dark:text-slate-200 text-[11.5px]">
+                  Access & Pricing
+                </label>
+                {accessType === "PAID" && (
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={price}
+                      onChange={(e) => setPrice(Math.max(1, Number(e.target.value) || 0))}
+                      placeholder="Price $"
+                      className="h-7 text-xs font-bold font-mono text-emerald-600"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setAccessType("FREE"); setPrice(0); }}
+                  className={`py-1.5 px-2 rounded-lg border text-center transition-all cursor-pointer font-semibold text-[11px] ${
+                    accessType === "FREE"
+                      ? "border-[#0092E3] bg-blue-50/90 dark:bg-cyan-950/60 text-[#0092E3] dark:text-cyan-400 font-bold shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  Free Exam
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasPremium) {
+                      setSubscriptionMessage("Teacher Premium Membership ($20/year) is required to conduct Paid examinations.");
+                      setIsSubscriptionOpen(true);
+                      return;
+                    }
+                    setAccessType("PAID");
+                    if (price === 0) setPrice(50);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg border text-center transition-all cursor-pointer font-semibold text-[11px] flex items-center justify-center gap-1 ${
+                    accessType === "PAID"
+                      ? "border-emerald-600 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <span>Paid Exam</span>
+                  {!hasPremium && <span className="text-[8.5px] px-1 py-0.2 rounded bg-amber-200 text-amber-900 font-bold">Premium</span>}
+                </button>
+              </div>
+            </div>
+
+            {/* Live Camera Proctoring Card */}
+            <div className="p-2.5 rounded-xl bg-blue-50/40 dark:bg-cyan-950/20 border border-blue-100 dark:border-cyan-900/50 flex items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <label className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 cursor-pointer text-[11.5px]">
+                  <Camera className="h-3.5 w-3.5 text-[#0092E3]" />
+                  <span>Webcam Proctoring</span>
+                </label>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                  {requireCamera
+                    ? "📷 Video feed invigilation active"
+                    : "🚫 Telemetry monitoring active"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequireCamera(!requireCamera)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  requireCamera ? "bg-[#0092E3]" : "bg-slate-300 dark:bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    requireCamera ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-blue-50/40 dark:bg-cyan-950/20 border border-blue-100 dark:border-cyan-900/50 space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Row 3: Availability Schedule (Optional Dates) */}
+          <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-[11.5px]">
+                <Clock className="h-3.5 w-3.5 text-[#0092E3]" />
+                Schedule Window
+              </span>
+              <span className="text-[10px] font-semibold text-[#0092E3] dark:text-cyan-400 bg-blue-100/60 dark:bg-cyan-900/40 px-2 py-0.5 rounded-md">
+                ⚡ Leave Blank = Start Anytime
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-[#0092E3]" />
-                  Start Date & Time <span className="text-rose-500">*</span>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
+                  Start Date & Time <span className="text-[9.5px] text-slate-400 font-normal">(Optional)</span>
                 </label>
                 <Input
                   type="datetime-local"
                   value={startDateTime}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setStartDateTime(val);
-                    if (!endDateTime || new Date(endDateTime) <= new Date(val)) {
-                      setEndDateTime(autoCalculateEnd(val, duration));
-                    }
-                  }}
-                  required
+                  onChange={(e) => setStartDateTime(e.target.value)}
+                  className="h-9 text-xs py-1.5 font-medium text-slate-900 dark:text-white bg-white dark:bg-slate-900"
                 />
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-amber-500" />
-                  End Date & Time <span className="text-rose-500">*</span>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
+                  End Date & Time <span className="text-[9.5px] text-slate-400 font-normal">(Optional)</span>
                 </label>
                 <Input
                   type="datetime-local"
                   value={endDateTime}
                   onChange={(e) => setEndDateTime(e.target.value)}
-                  required
+                  className="h-8 text-xs py-1"
                 />
               </div>
             </div>
-
-            {startDateTime && endDateTime && new Date(endDateTime) <= new Date(startDateTime) ? (
-              <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1.5 rounded-lg border border-rose-200">
-                ⚠️ End Date & Time must be after Start Date & Time.
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                ℹ️ When the End Date & Time arrives, student exams will automatically save and submit.
-              </p>
-            )}
           </div>
 
-          {/* Exam Access & Pricing Section */}
-          <div className="space-y-3 p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
-            <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-              Exam Access & Pricing Model
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => { setAccessType("FREE"); setPrice(0); }}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  accessType === "FREE"
-                    ? "border-[#0092E3] bg-blue-50/70 dark:bg-cyan-950/50 shadow-sm"
-                    : "border-slate-200 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <div className="text-xs font-bold text-[#152234] dark:text-white">Free Exam</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Students can join without payment</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!hasPremium) {
-                    setSubscriptionMessage("Teacher Premium Membership ($20/year) is required to conduct Paid examinations.");
-                    setIsSubscriptionOpen(true);
-                    return;
-                  }
-                  setAccessType("PAID");
-                  if (price === 0) setPrice(50);
-                }}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  accessType === "PAID"
-                    ? "border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/50 shadow-sm"
-                    : "border-slate-200 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <div className="flex items-center justify-between text-xs font-bold text-[#152234] dark:text-white">
-                  <span>Paid Exam</span>
-                  {!hasPremium && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold">Premium</span>}
-                </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Students purchase access before entry</div>
-              </button>
-            </div>
-
-            {accessType === "PAID" && (
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Exam Price ($ USD) <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={price}
-                  onChange={(e) => setPrice(Math.max(1, Number(e.target.value) || 0))}
-                  placeholder="e.g. 50"
-                  required
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Row 4: Metrics & Status Grid (4 Columns) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Duration (Minutes) <span className="text-rose-500">*</span>
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Duration (Mins) <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="number"
                 min={5}
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value) || 60)}
+                className="h-8 text-xs"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Total Marks <span className="text-rose-500">*</span>
               </label>
               <Input
@@ -1225,12 +1254,13 @@ export default function TeacherExamsPage() {
                 min={1}
                 value={totalMarks}
                 onChange={(e) => setTotalMarks(Number(e.target.value) || 100)}
+                className="h-8 text-xs"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Pass Mark <span className="text-rose-500">*</span>
               </label>
               <Input
@@ -1238,43 +1268,48 @@ export default function TeacherExamsPage() {
                 min={1}
                 value={passMark}
                 onChange={(e) => setPassMark(Number(e.target.value) || 40)}
+                className="h-8 text-xs"
                 required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Status <span className="text-rose-500">*</span>
+              </label>
+              <Select
+                options={[
+                  { value: "Published", label: "Published (Live)" },
+                  { value: "Scheduled", label: "Scheduled" },
+                  { value: "Draft", label: "Draft (Saved)" },
+                ]}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="h-8 text-xs py-1"
               />
             </div>
           </div>
 
+          {/* Row 5: Instructions / Description */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Status <span className="text-rose-500">*</span>
-            </label>
-            <Select
-              options={[
-                { value: "Published", label: "Published (Live)" },
-                { value: "Scheduled", label: "Scheduled (Upcoming)" },
-                { value: "Draft", label: "Draft (Saved)" },
-              ]}
-              value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Description / Instructions
             </label>
             <Textarea
-              rows={3}
+              rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide guidelines, topics covered, or anti-cheat warnings for students..."
+              placeholder="Brief guidelines or topics covered for students..."
+              className="text-xs py-1.5 min-h-[48px] resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="h-8 text-xs px-4">
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" className="h-8 text-xs px-5 bg-[#0092E3] hover:bg-[#007AC9] text-white">
               {editingExam ? "Update Exam" : "Create Exam"}
             </Button>
           </div>
@@ -1301,4 +1336,4 @@ export default function TeacherExamsPage() {
       />
     </div>
   );
-}
+}

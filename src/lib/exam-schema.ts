@@ -55,6 +55,7 @@ export interface Exam {
   startDateTime?: string;
   endDateTime?: string;
   date?: string;
+  requireCamera?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
