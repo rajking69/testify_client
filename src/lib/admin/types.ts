@@ -155,6 +155,12 @@ export interface AnalyticsData {
     failCount: number;
     averageScore: number;
   }[];
+  scoreDistribution?: {
+    excellent: number;
+    good: number;
+    average: number;
+    belowAverage: number;
+  };
 }
 
 export interface FilterState {

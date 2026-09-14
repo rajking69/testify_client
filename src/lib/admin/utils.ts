@@ -120,17 +120,89 @@ export function generateId(prefix: string = "id"): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function getSortValue(item: any, key: string): any {
+  if (!item) return undefined;
+  if (key in item) return item[key];
+  if (key.includes(".")) {
+    return key.split(".").reduce((acc, part) => acc?.[part], item);
+  }
+  if (key === "schedule" && item.schedule?.startWindow) {
+    return item.schedule.startWindow;
+  }
+  return item[key];
+}
+
 /**
- * Sort array by key
+ * Sort array by key with support for dates, numbers, booleans, nested keys, and custom rankings
  */
 export function sortByKey<T>(
   array: T[],
-  key: keyof T,
+  key?: string | keyof T,
   order: "asc" | "desc" = "asc",
 ): T[] {
+  if (!key || !array || array.length <= 1) return array || [];
+
+  const keyStr = String(key);
+
   return [...array].sort((a, b) => {
-    const aVal = a[key];
-    const bVal = b[key];
+    const aVal = getSortValue(a, keyStr);
+    const bVal = getSortValue(b, keyStr);
+
+    if ((aVal === undefined || aVal === null) && (bVal === undefined || bVal === null)) {
+      return 0;
+    }
+    if (aVal === undefined || aVal === null) return 1;
+    if (bVal === undefined || bVal === null) return -1;
+
+    // Difficulty ordering (easy < medium < hard)
+    if (keyStr === "difficulty") {
+      const diffOrder: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
+      const aRank = diffOrder[String(aVal).toLowerCase()] ?? 0;
+      const bRank = diffOrder[String(bVal).toLowerCase()] ?? 0;
+      if (aRank !== bRank) {
+        return order === "asc" ? aRank - bRank : bRank - aRank;
+      }
+    }
+
+    // Tier ordering (free < pro < institutional)
+    if (keyStr === "tier") {
+      const tierOrder: Record<string, number> = { free: 1, pro: 2, institutional: 3 };
+      const aRank = tierOrder[String(aVal).toLowerCase()] ?? 0;
+      const bRank = tierOrder[String(bVal).toLowerCase()] ?? 0;
+      if (aRank !== bRank) {
+        return order === "asc" ? aRank - bRank : bRank - aRank;
+      }
+    }
+
+    // Numbers
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      return order === "asc" ? aVal - bVal : bVal - aVal;
+    }
+
+    // Booleans
+    if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+      const aNum = aVal ? 1 : 0;
+      const bNum = bVal ? 1 : 0;
+      return order === "asc" ? aNum - bNum : bNum - aNum;
+    }
+
+    // Strings (with date check)
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      const isDateKey = /date|created|at|active|window|updated|renewal|start|end/i.test(keyStr);
+      if (isDateKey) {
+        const aTime = Date.parse(aVal);
+        const bTime = Date.parse(bVal);
+        if (!isNaN(aTime) && !isNaN(bTime)) {
+          return order === "asc" ? aTime - bTime : bTime - aTime;
+        }
+      }
+
+      const cmp = aVal.localeCompare(bVal, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return order === "asc" ? cmp : -cmp;
+    }
 
     if (aVal < bVal) return order === "asc" ? -1 : 1;
     if (aVal > bVal) return order === "asc" ? 1 : -1;
@@ -173,16 +245,27 @@ export function getPaginationInfo(
   page: number,
   pageSize: number,
 ) {
+  if (!total || total <= 0 || !pageSize || pageSize <= 0) {
+    return {
+      totalPages: 0,
+      startIndex: 0,
+      endIndex: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    };
+  }
+
   const totalPages = Math.ceil(total / pageSize);
-  const startIndex = (page - 1) * pageSize + 1;
-  const endIndex = Math.min(page * pageSize, total);
+  const validPage = Math.max(1, Math.min(page, totalPages));
+  const startIndex = (validPage - 1) * pageSize + 1;
+  const endIndex = Math.min(validPage * pageSize, total);
 
   return {
     totalPages,
     startIndex,
     endIndex,
-    hasNextPage: page < totalPages,
-    hasPrevPage: page > 1,
+    hasNextPage: validPage < totalPages,
+    hasPrevPage: validPage > 1,
   };
 }
 

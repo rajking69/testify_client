@@ -2,45 +2,69 @@ export const examStatuses = [
   "draft",
   "scheduled",
   "published",
-  "completed",
 ] as const;
 
 export type ExamStatus = (typeof examStatuses)[number];
 
+export const examAccessTypes = [
+  "free",
+  "paid",
+  "subscription_only",
+] as const;
+
+export type ExamAccessType = (typeof examAccessTypes)[number];
+
 export interface ExamSchedule {
-  startWindow: Date;
-  endWindow: Date;
+  startWindow?: Date;
+  endWindow?: Date;
+}
+
+export interface Question {
+  id: string;
+  questionText: string;
+  options: string[];
+  correctOptionIndex?: number;
+  correctAnswer?: string;
+  marks: number;
+  explanation?: string;
 }
 
 export interface Exam {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
+  description: string;
+  category: string;
   subject: string;
-  createdBy: string;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string;
+  accessType: ExamAccessType;
+  status: ExamStatus;
+  price: number;
   durationMinutes: number;
   totalMarks: number;
-  passMark: number;
-  status: ExamStatus;
-  schedule: ExamSchedule;
+  passMarks: number;
+  questions: Question[];
+  isPublished: boolean;
+  totalEnrolled: number;
+  completedCount: number;
+  joinCode?: string;
+  accessToken?: string;
+  schedule?: ExamSchedule;
+  startDateTime?: string;
+  endDateTime?: string;
+  date?: string;
   createdAt: Date;
   updatedAt: Date;
-  questionCount: number;
-  enrolledCount: number;
-  completedCount: number;
 }
 
-export type ExamInput = Omit<
-  Exam,
-  | "id"
-  | "createdAt"
-  | "updatedAt"
-  | "questionCount"
-  | "enrolledCount"
-  | "completedCount"
+export type ExamInput = Partial<
+  Omit<Exam, "id" | "_id" | "createdAt" | "updatedAt" | "totalEnrolled" | "completedCount">
 >;
 
 export type ExamUpdateInput = Partial<
-  Omit<Exam, "id" | "createdBy" | "createdAt" | "updatedAt">
+  Omit<Exam, "id" | "_id" | "teacherId" | "createdAt" | "updatedAt">
 >;
 
 export function isExamStatus(value: unknown): value is ExamStatus {
@@ -50,38 +74,39 @@ export function isExamStatus(value: unknown): value is ExamStatus {
   );
 }
 
+export function isExamAccessType(value: unknown): value is ExamAccessType {
+  return (
+    typeof value === "string" &&
+    examAccessTypes.includes(value as ExamAccessType)
+  );
+}
+
 export function isExam(value: unknown): value is Exam {
   if (!value || typeof value !== "object") {
     return false;
   }
 
   const exam = value as Partial<Exam>;
-  const schedule = exam.schedule;
 
   return (
-    isNonEmptyString(exam.id) &&
     isNonEmptyString(exam.title) &&
-    isNonEmptyString(exam.subject) &&
-    isNonEmptyString(exam.createdBy) &&
+    isNonEmptyString(exam.category) &&
+    isNonEmptyString(exam.teacherId) &&
+    isNonEmptyString(exam.teacherName) &&
+    isNonEmptyString(exam.teacherEmail) &&
     isPositiveInteger(exam.durationMinutes) &&
     isNonNegativeNumber(exam.totalMarks) &&
-    isNonNegativeNumber(exam.passMark) &&
-    exam.passMark <= exam.totalMarks &&
+    isNonNegativeNumber(exam.passMarks) &&
+    exam.passMarks <= exam.totalMarks &&
     isExamStatus(exam.status) &&
-    !!schedule &&
-    schedule.startWindow instanceof Date &&
-    !Number.isNaN(schedule.startWindow.getTime()) &&
-    schedule.endWindow instanceof Date &&
-    !Number.isNaN(schedule.endWindow.getTime()) &&
-    schedule.startWindow < schedule.endWindow &&
+    isExamAccessType(exam.accessType) &&
     exam.createdAt instanceof Date &&
     !Number.isNaN(exam.createdAt.getTime()) &&
     exam.updatedAt instanceof Date &&
     !Number.isNaN(exam.updatedAt.getTime()) &&
-    isNonNegativeInteger(exam.questionCount) &&
-    isNonNegativeInteger(exam.enrolledCount) &&
+    isNonNegativeInteger(exam.totalEnrolled) &&
     isNonNegativeInteger(exam.completedCount) &&
-    exam.completedCount <= exam.enrolledCount
+    exam.completedCount <= exam.totalEnrolled
   );
 }
 

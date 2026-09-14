@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { authClient } from "@/lib/auth-client";
+import { adminService } from "@/services/admin.service";
 import { AdminCard, StatCard } from "@/components/admin/shared/AdminCard";
 import { cn } from "@/lib/admin/utils";
 
@@ -55,12 +56,32 @@ const itemVariants: Variants = {
 export default function AdminDashboardPage() {
   const { data: session, isPending } = authClient.useSession();
 
+  const [stats, setStats] = React.useState({
+    totalUsers: 0,
+    totalExams: 0,
+    totalSubmissions: 0,
+    activeSubscriptions: 0,
+    totalPurchases: 0,
+  });
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (session?.user?.role === "admin") {
+      adminService.getDashboardOverview().then((res) => {
+        if (res.success && res.data && isMounted) {
+          setStats(res.data);
+        }
+      }).catch(console.error);
+    }
+    return () => { isMounted = false; };
+  }, [session?.user?.role]);
+
   if (isPending) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+      <div suppressHydrationWarning className="min-h-[60vh] flex items-center justify-center">
+        <div suppressHydrationWarning className="flex flex-col items-center gap-3">
+          <div suppressHydrationWarning className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <p suppressHydrationWarning className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             Initializing Admin Command Center...
           </p>
         </div>
@@ -129,8 +150,8 @@ export default function AdminDashboardPage() {
       link: "/admin/users",
       iconColor: "text-[#5B67F7] dark:text-indigo-400",
       iconBg: "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200/80 dark:border-indigo-800",
-      badge: "1,248 Users",
-      subtext: "156 New this month",
+      badge: `${stats.totalUsers} Users`,
+      subtext: "Platform wide",
     },
     {
       icon: BookOpen,
@@ -139,8 +160,8 @@ export default function AdminDashboardPage() {
       link: "/admin/exams",
       iconColor: "text-[#00A3C4] dark:text-cyan-400",
       iconBg: "bg-cyan-50 dark:bg-cyan-950/60 border-cyan-200/80 dark:border-cyan-800",
-      badge: "156 Exams",
-      subtext: "34 Live rooms",
+      badge: `${stats.totalExams} Exams`,
+      subtext: `${stats.totalSubmissions} Submissions`,
     },
     {
       icon: HelpCircle,
@@ -159,8 +180,8 @@ export default function AdminDashboardPage() {
       link: "/admin/subscriptions",
       iconColor: "text-purple-600 dark:text-purple-400",
       iconBg: "bg-purple-50 dark:bg-purple-950/60 border-purple-200/80 dark:border-purple-800",
-      badge: "425 Subscriptions",
-      subtext: "$12,450 MRR",
+      badge: `${stats.activeSubscriptions} Active`,
+      subtext: "Premium Tiers",
     },
     {
       icon: FileText,
@@ -169,8 +190,8 @@ export default function AdminDashboardPage() {
       link: "/admin/payments",
       iconColor: "text-amber-500 dark:text-amber-400",
       iconBg: "bg-amber-50 dark:bg-amber-950/60 border-amber-200/80 dark:border-amber-800",
-      badge: "1,240 Transactions",
-      subtext: "98.4% Success rate",
+      badge: `${stats.totalPurchases} Records`,
+      subtext: "Verified Payments",
     },
     {
       icon: BarChart3,
@@ -258,9 +279,11 @@ export default function AdminDashboardPage() {
 
             <Link href="/admin/settings">
               <Button
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-bold text-xs px-5 py-2.5 rounded-full backdrop-blur-md transition-all cursor-pointer"
-                leftIcon={<Settings className="h-4 w-4 text-purple-300" />}
+                variant="glass"
+                className="group border-white/25 bg-white/10 hover:bg-white/20 hover:border-purple-300/50 hover:shadow-lg hover:shadow-purple-500/20 text-white font-bold text-xs px-5 py-2.5 rounded-full backdrop-blur-md transition-all duration-300 cursor-pointer active:scale-95"
+                leftIcon={
+                  <Settings className="h-4 w-4 text-purple-300 transition-transform duration-500 ease-out group-hover:rotate-90 group-hover:text-purple-200" />
+                }
               >
                 System Config
               </Button>
@@ -276,21 +299,21 @@ export default function AdminDashboardPage() {
       >
         <StatCard
           title="Total Users"
-          value="1,248"
-          change="+12.4% from last month"
+          value={stats.totalUsers.toLocaleString()}
+          change="Platform Wide"
           icon={Users}
           trend="up"
-          badge="Platform Wide"
+          badge={`${stats.activeSubscriptions} Subscribed`}
           iconColor="text-[#5B67F7] dark:text-indigo-400"
           delay={0.1}
         />
         <StatCard
-          title="Active Exams"
-          value="156"
-          change="+8% this week"
+          title="Total Exams"
+          value={stats.totalExams.toLocaleString()}
+          change="System wide exams"
           icon={BookOpen}
           trend="up"
-          badge="34 Live"
+          badge={`${stats.totalSubmissions} Attempts`}
           iconColor="text-[#00A3C4] dark:text-cyan-400"
           delay={0.15}
         />
@@ -305,12 +328,12 @@ export default function AdminDashboardPage() {
           delay={0.2}
         />
         <StatCard
-          title="Monthly Revenue"
-          value="$45,230"
-          change="+15.2% YoY growth"
-          icon={TrendingUp}
+          title="Total Purchases"
+          value={stats.totalPurchases.toLocaleString()}
+          change="Verified"
+          icon={CreditCard}
           trend="up"
-          badge="Tier Pro"
+          badge="Transactions"
           iconColor="text-purple-600 dark:text-purple-400"
           delay={0.25}
         />

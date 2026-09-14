@@ -369,13 +369,6 @@ export function AdmissionPanel({
           if (Array.isArray(parsed)) {
             // Filter out any dummy placeholder accounts and transition previous In Progress to Completed
             return parsed
-              .filter(
-                (s: any) =>
-                  !s.email?.includes("@example.com") &&
-                  !s.email?.includes("@example.edu") &&
-                  !s.id?.startsWith("std-00") &&
-                  !s.id?.startsWith("std-10")
-              )
               .map((s: any) => {
                 const sub = lookupStudentResult(s);
                 const realScore = sub ? sub.percentage : (typeof s.score === "number" ? s.score : undefined);
@@ -661,14 +654,14 @@ export function AdmissionPanel({
           hasChange = true;
           updated.unshift({
             id: c.studentId || c.id,
-            name: c.name || "Live Student",
-            email: c.email || "candidate@testify.local",
-            rollNo: `CS-2024-${Math.floor(10 + Math.random() * 90)}`,
+            name: c.name || "Unknown Candidate",
+            email: c.email || "",
+            rollNo: c.rollNo || "",
             exam: c.examTitle || "Live Examination",
             examDate: "Today",
             status: "In Progress",
             strikes: strikesCount,
-            roomToken: `ROOM-${(c.examId || "EXAM").toUpperCase().slice(0, 6)}`,
+            roomToken: c.examId ? `ROOM-${c.examId.toUpperCase().slice(0, 6)}` : "",
           });
         }
       });
@@ -716,12 +709,12 @@ export function AdmissionPanel({
       id: `student_${Date.now()}`,
       name: inviteName.trim(),
       email: inviteEmail.trim(),
-      rollNo: inviteRoll.trim() || `ROLL-${Math.floor(100 + Math.random() * 900)}`,
+      rollNo: inviteRoll.trim(),
       exam: inviteExam || (realExams[0]?.title || "General Examination"),
       examDate: "Scheduled",
       status: "Not Started",
       strikes: 0,
-      roomToken: `ROOM-${Math.floor(1000 + Math.random() * 9000)}`,
+      roomToken: "",
     };
 
     setStudents([newStudent, ...students]);

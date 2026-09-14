@@ -8,6 +8,7 @@ export interface CandidateTelemetry {
   studentId: string;
   name: string;
   email: string;
+  rollNo?: string;
   examId: string;
   examTitle: string;
   progress: number;

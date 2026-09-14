@@ -34,14 +34,18 @@ export function useUrlState<T extends Record<string, any>>(
     const current = getState();
     const newState = { ...current, ...updates };
 
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
+    Object.keys(defaultState).forEach((key) => {
+      params.delete(key);
+    });
     Object.entries(newState).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
         params.set(key, String(value));
       }
     });
 
-    router.push(`?${params.toString()}`, { scroll: false });
+    const queryString = params.toString();
+    router.push(queryString ? `?${queryString}` : "?", { scroll: false });
   };
 
   // Reset to default state
@@ -64,15 +68,23 @@ export function useFilterState(defaultFilters: Partial<FilterState>) {
     search: "",
     page: 1,
     pageSize: 10,
+    sortBy: undefined,
+    sortOrder: "asc",
+    status: undefined,
+    role: undefined,
+    tier: undefined,
+    category: undefined,
+    type: undefined,
+    difficulty: undefined,
     ...defaultFilters,
   });
 
   const updateFilter = (key: keyof FilterState, value: any) => {
-    setState({ [key]: value, page: 1 }); // Reset to page 1 on filter change
+    setState({ [key]: value, page: key === "page" ? Number(value) : 1 });
   };
 
   const updateFilters = (updates: Partial<FilterState>) => {
-    setState({ ...updates, page: 1 });
+    setState({ page: 1, ...updates });
   };
 
   const updateSearch = (search: string) => {
@@ -87,6 +99,20 @@ export function useFilterState(defaultFilters: Partial<FilterState>) {
     setState({ sortBy, sortOrder });
   };
 
+  const clearFilters = () => {
+    setState({
+      search: "",
+      status: undefined,
+      role: undefined,
+      tier: undefined,
+      category: undefined,
+      type: undefined,
+      difficulty: undefined,
+      page: 1,
+      pageSize: state.pageSize || 10,
+    });
+  };
+
   return {
     filters: state,
     updateFilter,
@@ -95,6 +121,7 @@ export function useFilterState(defaultFilters: Partial<FilterState>) {
     updatePagination,
     updateSort,
     resetFilters: resetState,
+    clearFilters,
   };
 }
 

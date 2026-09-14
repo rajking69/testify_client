@@ -24,23 +24,34 @@ import {
   getInitials,
   formatRelativeTime,
   cn,
+  sortByKey,
 } from "@/lib/admin/utils";
 import {
   showSuccessToast,
   showErrorToast,
   withPromiseToast,
 } from "@/lib/admin/toast";
-import { User, TableColumn, ActionMenuItem } from "@/lib/admin/types";
+import { User, UserRole, UserStatus, TableColumn, ActionMenuItem } from "@/lib/admin/types";
 import { adminService } from "@/services/admin.service";
 
 export default function AdminUsersPage() {
   const { activeTab, setTab } = useTabState("all");
-  const { filters, updateFilters } = useFilterState({
+  const { filters, updateFilters, clearFilters } = useFilterState({
     status: undefined,
     role: undefined,
   });
 
   const [users, setUsers] = useState<User[]>([]);
+  const [backendStats, setBackendStats] = useState<{
+    total: number;
+    active: number;
+    suspended: number;
+    deactivated: number;
+    teachers: number;
+    students: number;
+    admins: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [actionModal, setActionModal] = useState<{
     type: "activate" | "deactivate" | "suspend" | "restore" | "delete";
@@ -48,64 +59,96 @@ export default function AdminUsersPage() {
   } | null>(null);
   const [suspensionReason, setSuspensionReason] = useState("");
 
-  // Fetch real users from backend if available
-  React.useEffect(() => {
-    let isMounted = true;
+  // Fetch all users from backend
+  const fetchUsers = React.useCallback(() => {
+    setLoading(true);
     adminService
-      .getUsers({ search: filters.search, role: filters.role })
+      .getUsers({ limit: "all" })
       .then((res) => {
-        if (isMounted && res.data) {
-          setUsers(res.data);
+        if (res.data) {
+          const mapped: User[] = res.data.map((u: any) => ({
+            id: String(u._id || u.id),
+            name: u.name || "Unnamed User",
+            email: u.email || "",
+            role: (u.role || "student") as UserRole,
+            status: (u.status || "active") as UserStatus,
+            avatarUrl: u.avatarUrl || u.image || "",
+            department: u.department || "",
+            createdAt: u.createdAt || new Date().toISOString(),
+            lastActive: u.lastActive || u.updatedAt || "",
+          }));
+          setUsers(mapped);
+          if (res.stats) {
+            setBackendStats(res.stats);
+          }
         }
       })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, [filters.search, filters.role]);
+      .catch((err) => {
+        console.error("Failed to fetch users", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
+  React.useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Filter users based on tab and filters
-  const filteredUsers = users.filter((user) => {
-    // Tab filtering
-    if (activeTab === "teachers" && user.role !== "teacher") return false;
-    if (activeTab === "students" && user.role !== "student") return false;
-    if (activeTab === "admins" && user.role !== "admin") return false;
+  const filteredUsers = React.useMemo(() => {
+    return users.filter((user) => {
+      // Tab filtering
+      if (activeTab === "teachers" && user.role !== "teacher") return false;
+      if (activeTab === "students" && user.role !== "student") return false;
+      if (activeTab === "admins" && user.role !== "admin") return false;
 
-    // Status filtering
-    if (filters.status && user.status !== filters.status) return false;
+      // Status filtering
+      if (filters.status && user.status !== filters.status) return false;
 
-    // Role filtering
-    if (filters.role && user.role !== filters.role) return false;
+      // Role filtering
+      if (filters.role && user.role !== filters.role) return false;
 
-    // Search filtering
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return (
-        user.name.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search) ||
-        (user.department && user.department.toLowerCase().includes(search))
-      );
-    }
+      // Search filtering
+      if (filters.search) {
+        const search = filters.search.toLowerCase();
+        return (
+          user.name.toLowerCase().includes(search) ||
+          user.email.toLowerCase().includes(search) ||
+          (user.department && user.department.toLowerCase().includes(search))
+        );
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [users, activeTab, filters.status, filters.role, filters.search]);
+
+  // Sort users
+  const sortedUsers = React.useMemo(() => {
+    if (!filters.sortBy) return filteredUsers;
+    return sortByKey(filteredUsers, filters.sortBy as keyof User, filters.sortOrder || "asc");
+  }, [filteredUsers, filters.sortBy, filters.sortOrder]);
 
   // Pagination
-  const startIndex = (filters.page - 1) * filters.pageSize;
-  const paginatedUsers = filteredUsers.slice(
-    startIndex,
-    startIndex + filters.pageSize,
-  );
+  const pageSize = filters.pageSize || 10;
+  const currentPage = filters.page || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedUsers =
+    pageSize >= 1000
+      ? sortedUsers
+      : sortedUsers.slice(startIndex, startIndex + pageSize);
 
   // Stats
   const stats = {
-    total: users.length,
-    active: users.filter((u) => u.status === "active").length,
-    suspended: users.filter((u) => u.status === "suspended").length,
-    deactivated: users.filter((u) => u.status === "deactivated").length,
-    teachers: users.filter((u) => u.role === "teacher").length,
-    students: users.filter((u) => u.role === "student").length,
+    total: backendStats?.total ?? users.length,
+    active: backendStats?.active ?? users.filter((u) => u.status === "active").length,
+    suspended: backendStats?.suspended ?? users.filter((u) => u.status === "suspended").length,
+    deactivated:
+      backendStats?.deactivated ??
+      users.filter((u) => u.status === "deactivated" || (u as any).status === "inactive").length,
+    teachers: backendStats?.teachers ?? users.filter((u) => u.role === "teacher").length,
+    students: backendStats?.students ?? users.filter((u) => u.role === "student").length,
+    admins: backendStats?.admins ?? users.filter((u) => u.role === "admin").length,
   };
 
   // Table columns
@@ -123,6 +166,7 @@ export default function AdminUsersPage() {
                 alt={user.name}
                 width={40}
                 height={40}
+                unoptimized
                 className="h-10 w-10 rounded-full object-cover"
               />
             ) : (
@@ -181,6 +225,7 @@ export default function AdminUsersPage() {
     {
       key: "department",
       header: "Department",
+      sortable: true,
       render: (value) => (
         <span className="text-slate-700 dark:text-slate-300">
           {String(value || "—")}
@@ -264,6 +309,44 @@ export default function AdminUsersPage() {
     const action = actionModal.type;
     const user = actionModal.user;
 
+    if (action === "delete") {
+      const previousUsers = [...users];
+      setUsers(users.filter((u) => u.id !== user.id));
+
+      try {
+        await withPromiseToast(
+          adminService.deleteUser(user.id),
+          {
+            loading: "Deleting user...",
+            success: `Successfully deleted ${user.name}`,
+            error: "Failed to delete user",
+          },
+        );
+
+        showSuccessToast(
+          "User deleted successfully",
+          `${user.name} was permanently removed from the database`,
+        );
+        fetchUsers();
+      } catch (err: any) {
+        setUsers(previousUsers);
+        showErrorToast(err?.message || "Failed to delete user");
+      }
+
+      setActionModal(null);
+      setSuspensionReason("");
+      return;
+    }
+
+    const newStatus =
+      action === "activate"
+        ? "active"
+        : action === "deactivate"
+          ? "deactivated"
+          : action === "suspend"
+            ? "suspended"
+            : user.status;
+
     // Optimistic UI update
     const previousUsers = [...users];
     setUsers(
@@ -271,25 +354,15 @@ export default function AdminUsersPage() {
         u.id === user.id
           ? {
               ...u,
-              status:
-                action === "activate"
-                  ? "active"
-                  : action === "deactivate"
-                    ? "deactivated"
-                    : action === "suspend"
-                      ? "suspended"
-                      : action === "delete"
-                        ? "deactivated"
-                        : u.status,
+              status: newStatus,
             }
           : u,
       ),
     );
 
     try {
-      // Simulate API call
       await withPromiseToast(
-        new Promise((resolve) => setTimeout(resolve, 1000)),
+        adminService.updateUser(user.id, { status: newStatus }),
         {
           loading: `${action.charAt(0).toUpperCase() + action.slice(1)}ing user...`,
           success: `Successfully ${action}d ${user.name}`,
@@ -299,8 +372,9 @@ export default function AdminUsersPage() {
 
       showSuccessToast(
         `User ${action}d successfully`,
-        `${user.name} is now ${action === "activate" ? "active" : action === "deactivate" ? "deactivated" : action === "suspend" ? "suspended" : "deleted"}`,
+        `${user.name} is now ${newStatus}`,
       );
+      fetchUsers();
     } catch {
       // Revert optimistic update on error
       setUsers(previousUsers);
@@ -315,19 +389,13 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            User Management
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage users, teachers, and administrators
-          </p>
-        </div>
-        <Button>
-          <Users className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          User Management
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">
+          Manage users, teachers, and administrators
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -375,7 +443,7 @@ export default function AdminUsersPage() {
             {
               id: "admins",
               label: "Admins",
-              count: users.filter((u) => u.role === "admin").length,
+              count: stats.admins,
             },
           ].map((tab) => (
             <button
@@ -403,7 +471,9 @@ export default function AdminUsersPage() {
         columns={columns}
         filters={filters}
         onFilterChange={updateFilters}
+        onClearFilters={clearFilters}
         total={filteredUsers.length}
+        loading={loading}
         actionMenuItems={getActionMenuItems}
         emptyMessage="No users found matching your criteria"
       />
@@ -424,6 +494,7 @@ export default function AdminUsersPage() {
                     alt={selectedUser.name}
                     width={64}
                     height={64}
+                    unoptimized
                     className="h-16 w-16 rounded-full object-cover"
                   />
                 ) : (
@@ -503,8 +574,17 @@ export default function AdminUsersPage() {
         >
           <div className="space-y-4">
             <p className="text-slate-600 dark:text-slate-400">
-              Are you sure you want to {actionModal.type}{" "}
-              <strong>{actionModal.user.name}</strong>?
+              {actionModal.type === "delete" ? (
+                <>
+                  Are you sure you want to permanently delete{" "}
+                  <strong>{actionModal.user.name}</strong>? This action will permanently remove the user from the database and cannot be undone.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to {actionModal.type}{" "}
+                  <strong>{actionModal.user.name}</strong>?
+                </>
+              )}
             </p>
 
             {actionModal.type === "suspend" && (
@@ -540,7 +620,7 @@ export default function AdminUsersPage() {
                 }
                 onClick={handleActionConfirm}
               >
-                Confirm
+                {actionModal.type === "delete" ? "Delete User" : "Confirm"}
               </Button>
             </div>
           </div>
