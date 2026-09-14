@@ -50,6 +50,8 @@ export interface MarketplaceExam {
   joinCode?: string;
   accessToken?: string;
   status: string;
+  startDateTime?: string;
+  endDateTime?: string;
 }
 
 const defaultMarketplaceExams: MarketplaceExam[] = [];
@@ -205,6 +207,8 @@ export default function StudentExamsMarketplacePage() {
               joinCode: t.joinCode || "TST123",
               accessToken: t.accessToken || String(t.id),
               status: "Published",
+              startDateTime: t.startDateTime || t.date,
+              endDateTime: t.endDateTime,
             }));
         }
 
@@ -251,6 +255,20 @@ export default function StudentExamsMarketplacePage() {
     }
     loadExamsData();
   }, [session?.user?.email, session?.user?.id]);
+
+  
+  const isExamExpired = (exam: MarketplaceExam) => {
+    if (exam.endDateTime) {
+      const endDate = new Date(exam.endDateTime);
+      if (!isNaN(endDate.getTime()) && endDate.getTime() < Date.now()) {
+        return true;
+      }
+    }
+    if (exam.status === "Expired" || exam.status === "EXPIRED") {
+      return true;
+    }
+    return false;
+  };
 
   const isExamCompleted = (exam: MarketplaceExam) => {
     const currentEmail = (session?.user?.email || "").trim().toLowerCase();
@@ -467,6 +485,7 @@ export default function StudentExamsMarketplacePage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredExams.map((exam) => {
             const isPurchased = purchasedExamIds.includes(exam.id);
+            const expired = isExamExpired(exam);
             const isPaid = exam.accessType === "PAID";
             const targetToken = exam.accessToken || exam.joinCode || exam.id;
 
@@ -483,23 +502,27 @@ export default function StudentExamsMarketplacePage() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {isExamCompleted(exam) ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                          <CheckCircle2 className="h-3 w-3" /> Completed
+                      {expired ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 shadow-2xs">
+                          <Clock className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Expired
+                        </span>
+                      ) : isExamCompleted(exam) ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Completed
                         </span>
                       ) : isPaid ? (
                         isPurchased ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                            <CheckCircle2 className="h-3 w-3" /> Purchased
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Purchased
                           </span>
                         ) : (
-                          <span className="inline-flex items-center text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500 text-white shadow-sm">
-                            ${exam.price}
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 shadow-2xs">
+                            <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Paid • ${exam.price}
                           </span>
                         )
                       ) : (
-                        <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-[#0092E3] dark:bg-cyan-950/60 dark:text-cyan-300">
-                          Free Entry
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs">
+                          Free
                         </span>
                       )}
                     </div>
@@ -542,7 +565,15 @@ export default function StudentExamsMarketplacePage() {
 
                   {/* Footer Action Button */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                    {isExamCompleted(exam) ? (
+                    {expired ? (
+                      <Button
+                        disabled
+                        className="w-full bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700/80 font-bold text-xs py-2.5 rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5"
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>Exam Expired</span>
+                      </Button>
+                    ) : isExamCompleted(exam) ? (
                       <Link href={`/practice/result?examId=${exam.id}&title=${encodeURIComponent(exam.title)}&subject=${encodeURIComponent(exam.subject)}`} className="block w-full">
                         <Button
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
@@ -557,7 +588,7 @@ export default function StudentExamsMarketplacePage() {
                         onClick={() => setPurchasingExam(exam)}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-md shadow-emerald-600/15 flex items-center justify-center gap-1.5"
                       >
-                        <CreditCard className="h-3.5 w-3.5" /> Buy Exam — ${exam.price}
+                        <CreditCard className="h-3.5 w-3.5" /> Buy Exam • ${exam.price}
                       </Button>
                     ) : (
                       <Link href={`/exam/${targetToken}`} className="block w-full">

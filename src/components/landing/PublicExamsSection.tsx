@@ -442,7 +442,7 @@ export default function PublicExamsSection() {
               return (
                 <motion.div
                   key={exam.id}
-                  whileHover={{ y: -4, transition: { duration: 0.15 } }}
+                  whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
                   className="group p-5.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-4">
@@ -453,20 +453,20 @@ export default function PublicExamsSection() {
                       </span>
 
                       {expired ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                          <Clock className="h-3.5 w-3.5 text-rose-600" /> Expired
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 shadow-2xs">
+                          <Clock className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Expired
                         </span>
                       ) : isExamCompleted(exam) ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Completed
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Completed
                         </span>
                       ) : isPaid ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#0092E3] dark:text-cyan-300 border border-blue-200/80 dark:border-blue-800/80">
-                          <Lock className="h-3 w-3" /> ${priceDisplay} • One-Time Pass
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 shadow-2xs">
+                          <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Paid • ${priceDisplay}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-                          Free Access
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs">
+                          Free
                         </span>
                       )}
                     </div>
