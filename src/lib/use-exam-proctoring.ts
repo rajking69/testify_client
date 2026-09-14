@@ -37,6 +37,7 @@ export function useExamProctoring(config: ProctoringConfig): ProctoringState {
   const isTerminatedRef = useRef(false);
   const violationsRef = useRef(0);
   const ignoreNextBlurRef = useRef(false);
+  const lastViolationTimeRef = useRef(0);
 
   // Sync ref with state
   useEffect(() => {

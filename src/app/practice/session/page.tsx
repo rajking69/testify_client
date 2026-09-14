@@ -126,11 +126,11 @@ function PracticeSessionContent() {
     dismissWarning,
   } = useExamProctoring({
     isEnabled: isLiveExam,
-    maxViolations: 1,
+    maxViolations: 3,
     studentName: session?.user?.name || "Student Scholar",
     studentEmail: session?.user?.email || "student@example.com",
     onViolation: (count, reason) => {
-      console.warn(`[Proctoring] Strike ${count}/${1}: ${reason}`);
+      console.warn(`[Proctoring] Strike ${count}/3: ${reason}`);
     },
     onAutoSubmit: (reason) => {
       console.error(`[Proctoring] Auto-terminating exam session: ${reason}`);
