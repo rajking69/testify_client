@@ -16,6 +16,39 @@ export default function StudentLayout({
   const userRole = session?.user?.role;
 
   // Role-based access control
+  if (!isPending && !session) {
+    return (
+      <div className="relative min-h-screen bg-[#FCFBF7] dark:bg-slate-950 flex items-center justify-center p-4 overflow-hidden">
+        <AnimatedBackground variant="hero" />
+        <div className="relative z-10 max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-8 shadow-xl text-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-cyan-950/60 text-[#0092E3] dark:text-cyan-400 flex items-center justify-center mx-auto border border-blue-100 dark:border-cyan-800">
+            <GraduationCap className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">
+            Student Portal Authentication Required
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            Please log in with your candidate account to view your enrolled exams, results, and dashboard.
+          </p>
+          <div className="pt-2 flex flex-col gap-2">
+            <Link
+              href="/auth/login?redirect=/student/exams"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0092E3] text-white font-bold text-xs px-5 py-2.5 shadow-sm hover:bg-[#007AC9] transition-colors"
+            >
+              Log In to Student Account
+            </Link>
+            <Link
+              href="/auth/register?redirect=/student/exams"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 text-slate-700 dark:text-slate-300 font-semibold text-xs px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              Create Candidate Account
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isPending && session) {
     // Non-students can't access student dashboard
     if (userRole !== "student") {

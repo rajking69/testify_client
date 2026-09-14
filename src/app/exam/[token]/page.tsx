@@ -23,6 +23,7 @@ import {
   CreditCard,
   Layers,
   ShieldAlert,
+  LogIn,
 } from "lucide-react";
 import { StudentExamPurchaseModal } from "@/components/student/StudentExamPurchaseModal";
 
@@ -360,6 +361,47 @@ export default function StudentExamWaitingRoomPage({
     );
   }
 
+  if (!session?.user) {
+    return (
+      <div className="relative min-h-screen bg-slate-50/70 dark:bg-slate-950 flex items-center justify-center p-4 overflow-hidden">
+        <AnimatedBackground variant="hero" />
+        <div className="relative z-10 max-w-md w-full rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl p-8 space-y-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-cyan-950/60 text-[#0092E3] dark:text-cyan-400 flex items-center justify-center mx-auto shadow-sm border border-blue-100 dark:border-cyan-800">
+            <Lock className="h-8 w-8" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold font-display tracking-tight text-[#152234] dark:text-white">
+              Authentication Required
+            </h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+              Log in to your Student account to access and attempt this examination. Guests cannot participate in official exams.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent(`/exam/${rawToken}`)}`}>
+              <Button className="w-full bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold text-xs py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                <LogIn className="h-4 w-4" />
+                <span>Log In to Take Exam</span>
+              </Button>
+            </Link>
+            <Link href={`/auth/register?redirect=${encodeURIComponent(`/exam/${rawToken}`)}`}>
+              <Button variant="outline" className="w-full font-bold text-xs py-3.5 rounded-xl cursor-pointer">
+                Create Free Candidate Account
+              </Button>
+            </Link>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Link href="/" className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors">
+              Return to Homepage
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentUserRole = (session?.user as any)?.role?.toLowerCase() || "";
   if (currentUserRole === "teacher") {
     return (
@@ -684,20 +726,22 @@ export default function StudentExamWaitingRoomPage({
                 onChange={(e) => setStudentName(e.target.value)}
                 placeholder="Enter your full name..."
                 required
-                className="h-10 text-xs rounded-xl"
+                readOnly={Boolean(session?.user?.name)}
+                className={`h-10 text-xs rounded-xl ${session?.user?.name ? "bg-slate-100 dark:bg-slate-800/80 cursor-not-allowed opacity-90 font-semibold" : ""}`}
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Email Address <span className="text-slate-400 font-normal">(Optional)</span>
+                Email Address <span className="text-slate-400 font-normal">(Verified Account)</span>
               </label>
               <Input
                 type="email"
                 value={studentEmail}
                 onChange={(e) => setStudentEmail(e.target.value)}
                 placeholder="student@example.com"
-                className="h-10 text-xs rounded-xl"
+                readOnly={Boolean(session?.user?.email)}
+                className={`h-10 text-xs rounded-xl ${session?.user?.email ? "bg-slate-100 dark:bg-slate-800/80 cursor-not-allowed opacity-90 font-semibold" : ""}`}
               />
             </div>
 

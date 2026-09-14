@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { signIn, socialSignIn, authClient } from "@/lib/auth-client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { toast } from "react-toastify";
 import {
   Eye,
@@ -21,8 +22,10 @@ import {
 import { Logo } from "@/components/ui/Logo";
 import { AnimatedBackground } from "@/components/landing/AnimatedBackground";
 
-export default function LoginPage() {
+function LoginFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = searchParams.get("redirect");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -422,7 +425,7 @@ export default function LoginPage() {
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   Don&apos;t have an account?{" "}
                   <Link
-                    href="/auth/register"
+                    href={redirectTarget ? `/auth/register?redirect=${encodeURIComponent(redirectTarget)}` : "/auth/register"}
                     className="font-bold text-[#00A3C4] dark:text-cyan-400 hover:underline"
                   >
                     Create your account free
@@ -441,5 +444,13 @@ export default function LoginPage() {
         </span>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-400 text-xs font-semibold animate-pulse">Loading...</div>}>
+      <LoginFormContent />
+    </Suspense>
   );
 }
