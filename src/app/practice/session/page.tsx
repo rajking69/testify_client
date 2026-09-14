@@ -96,6 +96,19 @@ function PracticeSessionContent() {
   }, [session?.user?.id, session?.user?.email]);
 
   const examIdParam = searchParams.get("examId");
+
+  const isCameraRequiredForExam = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const stored = localStorage.getItem("testify_active_live_exam");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Boolean(parsed.requireCamera);
+      }
+    } catch {}
+    return false;
+  }, []);
+  
   const isLiveExam = Boolean(examIdParam || config.mode === "timed");
 
   // Ref to end session to avoid circular deps
@@ -113,11 +126,11 @@ function PracticeSessionContent() {
     dismissWarning,
   } = useExamProctoring({
     isEnabled: isLiveExam,
-    maxViolations: 3,
+    maxViolations: 1,
     studentName: session?.user?.name || "Student Scholar",
     studentEmail: session?.user?.email || "student@example.com",
     onViolation: (count, reason) => {
-      console.warn(`[Proctoring] Strike ${count}/${3}: ${reason}`);
+      console.warn(`[Proctoring] Strike ${count}/${1}: ${reason}`);
     },
     onAutoSubmit: (reason) => {
       console.error(`[Proctoring] Auto-terminating exam session: ${reason}`);
@@ -127,7 +140,7 @@ function PracticeSessionContent() {
 
   // 1.1 Socket.IO Live Monitoring & Proctor Connection
   useEffect(() => {
-    if (!isLiveExam) return;
+    if (!isLiveExam || !isCameraRequiredForExam) return;
     const socket = getMonitoringSocket();
     if (!socket) return;
 
@@ -423,11 +436,13 @@ function PracticeSessionContent() {
           const storedActive = localStorage.getItem("testify_active_live_exam");
           if (storedActive) {
             const active = JSON.parse(storedActive);
-            if (
-              (String(active.examId) === currentExamId || active.token === currentExamId) &&
-              active.questions &&
-              active.questions.length > 0
-            ) {
+            const isMatch =
+              String(active.examId) === currentExamId ||
+              String(active.id) === currentExamId ||
+              active.token === currentExamId ||
+              (active.joinCode && active.joinCode.toUpperCase() === currentExamId.toUpperCase());
+
+            if ((isMatch || !active.examId) && active.questions && active.questions.length > 0) {
               if (active.duration) {
                 examDurationSec = active.duration * 60;
               }
@@ -457,10 +472,56 @@ function PracticeSessionContent() {
           }
         } catch { }
 
-        // 2. If not found in active live storage, fetch from backend API
+        // 2. Check local teacher exams repository in localStorage (Fast & Offline)
         if (questionsToUse.length === 0) {
           try {
-            const single = await examService.getExamById(currentExamId);
+            const stored = localStorage.getItem("testify_teacher_exams");
+            if (stored) {
+              const list = JSON.parse(stored);
+              const found = list.find(
+                (e: any) =>
+                  String(e.id) === currentExamId ||
+                  String(e._id) === currentExamId ||
+                  e.joinCode?.toUpperCase() === currentExamId.toUpperCase() ||
+                  e.accessToken === currentExamId
+              );
+              if (found) {
+                if (found.duration) {
+                  examDurationSec = found.duration * 60;
+                }
+                if (found.endDateTime) {
+                  setExamEndDateTime(found.endDateTime);
+                  const endMs = new Date(found.endDateTime).getTime();
+                  if (!isNaN(endMs)) {
+                    const remainingUntilEnd = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+                    if (remainingUntilEnd < examDurationSec) {
+                      examDurationSec = remainingUntilEnd;
+                    }
+                  }
+                }
+                if (found.questions && found.questions.length > 0) {
+                  questionsToUse = found.questions.map((q: any, idx: number) => ({
+                    id: q.id || q._id || `q-${idx}`,
+                    subject: found.subject || "Examination",
+                    topic: q.topic || "General",
+                    type: q.type || "mcq",
+                    difficulty: q.difficulty || "medium",
+                    questionText: q.questionText || q.text || q.question || "Sample examination question",
+                    question: q.questionText || q.text || q.question || "Sample examination question",
+                    options: q.options || [],
+                    correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
+                    explanation: q.explanation || "Official answer explanation provided by instructor.",
+                  }));
+                }
+              }
+            }
+          } catch { }
+        }
+
+        // 3. If not found in local stores, fetch from remote backend REST API gracefully
+        if (questionsToUse.length === 0) {
+          try {
+            const single = await examService.getExamById(currentExamId).catch(() => null);
             if (single?.data && single.data.questions && single.data.questions.length > 0) {
               if (single.data.durationMinutes) {
                 examDurationSec = single.data.durationMinutes * 60;
@@ -489,61 +550,14 @@ function PracticeSessionContent() {
                 explanation: q.explanation || "Official answer explanation.",
               }));
             }
-          } catch (e) {
-            console.error("Failed to fetch exam questions from API:", e);
-          }
-        }
-
-        // 3. Check teacher custom exams in localStorage
-        if (questionsToUse.length === 0) {
-          try {
-            const stored = localStorage.getItem("testify_teacher_exams");
-            if (stored) {
-              const list = JSON.parse(stored);
-              const found = list.find(
-                (e: any) =>
-                  String(e.id) === currentExamId ||
-                  e.joinCode?.toUpperCase() === currentExamId.toUpperCase() ||
-                  e.accessToken === currentExamId
-              );
-              if (found) {
-                if (found.duration) {
-                  examDurationSec = found.duration * 60;
-                }
-                if (found.endDateTime) {
-                  setExamEndDateTime(found.endDateTime);
-                  const endMs = new Date(found.endDateTime).getTime();
-                  if (!isNaN(endMs)) {
-                    const remainingUntilEnd = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
-                    if (remainingUntilEnd < examDurationSec) {
-                      examDurationSec = remainingUntilEnd;
-                    }
-                  }
-                }
-                if (found.questions && found.questions.length > 0) {
-                  questionsToUse = found.questions.map((q: any, idx: number) => ({
-                    id: q.id || `q-${idx}`,
-                    subject: found.subject || "Examination",
-                    topic: q.topic || "General",
-                    type: q.type || "mcq",
-                    difficulty: q.difficulty || "medium",
-                    questionText: q.questionText || q.text || q.question || "Sample examination question",
-                    question: q.questionText || q.text || q.question || "Sample examination question",
-                    options: q.options || [],
-                    correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
-                    explanation: q.explanation || "Official answer explanation provided by instructor.",
-                  }));
-                }
-              }
-            }
           } catch { }
         }
+      }
 
-        // Strict Zero-Mock Policy: If no questions found for this exam, set error
-        if (questionsToUse.length === 0) {
-          setSessionLoadError("No examination questions are configured for this session. Please contact your instructor.");
-          return;
-        }
+      // If no questions found for this exam, set error
+      if (questionsToUse.length === 0) {
+        setSessionLoadError("No examination questions are configured for this session. Please contact your instructor.");
+        return;
       }
 
       if (questionsToUse.length > 0) {
@@ -990,7 +1004,7 @@ function PracticeSessionContent() {
               </span>
             </Button>
 
-            {isLiveExam && (
+            {isLiveExam && isCameraRequiredForExam && (
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
                 <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Anti-Cheating Monitored</span>
@@ -1330,55 +1344,75 @@ function PracticeSessionContent() {
           className="flex flex-col items-center gap-4"
         >
           {/* Navigation & Submit Buttons Group */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0}
-              className="rounded-xl"
-            >
-              <span className="flex items-center gap-2">
-                <ChevronLeft className="h-4 w-4" />
-                <span>Previous</span>
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="md"
-              onClick={handleClearAnswer}
-              disabled={selectedAnswer === null}
-              className="rounded-xl"
-            >
-              <span className="flex items-center gap-2">
-                <RotateCcw className="h-4 w-4" />
-                <span>Clear Answer</span>
-              </span>
-            </Button>
-
-            {currentQuestionIndex === currentSession.length - 1 ? (
-              <Button
-                size="md"
-                onClick={() => setShowEndModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/20 px-6 rounded-xl"
-              >
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>Submit Exam</span>
-                </span>
-              </Button>
-            ) : (
-              <Button
-                size="md"
-                onClick={handleNext}
-                className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold shadow-md shadow-[#0092E3]/20 px-6 rounded-xl"
-              >
-                <span className="flex items-center gap-2">
-                  <span>Next Question</span>
-                  <ChevronRight className="h-4 w-4" />
-                </span>
-              </Button>
+          <div className="flex flex-col items-center gap-3 w-full sm:w-auto justify-center">
+            {isLiveExam && selectedAnswer === null && (
+              <p className="w-full text-center text-xs font-bold text-amber-600 dark:text-amber-400 py-1.5 px-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 animate-pulse">
+                ⚠️ You must select an answer before proceeding to the next question.
+              </p>
             )}
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+              {!isLiveExam && (
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={handlePrevious}
+                  disabled={currentQuestionIndex === 0}
+                  className="rounded-xl"
+                >
+                  <span className="flex items-center gap-2">
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </span>
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="md"
+                onClick={handleClearAnswer}
+                disabled={selectedAnswer === null}
+                className="rounded-xl"
+              >
+                <span className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Clear Answer</span>
+                </span>
+              </Button>
+
+              {currentQuestionIndex === currentSession.length - 1 ? (
+                <Button
+                  size="md"
+                  onClick={() => setShowEndModal(true)}
+                  disabled={isLiveExam && selectedAnswer === null}
+                  className={`font-bold shadow-md px-6 rounded-xl transition-all ${
+                    isLiveExam && selectedAnswer === null
+                      ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 cursor-pointer"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Submit Exam</span>
+                  </span>
+                </Button>
+              ) : (
+                <Button
+                  size="md"
+                  onClick={handleNext}
+                  disabled={isLiveExam && selectedAnswer === null}
+                  className={`font-bold shadow-md px-6 rounded-xl transition-all ${
+                    isLiveExam && selectedAnswer === null
+                      ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none"
+                      : "bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-[#0092E3]/20 cursor-pointer"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>Next Question</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </span>
+                </Button>
+              )}
+            </div>
           </div>
         </motion.div>
 
