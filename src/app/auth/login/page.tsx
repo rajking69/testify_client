@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn, socialSignIn } from "@/lib/auth-client";
+import { signIn, socialSignIn, authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -98,12 +98,13 @@ export default function LoginPage() {
     }
   };
 
-  const signInWithGoogle = async () => {
+    const signInWithGoogle = async () => {
     try {
       await socialSignIn({
         provider: "google",
         callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
-      });
+        authParams: { prompt: "select_account" },
+      } as any);
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error

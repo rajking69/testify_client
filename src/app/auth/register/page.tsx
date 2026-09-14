@@ -190,12 +190,20 @@ export default function RegisterPage() {
     setFormData((prev) => ({ ...prev, role }));
   };
 
-  const signInWithGoogle = async () => {
+      const signInWithGoogle = async () => {
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("testify_pending_oauth_role", formData.role);
+        document.cookie = `testify_oauth_role=${formData.role}; path=/; max-age=600; SameSite=Lax`;
+      }
       await socialSignIn({
         provider: "google",
-        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
-      });
+        callbackURL: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/oauth-callback`,
+        prompt: "select_account",
+        authParams: {
+          prompt: "select_account",
+        },
+      } as any);
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error
@@ -205,11 +213,15 @@ export default function RegisterPage() {
     }
   };
 
-  const signInWithGitHub = async () => {
+    const signInWithGitHub = async () => {
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("testify_pending_oauth_role", formData.role);
+        document.cookie = `testify_oauth_role=${formData.role}; path=/; max-age=600; SameSite=Lax`;
+      }
       await socialSignIn({
         provider: "github",
-        callbackURL: typeof window !== "undefined" ? window.location.origin : "/",
+        callbackURL: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/oauth-callback`,
       });
     } catch (err: unknown) {
       const errorMessage =
