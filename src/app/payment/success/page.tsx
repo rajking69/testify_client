@@ -16,57 +16,70 @@ function TeacherPaymentSuccessContent() {
   const paramEmail = searchParams.get("email");
   const { data: session } = authClient.useSession();
   const [isVerifying, setIsVerifying] = useState(true);
+  const [sessionDetails, setSessionDetails] = useState<any>(null);
   const [statusData, setStatusData] = useState<TeacherPremiumStatusResponse["data"] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Resolve user email from query param, session, or pending subscription storage
     let userEmail = paramEmail || session?.user?.email;
     if (!userEmail && typeof window !== "undefined") {
       userEmail = localStorage.getItem("testify_pending_subscription_email") || undefined;
     }
 
-    if (userEmail) {
-      activateTeacherPremium(365, userEmail);
-    }
-
-    let attempts = 0;
-    const maxAttempts = 6;
-    let timer: NodeJS.Timeout;
-
-    async function checkStatus() {
+    async function verifyPayment() {
       try {
-        const res = await paymentService.getTeacherPremiumStatus();
-        if (res.success && (res.data.isPremium || res.data.premiumStatus === "active")) {
-          setStatusData(res.data);
-          setIsVerifying(false);
-          return;
+        let details = null;
+        if (sessionId) {
+          try {
+            const sessRes = await paymentService.getSessionDetails(sessionId);
+            if (sessRes && sessRes.success && sessRes.data) {
+              details = sessRes.data;
+              setSessionDetails(details);
+            }
+          } catch (e) {
+            console.warn("Could not fetch session details:", e);
+          }
         }
 
-        // Retry polling while Stripe webhook processes
-        attempts += 1;
-        if (attempts < maxAttempts) {
-          timer = setTimeout(checkStatus, 2000);
-        } else {
-          setStatusData(res.data);
-          setIsVerifying(false);
+        try {
+          const res = await paymentService.getTeacherPremiumStatus();
+          if (res && res.success && res.data) {
+            setStatusData(res.data);
+          }
+        } catch (e) {
+          console.warn("Could not fetch premium status:", e);
         }
+
+        const duration = details?.durationDays || ((statusData as any)?.interval === "yearly" ? 365 : 30);
+        const planName = details?.planName || statusData?.planName || "Teacher Subscription";
+        const price = details?.pricePaid || statusData?.price || (duration === 365 ? 199.99 : 19.99);
+
+        if (userEmail) {
+          activateTeacherPremium(duration, userEmail, planName, price);
+        }
+
+        setIsVerifying(false);
       } catch (err: any) {
-        attempts += 1;
-        if (attempts < maxAttempts) {
-          timer = setTimeout(checkStatus, 2000);
-        } else {
-          setIsVerifying(false);
-        }
+        setIsVerifying(false);
       }
     }
 
-    checkStatus();
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
+    verifyPayment();
   }, [sessionId, paramEmail, session?.user?.email]);
+
+  const priceFormatted = sessionDetails?.pricePaid
+    ? `$${sessionDetails.pricePaid.toFixed(2)}`
+    : statusData?.price
+    ? `$${statusData.price.toFixed(2)}`
+    : "$19.99";
+
+  const planNameDisplay = sessionDetails?.planName || statusData?.planName || "Teacher Pro Plan";
+
+  const durationDisplay = statusData?.premiumExpiresAt
+    ? `Valid until ${new Date(statusData.premiumExpiresAt).toLocaleDateString()}`
+    : sessionDetails?.durationDays
+    ? `Valid for ${sessionDetails.durationDays} Days`
+    : "Valid for 30 Days";
 
   return (
     <div className="relative min-h-screen bg-slate-50/70 dark:bg-slate-950 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
@@ -110,7 +123,8 @@ function TeacherPaymentSuccessContent() {
                 Welcome to Teacher Premium!
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Your $20.00 annual subscription payment was verified successfully. Full examination conducting, live proctoring, and question banking privileges are now unlocked for 1 year.
+                {sessionDetails?.message ||
+                  `Your ${priceFormatted} subscription payment was verified successfully. Full examination conducting, live proctoring, and question banking privileges are now unlocked.`}
               </p>
             </div>
 
@@ -118,7 +132,7 @@ function TeacherPaymentSuccessContent() {
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                 <span>Membership Plan:</span>
                 <strong className="text-slate-900 dark:text-white">
-                  {statusData?.planName || "Teacher Premium ($20/yr)"}
+                  {planNameDisplay}
                 </strong>
               </div>
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
@@ -128,9 +142,7 @@ function TeacherPaymentSuccessContent() {
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                 <span>Duration:</span>
                 <strong className="text-slate-900 dark:text-white">
-                  {statusData?.premiumExpiresAt
-                    ? `Valid until ${new Date(statusData.premiumExpiresAt).toLocaleDateString()}`
-                    : "Valid for 365 Days"}
+                  {durationDisplay}
                 </strong>
               </div>
             </div>

@@ -9,7 +9,7 @@ export interface SubscriptionState {
   isLoaded: boolean;
 }
 
-export function activateTeacherPremium(durationDays = 365, userEmail?: string) {
+export function activateTeacherPremium(durationDays = 30, userEmail?: string, planName = "Teacher Pro", price = 19.99) {
   if (typeof window === "undefined") return;
 
   const expDate = new Date();
