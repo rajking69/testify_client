@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClient } from "@/lib/apiClient";
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
@@ -51,6 +52,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
+import { authClient } from "@/lib/auth-client";
+import { paymentService } from "@/services/payment.service";
 import { purchaseService, TeacherEarningsSummary } from "@/services/purchase.service";
 import { examService, ExamItem } from "@/services/exam.service";
 import { getMonitoringSocket, CandidateTelemetry } from "@/lib/socket-client";
@@ -2942,7 +2945,7 @@ interface ExamResultRecord {
 const initialResultRows: ExamResultRecord[] = [];
 
 export function ResultsPanel() {
-  const [results] = useState<ExamResultRecord[]>(() => {
+  const [results, setResults] = useState<ExamResultRecord[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("testify_teacher_results");
       if (stored) {
@@ -2961,10 +2964,61 @@ export function ResultsPanel() {
   const [toast, setToast] = useState<string | null>(null);
   const [earnings, setEarnings] = useState<TeacherEarningsSummary | null>(null);
 
+  const { data: sessionData } = authClient.useSession();
+  const currentUser = sessionData?.user;
+
   useEffect(() => {
-    const data = purchaseService.getTeacherEarnings();
-    setEarnings(data);
+    let isMounted = true;
+    async function loadTeacherSubmissions() {
+      try {
+        const res = await apiClient.get('/exams/teacher/submissions/all');
+        if (isMounted && res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: ExamResultRecord[] = res.data.map((sub: any, idx: number) => ({
+            rank: `#${idx + 1}`,
+            id: String(sub.id || sub.submissionId || `res-${idx}`),
+            student: sub.studentName || 'Student Candidate',
+            email: sub.studentEmail || 'student@testify.local',
+            exam: sub.examTitle || 'Academic Examination',
+            score: sub.score || 0,
+            maxScore: sub.totalMarks || 100,
+            percentage: typeof sub.percentage === 'number' ? sub.percentage : (sub.totalMarks > 0 ? Math.round((sub.score / sub.totalMarks) * 100) : 0),
+            grade: sub.grade || (sub.percentage >= 80 ? 'A+' : sub.percentage >= 70 ? 'A' : sub.percentage >= 60 ? 'B' : sub.percentage >= 50 ? 'C' : 'F'),
+            status: sub.isPassed ? 'Pass' : 'Fail',
+            submitted: sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent Session',
+            answers: sub.answers || [],
+          }));
+          setResults(mapped);
+          localStorage.setItem('testify_teacher_results', JSON.stringify(mapped));
+        }
+      } catch (err) {
+        console.warn('Backend teacher submissions fetch fallback:', err);
+      }
+    }
+    loadTeacherSubmissions();
+    return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    async function loadEarnings() {
+      try {
+        const revRes = await paymentService.getTeacherRevenue();
+        if (revRes && revRes.data) {
+          setEarnings(revRes.data);
+          return;
+        }
+      } catch (err) {
+        console.warn("Backend revenue fetch fallback to isolated local state:", err);
+      }
+
+      if (currentUser?.email) {
+        const localData = purchaseService.getTeacherEarnings(currentUser.email);
+        setEarnings(localData);
+      } else {
+        setEarnings(purchaseService.getTeacherEarnings("__NO_TEACHER__"));
+      }
+    }
+    loadEarnings();
+  }, [currentUser?.email]);
 
   const showToast = (msg: string) => {
     setToast(msg);

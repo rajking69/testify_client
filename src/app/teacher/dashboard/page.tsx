@@ -560,7 +560,7 @@ export default function TeacherDashboardPage() {
               </Button>
             </Link>
 
-            <ThemeToggle className="shrink-0" />
+            
           </div>
         </div>
       </motion.div>
@@ -844,7 +844,7 @@ export default function TeacherDashboardPage() {
                 No Active Subscription Invoice
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                Upgrade to Teacher Premium ($20/year) to unlock unlimited proctored exam hosting, AI question banking, and generate your official tax invoice & receipt.
+                Upgrade to Teacher Premium ($19.99/mo or $199.99/yr) to unlock unlimited proctored exam hosting, AI question banking, and generate your official tax invoice & receipt.
               </p>
             </div>
             <div className="pt-1">
@@ -853,7 +853,7 @@ export default function TeacherDashboardPage() {
                 className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-5 rounded-full shadow-md transition-all cursor-pointer"
                 leftIcon={<Crown className="h-4 w-4" />}
               >
-                Upgrade to Teacher Premium ($20/yr)
+                Upgrade to Teacher Premium ($19.99/mo)
               </Button>
             </div>
           </div>
@@ -907,7 +907,7 @@ export default function TeacherDashboardPage() {
                     <span className="text-xl font-extrabold text-[#0092E3] dark:text-cyan-400 font-mono">
                       ${inv.amount.toFixed(2)}
                     </span>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Annual License</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Subscription License</p>
                   </div>
 
                   <Button
@@ -956,9 +956,9 @@ export default function TeacherDashboardPage() {
                 </p>
               </div>
             ) : (
-              recentExamsList.map((exam: any) => (
+              recentExamsList.map((exam: any, idx: number) => (
                 <div
-                  key={exam.id}
+                  key={exam.examId || exam.id || exam._id || idx}
                   className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:border-[#0092E3]/40"
                 >
                   <div className="space-y-1">
@@ -1175,7 +1175,7 @@ export default function TeacherDashboardPage() {
                   <span className="text-2xl font-extrabold text-[#0092E3] dark:text-cyan-400 font-mono">
                     ${selectedTeacherInvoice.amount.toFixed(2)}
                   </span>
-                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Annual Charge</p>
+                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Subscription Charge</p>
                 </div>
               </div>
             </div>
@@ -1204,7 +1204,7 @@ export default function TeacherDashboardPage() {
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-500 space-y-0.5 pt-1">
-                    <p>Official Instructor Subscription Tax Invoice &bull; Annual Membership</p>
+                    <p>Official Instructor Subscription Tax Invoice &bull; Subscription Membership</p>
                     <p>Portal: <strong>www.testify.ac</strong> &bull; Support: <strong>billing@testify.ac</strong></p>
                   </div>
                 </div>
@@ -1309,7 +1309,7 @@ export default function TeacherDashboardPage() {
                     </ul>
                   </div>
                   <span className="col-span-3 text-center font-bold text-blue-700 bg-blue-50 py-1 rounded border border-blue-200 text-[10px]">
-                    1-Year Annual Premium
+                    Teacher Subscription Plan
                   </span>
                   <span className="col-span-2 text-right font-extrabold text-xs text-slate-900 font-mono">
                     ${selectedTeacherInvoice.amount.toFixed(2)}
