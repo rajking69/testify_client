@@ -25,6 +25,7 @@ export default function Features() {
       title: "Comprehensive Question Bank",
       desc: "Rich math formulas (LaTeX), audio listening questions, programming syntax highlighting, and multiple question formats for Teachers.",
       badge: "Teachers",
+      href: "/teacher/question-bank",
       color: "border-blue-200/80 dark:border-blue-500/30 bg-gradient-to-b from-white to-blue-50/40 dark:from-slate-900/90 dark:to-blue-950/40 hover:dark:border-blue-400/50 hover:dark:shadow-blue-500/10",
       iconBg: "bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-800",
       badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-50/90 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800",
@@ -34,6 +35,7 @@ export default function Features() {
       title: "Distraction-Free Exam Room",
       desc: "Single-window lockdown mode, prevent copy-paste, and full-screen enforcement to ensure genuine test integrity for Students.",
       badge: "Students",
+      href: "/exam/join",
       color: "border-cyan-200/80 dark:border-cyan-500/30 bg-gradient-to-b from-white to-cyan-50/40 dark:from-slate-900/90 dark:to-cyan-950/40 hover:dark:border-cyan-400/50 hover:dark:shadow-cyan-500/10",
       iconBg: "bg-cyan-50 dark:bg-cyan-950/60 border-cyan-200/80 dark:border-cyan-800",
       badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-50/90 dark:bg-cyan-950/60 border-cyan-200 dark:border-cyan-800",
@@ -43,6 +45,7 @@ export default function Features() {
       title: "AI Rubric Auto-Grading",
       desc: "Automated scoring for objective questions and AI-assisted grading suggestions for descriptive answers with teacher override.",
       badge: "AI Powered",
+      href: "/teacher/evaluation",
       color: "border-amber-200/80 dark:border-amber-500/30 bg-gradient-to-b from-white to-amber-50/40 dark:from-slate-900/90 dark:to-amber-950/40 hover:dark:border-amber-400/50 hover:dark:shadow-amber-500/10",
       iconBg: "bg-amber-50 dark:bg-amber-950/60 border-amber-200/80 dark:border-amber-800",
       badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-50/90 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800",
@@ -52,6 +55,7 @@ export default function Features() {
       title: "Instant Results & Analytics",
       desc: "Real-time scorecards, class distribution curves, question difficulty index, and exportable gradebooks for faculty.",
       badge: "Analytics",
+      href: "/student/results",
       color: "border-sky-200/80 dark:border-sky-500/30 bg-gradient-to-b from-white to-sky-50/40 dark:from-slate-900/90 dark:to-sky-950/40 hover:dark:border-sky-400/50 hover:dark:shadow-sky-500/10",
       iconBg: "bg-sky-50 dark:bg-sky-950/60 border-sky-200/80 dark:border-sky-800",
       badgeColor: "text-sky-700 dark:text-sky-300 bg-sky-50/90 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800",
@@ -61,6 +65,7 @@ export default function Features() {
       title: "Live Student Monitoring",
       desc: "Live invigilation matrix displaying real-time focus detection, student progress, timer alerts, and instant direct teacher chat.",
       badge: "Proctoring",
+      href: "/teacher/monitoring",
       color: "border-indigo-200/80 dark:border-indigo-500/30 bg-gradient-to-b from-white to-indigo-50/40 dark:from-slate-900/90 dark:to-indigo-950/40 hover:dark:border-indigo-400/50 hover:dark:shadow-indigo-500/10",
       iconBg: "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200/80 dark:border-indigo-800",
       badgeColor: "text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800",
@@ -70,6 +75,7 @@ export default function Features() {
       title: "Campus-Wide Admin Oversight",
       desc: "Role security, multi-department faculty control, scheduled examination windows, and institutional audit trails for Admins.",
       badge: "Admins",
+      href: "/admin/dashboard",
       color: "border-purple-200/80 dark:border-purple-500/30 bg-gradient-to-b from-white to-purple-50/40 dark:from-slate-900/90 dark:to-purple-950/40 hover:dark:border-purple-400/50 hover:dark:shadow-purple-500/10",
       iconBg: "bg-purple-50 dark:bg-purple-950/60 border-purple-200/80 dark:border-purple-800",
       badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-50/90 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800",
@@ -111,24 +117,34 @@ export default function Features() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: idx * 0.08 }}
               whileHover={{ y: -6, transition: { duration: 0.2 } }}
-              className={`p-6 sm:p-7 rounded-2xl border shadow-xs hover:shadow-xl transition-all duration-200 relative flex flex-col justify-between ${box.color}`}
+              className="h-full"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className={`p-2.5 rounded-xl border shadow-2xs ${box.iconBg}`}>
-                    {box.icon}
+              <Link
+                href={box.href}
+                className={`p-6 sm:p-7 rounded-2xl border shadow-xs hover:shadow-xl transition-all duration-200 relative flex flex-col justify-between h-full cursor-pointer group ${box.color}`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={`p-2.5 rounded-xl border shadow-2xs transition-transform group-hover:scale-110 ${box.iconBg}`}>
+                      {box.icon}
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-2xs ${box.badgeColor}`}>
+                      {box.badge}
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-2xs ${box.badgeColor}`}>
-                    {box.badge}
-                  </span>
+                  <h3 className="text-base font-bold font-display text-[#0B2238] dark:text-white pt-1 group-hover:text-[#0092E3] dark:group-hover:text-cyan-400 transition-colors flex items-center justify-between">
+                    <span>{box.title}</span>
+                    <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#0092E3] dark:text-cyan-400" />
+                  </h3>
+                  <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {box.desc}
+                  </p>
                 </div>
-                <h3 className="text-base font-bold font-display text-[#0B2238] dark:text-white pt-1">
-                  {box.title}
-                </h3>
-                <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {box.desc}
-                </p>
-              </div>
+                <div className="pt-4 flex items-center gap-1.5 text-xs font-bold text-[#0092E3] dark:text-cyan-400 group-hover:underline">
+                  <span>Open Module</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </div>
+              </Link>
             </motion.div>
           ))}
         </div>
@@ -184,17 +200,27 @@ export default function Features() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
               whileHover={{ y: -5 }}
-              className="p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm border border-[#D5DFE8] dark:border-slate-800 shadow-xs hover:shadow-md transition-all space-y-2.5"
+              className="h-full"
             >
-              <div className="flex items-center justify-center text-[#00A3C4] dark:text-cyan-400">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <h4 className="text-base font-bold text-[#0B2238] dark:text-white font-display">
-                Zero Infrastructure Setup
-              </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Run exams seamlessly inside any standard modern web browser without complex desktop installs.
-              </p>
+              <Link
+                href="/exam/join"
+                className="p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm border border-[#D5DFE8] dark:border-slate-800 shadow-xs hover:shadow-md hover:border-[#0092E3] dark:hover:border-cyan-500 transition-all flex flex-col justify-between h-full group cursor-pointer space-y-2.5"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-center text-[#00A3C4] dark:text-cyan-400 group-hover:scale-110 transition-transform">
+                    <Building2 className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-[#0B2238] dark:text-white font-display group-hover:text-[#0092E3] dark:group-hover:text-cyan-400 transition-colors">
+                    Zero Infrastructure Setup
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Run exams seamlessly inside any standard modern web browser without complex desktop installs.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-[#0092E3] dark:text-cyan-400 pt-2 flex items-center justify-center gap-1 group-hover:underline">
+                  Join Exam Room <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
             </motion.div>
 
             {/* Pillar 2 */}
@@ -204,17 +230,27 @@ export default function Features() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
               whileHover={{ y: -5 }}
-              className="p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm border border-[#D5DFE8] dark:border-slate-800 shadow-xs hover:shadow-md transition-all space-y-2.5"
+              className="h-full"
             >
-              <div className="flex items-center justify-center text-[#E8922C] dark:text-amber-400">
-                <GraduationCap className="h-6 w-6" />
-              </div>
-              <h4 className="text-base font-bold text-[#0B2238] dark:text-white font-display">
-                Real-Time Synchronization
-              </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Continuous auto-save and offline caching guarantees that zero student answers are ever lost.
-              </p>
+              <Link
+                href="/practice"
+                className="p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm border border-[#D5DFE8] dark:border-slate-800 shadow-xs hover:shadow-md hover:border-amber-500 transition-all flex flex-col justify-between h-full group cursor-pointer space-y-2.5"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-center text-[#E8922C] dark:text-amber-400 group-hover:scale-110 transition-transform">
+                    <GraduationCap className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-[#0B2238] dark:text-white font-display group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    Real-Time Synchronization
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Continuous auto-save and offline caching guarantees that zero student answers are ever lost.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 pt-2 flex items-center justify-center gap-1 group-hover:underline">
+                  Start Practice Session <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
             </motion.div>
 
             {/* Pillar 3 */}
@@ -224,17 +260,27 @@ export default function Features() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 }}
               whileHover={{ y: -5 }}
-              className="p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm border border-[#D5DFE8] dark:border-slate-800 shadow-xs hover:shadow-md transition-all space-y-2.5"
+              className="h-full"
             >
-              <div className="flex items-center justify-center text-[#0B2238] dark:text-indigo-400">
-                <Award className="h-6 w-6" />
-              </div>
-              <h4 className="text-base font-bold text-[#0B2238] dark:text-white font-display">
-                Intelligent Evaluation
-              </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Instant score calculation for objective questions alongside AI rubric assistance for essays.
-              </p>
+              <Link
+                href="/teacher/evaluation"
+                className="p-5 rounded-2xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-sm border border-[#D5DFE8] dark:border-slate-800 shadow-xs hover:shadow-md hover:border-indigo-500 transition-all flex flex-col justify-between h-full group cursor-pointer space-y-2.5"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-center text-[#0B2238] dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                    <Award className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-[#0B2238] dark:text-white font-display group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    Intelligent Evaluation
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Instant score calculation for objective questions alongside AI rubric assistance for essays.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 pt-2 flex items-center justify-center gap-1 group-hover:underline">
+                  Open Evaluation Console <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
             </motion.div>
           </div>
         </div>

@@ -39,6 +39,9 @@ export interface PublicExamCard {
   joinCode?: string;
   accessToken: string;
   status: string;
+  startDateTime?: string;
+  endDateTime?: string;
+  createdAt?: string;
 }
 
 export default function PublicExamsSection() {
@@ -53,6 +56,8 @@ export default function PublicExamsSection() {
   const [selectedPurchaseExam, setSelectedPurchaseExam] = useState<PublicExamCard | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [completedExamIds, setCompletedExamIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
   const [isLoaded, setIsLoaded] = useState(false);
 
   const loadPublicExams = async () => {
@@ -65,7 +70,7 @@ export default function PublicExamsSection() {
       const res = await examService.getPublicExams();
       if (res && res.data) {
         const apiList: PublicExamCard[] = res.data
-          .filter((e: any) => e.isPublished !== false && (e.status === "PUBLISHED" || e.status === "Published" || !e.status))
+          .filter((e: any) => e.isPublished !== false && e.status !== "Draft" && e.status !== "DRAFT")
           .map((e: any) => ({
             id: String(e.id || e.examId || e._id),
             title: e.title,
@@ -88,43 +93,7 @@ export default function PublicExamsSection() {
         list = apiList;
       }
 
-      // Merge local teacher exams if present in localStorage
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem("testify_teacher_exams");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            const localPublished = parsed
-              .filter((e: any) => e.status === "Published" || e.status === "Scheduled" || e.status === "Ready")
-              .map((e: any) => ({
-                id: String(e.id),
-                title: e.title,
-                subject: e.subject || "General",
-                description: e.description || "Official assessment hosted on Testify platform.",
-                teacherName: e.teacherName || e.creatorName || (e.teacherEmail ? e.teacherEmail.split("@")[0] : "Certified Instructor"),
-                teacherEmail: e.teacherEmail || e.createdBy || "",
-                teacherId: e.teacherId || e.creatorId || "",
-                duration: e.duration || 60,
-                totalMarks: e.totalMarks || 50,
-                passMark: e.passMark || 20,
-                questionsCount: e.questions?.length || 10,
-                accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
-                price: Number(e.price) > 0 ? Number(e.price) : 0,
-                joinCode: e.joinCode || "CSE101",
-                accessToken: e.accessToken || String(e.id),
-                status: e.status || "Published",
-              }));
-
-            localPublished.forEach((item: any) => {
-              if (!list.some((l) => l.id === item.id)) {
-                list.push(item);
-              }
-            });
-          }
-        } catch {}
-      }
-
-      setExams(list);
+           setExams(list);
     } catch (err: any) {
       console.error("Failed to load public exams:", err);
       setErrorMessage(err?.message || "Failed to load exams. Please check your internet connection.");
@@ -225,6 +194,20 @@ export default function PublicExamsSection() {
     loadPublicExams();
   }, [session?.user?.email, session?.user?.id]);
 
+
+  const isExamExpired = (exam: PublicExamCard) => {
+    if (exam.endDateTime) {
+      const endDate = new Date(exam.endDateTime);
+      if (!isNaN(endDate.getTime()) && endDate.getTime() < Date.now()) {
+        return true;
+      }
+    }
+    if (exam.status === "Expired" || exam.status === "EXPIRED") {
+      return true;
+    }
+    return false;
+  };
+
   const isExamCompleted = (exam: PublicExamCard) => {
     const currentEmail = (session?.user?.email || "").trim().toLowerCase();
     const currentUserId = session?.user?.id;
@@ -277,8 +260,16 @@ export default function PublicExamsSection() {
 
   const subjects = ["All", ...Array.from(new Set(exams.map((e) => e.subject)))];
 
-  const filtered = useMemo(() => {
-    return exams.filter((exam) => {
+      const allFilteredExams = useMemo(() => {
+    // Sort newest exams first
+    const sorted = [...exams].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (dateA && dateB && dateA !== dateB) return dateB - dateA;
+      return String(b.id).localeCompare(String(a.id));
+    });
+
+    return sorted.filter((exam) => {
       const matchSearch =
         exam.title.toLowerCase().includes(search.toLowerCase()) ||
         exam.subject.toLowerCase().includes(search.toLowerCase()) ||
@@ -290,6 +281,13 @@ export default function PublicExamsSection() {
       return matchSearch && matchSubject && matchType;
     });
   }, [exams, search, selectedSubject, typeFilter]);
+
+  const totalPages = Math.ceil(allFilteredExams.length / ITEMS_PER_PAGE) || 1;
+
+  const paginatedExams = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allFilteredExams.slice(start, start + ITEMS_PER_PAGE);
+  }, [allFilteredExams, currentPage]);
 
   return (
     <section id="explore-exams" className="relative w-full py-16 lg:py-24 bg-gradient-to-b from-[#EFF6FB]/60 via-white to-[#EFF6FB]/40 dark:from-[#080E1A] dark:via-[#0B1220] dark:to-[#080E1A] border-t border-slate-200/80 dark:border-slate-800/80 overflow-hidden">
@@ -397,7 +395,7 @@ export default function PublicExamsSection() {
         </div>
 
         {/* Exams Grid */}
-        {filtered.length === 0 ? (
+        {allFilteredExams.length === 0 ? (
           <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 max-w-md mx-auto space-y-3">
             <BookOpen className="h-10 w-10 text-slate-300 dark:text-slate-700 mx-auto" />
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -436,9 +434,10 @@ export default function PublicExamsSection() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((exam) => {
+            {paginatedExams.map((exam) => {
               const isPaid = exam.accessType === "PAID";
               const priceDisplay = exam.price > 0 ? exam.price : 5;
+              const expired = isExamExpired(exam);
 
               return (
                 <motion.div
@@ -453,7 +452,11 @@ export default function PublicExamsSection() {
                         {exam.subject}
                       </span>
 
-                      {isExamCompleted(exam) ? (
+                      {expired ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                          <Clock className="h-3.5 w-3.5 text-rose-600" /> Expired
+                        </span>
+                      ) : isExamCompleted(exam) ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Completed
                         </span>

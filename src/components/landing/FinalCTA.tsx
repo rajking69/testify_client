@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -9,268 +9,292 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
-  Send,
 } from "lucide-react";
-import { AnimatedBackground } from "./AnimatedBackground";
 import { TeacherSubscriptionModal } from "@/components/teacher/TeacherSubscriptionModal";
-import { Modal } from "@/components/ui/Modal";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Textarea } from "@/components/ui/Textarea";
-import { Select } from "@/components/ui/Select";
+import { apiClient } from "@/lib/apiClient";
+
+interface SubscriptionPlan {
+  _id: string;
+  name: string;
+  targetRole: "teacher" | "student";
+  interval: "monthly" | "yearly";
+  price: number;
+  durationDays: number;
+  features: string[];
+  isActive: boolean;
+}
 
 export default function FinalCTA() {
   const router = useRouter();
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
-  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+  const [selectedPlanForModal, setSelectedPlanForModal] = useState<SubscriptionPlan | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Contact Sales Form State
-  const [institutionName, setInstitutionName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [campusSize, setCampusSize] = useState("1,000 - 5,000 students");
-  const [message, setMessage] = useState("");
-  const [isSubmittingSales, setIsSubmittingSales] = useState(false);
-  const [salesSubmitted, setSalesSubmitted] = useState(false);
+  const [teacherMonthlyPlan, setTeacherMonthlyPlan] = useState<SubscriptionPlan>({
+    _id: "teacher-monthly-fallback",
+    name: "Teacher Monthly Pro",
+    targetRole: "teacher",
+    interval: "monthly",
+    price: 19.99,
+    durationDays: 30,
+    features: [
+      "Create & Host Unlimited Exams",
+      "Access to Question Bank Studio",
+      "Detailed Student Analytics & Scorecards",
+      "Instant Result Publishing & Evaluation",
+    ],
+    isActive: true,
+  });
+
+  const [teacherYearlyPlan, setTeacherYearlyPlan] = useState<SubscriptionPlan>({
+    _id: "teacher-yearly-fallback",
+    name: "Teacher Yearly Elite",
+    targetRole: "teacher",
+    interval: "yearly",
+    price: 199.99,
+    durationDays: 365,
+    features: [
+      "All Monthly Pro Features Included",
+      "Priority Teacher Dedicated Support",
+      "Custom Exam Branding & Certifications",
+      "Bulk Student Invite & Gradebook Export",
+    ],
+    isActive: true,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  // Fetch live Teacher subscription plans directly from MongoDB
+  const fetchLiveTeacherPlans = async () => {
+    try {
+      const res: any = await apiClient.get("/subscriptions/plans");
+      if (res.success && Array.isArray(res.data)) {
+        const monthly = res.data.find(
+          (p: SubscriptionPlan) =>
+            p.targetRole === "teacher" && p.interval === "monthly" && p.isActive !== false
+        );
+        if (monthly) setTeacherMonthlyPlan(monthly);
+
+        const yearly = res.data.find(
+          (p: SubscriptionPlan) =>
+            p.targetRole === "teacher" && p.interval === "yearly" && p.isActive !== false
+        );
+        if (yearly) setTeacherYearlyPlan(yearly);
+      }
+    } catch (err) {
+      console.error("Error loading teacher plans:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveTeacherPlans();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSalesSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!institutionName.trim() || !contactEmail.trim()) return;
-
-    setIsSubmittingSales(true);
-    setTimeout(() => {
-      setIsSubmittingSales(false);
-      setSalesSubmitted(true);
-      setTimeout(() => {
-        setSalesSubmitted(false);
-        setIsSalesModalOpen(false);
-        showToast("Inquiry submitted! Our institutional team will contact you within 24 hours.");
-        setInstitutionName("");
-        setContactName("");
-        setContactEmail("");
-        setMessage("");
-      }, 1500);
-    }, 800);
-  };
-
-  const lmsList = [
-    "Google Classroom",
-    "Canvas LMS",
-    "Moodle",
-    "Microsoft Teams",
-    "Blackboard",
-    "Schoology",
+  const platformCapabilities = [
+    "CSV / JSON Bulk Import",
+    "Live Webcam Proctoring",
+    "1-Strike Tab Lockdown",
+    "Stripe Paid Exam Checkout",
+    "Real-time Telemetry Engine",
+    "Instant Automated Scorecard",
   ];
+
+  const handleOpenTeacherModal = (plan: SubscriptionPlan) => {
+    setSelectedPlanForModal(plan);
+    setIsSubscriptionOpen(true);
+  };
 
   const pricingPlans = [
     {
-      id: "starter",
-      name: "Starter / Free",
+      id: "student-free",
+      name: "Student & Free Exam Access",
       price: "$0",
-      period: "forever",
-      description: "Essential assessment tools for individual teachers and students.",
-      badge: "Free Tier",
+      period: "forever free",
+      description: "Attend free exams using access codes and practice self-assessment tests. Pay per-exam for paid exams.",
+      badge: "Free Access",
       popular: false,
       features: [
-        "Up to 5 active exams",
-        "Multiple-choice & basic question types",
-        "Instant objective auto-grading",
-        "Student real-time timer & auto-save",
-        "Standard web browser security",
+        "Attend free teacher-hosted exams via access code",
+        "Take self-assessment practice tests with instant feedback",
+        "Direct per-exam checkout for monetized paid exams",
+        "Auto-saving answer engine preventing connectivity loss",
+        "View detailed pass/fail scorecards upon submission",
+        "Full mobile, tablet, and desktop browser support",
       ],
-      buttonText: "Start for Free",
-      action: () => router.push("/auth/register"),
+      buttonText: "Start as Student",
+      action: () => router.push("/public-exams"),
     },
     {
-      id: "pro",
-      name: "Teacher Premium",
-      price: "$20",
+      id: teacherMonthlyPlan._id,
+      name: teacherMonthlyPlan.name,
+      price: `$${teacherMonthlyPlan.price}`,
+      period: "per month",
+      description: "Full exam creation studio, paid exam marketplace monetization, and live proctoring on monthly billing.",
+      badge: "Teacher Monthly",
+      popular: false,
+      features: teacherMonthlyPlan.features?.length > 0
+        ? teacherMonthlyPlan.features
+        : [
+            "Create & Host Unlimited Exams",
+            "Access to Question Bank Studio",
+            "Detailed Student Analytics & Scorecards",
+            "Instant Result Publishing & Evaluation",
+          ],
+      buttonText: `Get Teacher Monthly ($${teacherMonthlyPlan.price})`,
+      action: () => handleOpenTeacherModal(teacherMonthlyPlan),
+    },
+    {
+      id: teacherYearlyPlan._id,
+      name: teacherYearlyPlan.name,
+      price: `$${teacherYearlyPlan.price}`,
       period: "per year (1-Year Access)",
-      description: "Unlimited exams, paid exam monetization, live proctoring, and question bank.",
+      description: "Complete yearly access, priority teacher support, custom branding, and bulk student export.",
       badge: "Most Popular",
       popular: true,
-      features: [
-        "Unlimited exams & central question bank",
-        "Create Free classroom & Paid marketplace exams",
-        "Bulk question import (Excel, CSV & JSON)",
-        "Live proctoring & webcam telemetry",
-        "Real-time focus alerts & anti-cheat engine",
-        "Full student evaluation & gradebook export",
-      ],
-      buttonText: "Get Teacher Premium",
-      action: () => setIsSubscriptionOpen(true),
-    },
-    {
-      id: "institution",
-      name: "Institution / Campus",
-      price: "Custom",
-      period: "per institution / year",
-      description: "Full campus-wide oversight, multi-admin management, and LMS integrations.",
-      badge: "For Schools & Universities",
-      popular: false,
-      features: [
-        "Unlimited teachers, students & admins",
-        "Campus-wide Single Sign-On (SSO)",
-        "LMS gradebook sync (Canvas, Moodle)",
-        "AI proctoring & webcam verification",
-        "Institutional audit logs & reports",
-        "Priority 24/7 support & onboarding",
-      ],
-      buttonText: "Contact Sales",
-      action: () => setIsSalesModalOpen(true),
+      features: teacherYearlyPlan.features?.length > 0
+        ? teacherYearlyPlan.features
+        : [
+            "All Monthly Pro Features Included",
+            "Priority Teacher Dedicated Support",
+            "Custom Exam Branding & Certifications",
+            "Bulk Student Invite & Gradebook Export",
+          ],
+      buttonText: `Get Teacher Yearly ($${teacherYearlyPlan.price})`,
+      action: () => handleOpenTeacherModal(teacherYearlyPlan),
     },
   ];
 
   return (
-    <section id="pricing" className="relative w-full overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#EFF6FB] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 py-16 lg:py-24 border-t border-[#E8EEF3] dark:border-slate-800 transition-colors duration-300">
+    <section id="pricing" className="py-20 relative overflow-hidden bg-[#F8FAFC] dark:bg-[#060B14]">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-emerald-600 text-white text-xs font-bold border border-emerald-500 animate-bounce">
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs shadow-2xl flex items-center gap-2 animate-bounce">
           <CheckCircle2 className="h-4 w-4" />
-          {toastMessage}
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Moving Animated Glow & Tech Grid */}
-      <AnimatedBackground />
-
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16 z-10">
-        {/* Section 1: LMS Integrations Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 relative z-10">
+        {/* Section 1: Capabilities Bar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="rounded-3xl border border-[#D5DFE8] dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-6 sm:p-8 shadow-xs space-y-4 text-center"
+          transition={{ duration: 0.5 }}
+          className="text-center space-y-4"
         >
           <div className="max-w-xl mx-auto space-y-1">
             <h3 className="text-lg sm:text-xl font-bold font-display text-[#0B2238] dark:text-white">
-              Easily integrate with your existing educational workflows
+              Built for seamless online exam creation &amp; proctoring
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Native synchronization with the world&apos;s leading Learning Management Systems
+              Core functional capabilities powering Testify&apos;s assessment ecosystem
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-            {lmsList.map((lms) => (
+            {platformCapabilities.map((cap) => (
               <motion.span
                 whileHover={{ scale: 1.05 }}
-                key={lms}
-                className="px-3.5 py-1.5 rounded-xl bg-[#F8FAFC] dark:bg-slate-800 border border-[#D5DFE8] dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs cursor-default"
+                key={cap}
+                className="px-4 py-2 rounded-full text-xs font-bold bg-[#F0F7FB] dark:bg-slate-800 text-[#00A3C4] dark:text-cyan-400 border border-[#D5DFE8] dark:border-slate-700 shadow-2xs cursor-default"
               >
-                {lms}
+                {cap}
               </motion.span>
             ))}
           </div>
         </motion.div>
 
-        {/* Section 2: Pricing Plans */}
+        {/* Section 2: Pricing Cards Grid (Exact 3 Cards UI: Student Free + Teacher Monthly + Teacher Yearly Live DB Plans) */}
         <div className="space-y-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-xl mx-auto space-y-2"
-          >
-            <span className="text-xs font-bold uppercase tracking-wider text-[#00A3C4] dark:text-cyan-400 bg-blue-50/90 dark:bg-slate-900/90 px-3.5 py-1 rounded-full border border-blue-200 dark:border-slate-800 shadow-2xs">
-              Simple &amp; Transparent
+          <div className="text-center max-w-xl mx-auto space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#00A3C4] dark:text-cyan-400 bg-blue-50 dark:bg-blue-950/60 px-3.5 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-2xs">
+              Simple, Transparent Pricing
             </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display tracking-tight text-[#0B2238] dark:text-white">
-              Flexible pricing for every classroom
+            <h2 className="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-[#0B2238] dark:text-white">
+              Choose the right plan for your role
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-              Choose the plan that fits your teaching needs. Upgrade or downgrade anytime.
-            </p>
-          </motion.div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
-            {pricingPlans.map((plan, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {pricingPlans.map((plan) => (
               <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 25 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                whileHover={{ y: -8, scale: 1.015, transition: { duration: 0.2 } }}
-                className={`p-6 sm:p-8 rounded-3xl border flex flex-col justify-between transition-all duration-200 ${
+                key={plan.id}
+                whileHover={{ y: -6 }}
+                className={`relative rounded-3xl p-7 sm:p-8 flex flex-col justify-between transition-all duration-200 border ${
                   plan.popular
-                    ? "border-[#00A3C4] dark:border-cyan-400 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl ring-2 ring-[#00A3C4]/30 dark:ring-cyan-400/20 relative"
-                    : "border-[#D5DFE8] dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md shadow-xs hover:shadow-lg"
+                    ? "bg-white dark:bg-slate-900 border-[#00A3C4] shadow-xl ring-2 ring-[#00A3C4]/20"
+                    : "bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 shadow-sm"
                 }`}
               >
-                <div className="space-y-4">
-                  {/* Plan Badge */}
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
-                        plan.popular
-                          ? "bg-[#00A3C4] text-[#0B2238] font-extrabold"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      {plan.badge}
-                    </span>
-                    {plan.popular && <Sparkles className="h-4 w-4 text-[#00A3C4] dark:text-cyan-400" />}
+                {plan.popular && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#00A3C4] text-white text-[11px] font-extrabold px-3.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" /> {plan.badge}
                   </div>
+                )}
 
-                  {/* Plan Name & Price */}
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-xl font-bold font-display text-[#0B2238] dark:text-white">{plan.name}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{plan.description}</p>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold font-display text-[#0B2238] dark:text-white">
+                        {plan.name}
+                      </h3>
+                      {!plan.popular && (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                          {plan.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {plan.description}
+                    </p>
                   </div>
 
-                  <div className="pt-2">
-                    <span className="text-3xl sm:text-4xl font-extrabold text-[#0B2238] dark:text-white font-display">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold font-display text-[#0B2238] dark:text-white">
                       {plan.price}
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 ml-1.5 font-medium">/ {plan.period}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      / {plan.period}
+                    </span>
                   </div>
 
-                  {/* Feature Checklist */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5 text-xs">
-                    <p className="font-bold text-slate-800 dark:text-slate-200">What&apos;s included:</p>
-                    <ul className="space-y-2">
-                      {plan.features.map((feat) => (
-                        <li key={feat} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-300">
-                          <Check className="h-4 w-4 text-[#00A3C4] dark:text-cyan-400 shrink-0" />
-                          <span>{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <ul className="space-y-3 pt-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {plan.features.map((feat, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5">
+                        <Check className="h-4 w-4 text-[#00A3C4] shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
 
-                {/* Plan Action Button */}
-                <div className="pt-6">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
+                <div className="pt-8">
+                  <button
                     onClick={plan.action}
-                    className={`w-full inline-flex items-center justify-center rounded-xl py-3 px-4 text-xs font-bold transition-all cursor-pointer ${
+                    className={`w-full py-3 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 ${
                       plan.popular
-                        ? "bg-[#0B2238] dark:bg-blue-600 hover:bg-[#153450] dark:hover:bg-blue-500 text-white shadow-md"
-                        : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-[#0B2238] dark:text-white"
+                        ? "bg-[#00A3C4] hover:bg-[#008ea9] text-white"
+                        : "bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 text-white dark:text-slate-900"
                     }`}
                   >
                     <span>{plan.buttonText}</span>
-                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                  </motion.button>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
 
-        {/* Section 3: Final Clean CTA Banner with Motion */}
+        {/* Section 3: Final Clean CTA Banner */}
         <motion.div
           initial={{ opacity: 0, y: 25 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -278,7 +302,6 @@ export default function FinalCTA() {
           transition={{ duration: 0.6 }}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B2238] via-[#102D4A] to-[#0B2238] dark:from-[#060D1A] dark:via-[#0D1E36] dark:to-[#060D1A] border border-[#1E4366]/60 dark:border-slate-800 p-8 sm:p-14 text-white text-center shadow-xl space-y-5"
         >
-          {/* Subtle Accent Glow Orbs */}
           <div className="absolute -top-24 -right-24 w-72 h-72 bg-[#00A3C4]/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-[#E8922C]/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -287,10 +310,9 @@ export default function FinalCTA() {
               Ready to transform your assessment workflow?
             </h2>
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto">
-              Empowering Students with fair tests, Teachers with rapid auto-grading, and Admins with total campus oversight.
+              Empowering Students with fair proctored tests, Teachers with rapid auto-grading, and instant exam setup.
             </p>
 
-            {/* Clean Action Buttons */}
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
               <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                 <Link
@@ -302,144 +324,31 @@ export default function FinalCTA() {
               </motion.div>
               <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                 <Link
-                  href="/teacher/dashboard"
+                  href="/public-exams"
                   className="w-full sm:w-auto inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 hover:bg-white/15 text-white font-semibold text-xs px-7 py-3 backdrop-blur-sm transition-all"
                 >
-                  Explore Teacher Demo
+                  Browse Available Exams
                 </Link>
               </motion.div>
             </div>
             <p className="text-[11px] text-slate-400 pt-1">
-              Free setup in under 2 minutes • No credit card required
+              Free setup in under 2 minutes &bull; Instant access
             </p>
           </div>
         </motion.div>
       </div>
 
-      {/* Teacher Subscription Modal ($20/year) */}
+      {/* Teacher Subscription Modal */}
       <TeacherSubscriptionModal
         isOpen={isSubscriptionOpen}
+        selectedPlan={selectedPlanForModal}
         onClose={() => setIsSubscriptionOpen(false)}
         onSuccess={() => {
-          showToast("⭐ Teacher Premium Membership activated!");
+          showToast("Teacher Premium Membership activated!");
           router.push("/teacher/exams");
         }}
         initialMessage="Unlock full examination hosting, live proctoring, and question bank privileges on Testify."
       />
-
-      {/* Contact Sales / Campus Demo Inquiry Modal */}
-      {isSalesModalOpen && (
-        <Modal
-          isOpen={isSalesModalOpen}
-          onClose={() => setIsSalesModalOpen(false)}
-          title="Institutional & Campus Inquiries"
-          description="Transform your university, school, or coaching academy assessment ecosystem."
-          size="md"
-        >
-          {salesSubmitted ? (
-            <div className="text-center py-6 space-y-3">
-              <div className="w-14 h-14 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto animate-bounce">
-                <CheckCircle2 className="h-8 w-8" />
-              </div>
-              <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white">
-                Inquiry Received!
-              </h3>
-              <p className="text-xs text-slate-500">
-                Our educational partnerships team will reach out with customized campus pricing and onboarding assistance.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSalesSubmit} className="space-y-4 pt-1">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Institution / School Name <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  value={institutionName}
-                  onChange={(e) => setInstitutionName(e.target.value)}
-                  placeholder="e.g. Stanford University / BRAC Academy"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Contact Person Name <span className="text-rose-500">*</span>
-                  </label>
-                  <Input
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="e.g. Dr. Arthur Pendelton"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Work Email <span className="text-rose-500">*</span>
-                  </label>
-                  <Input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="dean@university.edu"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Estimated Student Count
-                </label>
-                <Select
-                  options={[
-                    { value: "Under 1,000 students", label: "Under 1,000 students" },
-                    { value: "1,000 - 5,000 students", label: "1,000 - 5,000 students" },
-                    { value: "5,000 - 20,000 students", label: "5,000 - 20,000 students" },
-                    { value: "20,000+ Campus-wide", label: "20,000+ Campus-wide" },
-                  ]}
-                  value={campusSize}
-                  onChange={(e) => setCampusSize(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Requirements & Notes
-                </label>
-                <Textarea
-                  rows={2}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Describe your LMS, proctoring requirements, or deployment schedule..."
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsSalesModalOpen(false)}
-                  className="text-xs font-bold"
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmittingSales}
-                  className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold text-xs px-5"
-                  leftIcon={<Send className="h-3.5 w-3.5" />}
-                >
-                  {isSubmittingSales ? "Submitting..." : "Submit Campus Inquiry"}
-                </Button>
-              </div>
-            </form>
-          )}
-        </Modal>
-      )}
     </section>
   );
 }

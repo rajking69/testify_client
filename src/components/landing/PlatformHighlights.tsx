@@ -19,57 +19,57 @@ export default function PlatformHighlights() {
     {
       icon: <Laptop className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
       title: "Classroom Midterms & Finals",
-      desc: "Run scheduled semester evaluations in computer labs or on students' BYOD laptops with full lockdown browser options.",
+      desc: "Run scheduled evaluations with mandatory question progression, time limits, and instant score reports.",
     },
     {
       icon: <Globe2 className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
-      title: "Remote & Distance Testing",
-      desc: "Deliver high-integrity online exams to remote candidates with AI audio & tab focus detection.",
+      title: "Remote Webproctored Exams",
+      desc: "Deliver high-integrity online exams with optional real-time webcam video feed and live telemetry tracking.",
     },
     {
       icon: <GraduationCap className="h-6 w-6 text-[#E8922C] dark:text-amber-400" />,
       title: "Weekly Quizzes & Practice Tests",
-      desc: "Help students prepare for certification with low-stakes randomized quiz pools and immediate explanations.",
+      desc: "Help students self-test with randomized practice sessions, auto-saving, and immediate answer explanations.",
     },
     {
       icon: <BookOpen className="h-6 w-6 text-[#00A3C4] dark:text-cyan-400" />,
       title: "Departmental Common Exams",
-      desc: "Standardize grading across multiple classrooms with unified question banks and centralized rubrics.",
+      desc: "Standardize testing across multiple classes with structured question banks, candidate passcode verification, and Stripe checkout.",
     },
   ];
 
   const securityModes = [
     {
-      title: "High Security (Lockdown Mode)",
-      desc: "Full browser lockdown preventing tab switching, copy-pasting, keyboard shortcuts, and external applications.",
+      title: "Strict Exam Lockdown",
+      desc: "Strict exam environment enforcing sequential question progression, full-screen lockdown, and immediate auto-submit on violations.",
       badge: "High Security",
       features: [
-        "Blocks opening other tabs or windows",
-        "Disables clipboard & keyboard shortcuts",
-        "Requires invigilator PIN to exit early",
-        "Live focus loss alerts sent to teacher",
+        "1-strike tab switch & new tab auto-submit",
+        "Sequential question flow (Previous button disabled)",
+        "Copy-paste, right-click & DevTools blocking",
+        "Timer auto-submit on 00:00 countdown finish",
       ],
     },
     {
-      title: "AI Audio & Focus Monitoring",
-      desc: "Continuous background detection flagging speech, ambient noise anomalies, and secondary device usage.",
-      badge: "AI Proctoring",
+      title: "Webcam Proctoring (Live Video)",
+      desc: "Teacher-configurable live webcam streaming with WebRTC video feed and Socket.IO real-time telemetry.",
+      badge: "Live Proctoring",
       features: [
-        "Multi-speaker speech detection",
-        "Window focus & alt-tab tracking",
-        "Background noise threshold alerting",
-        "Automated candidate integrity scoring",
+        "Teacher-controlled camera toggle during exam creation",
+        "Live picture-in-picture student webcam feed",
+        "Real-time Socket.IO telemetry & status updates",
+        "Instant teacher invigilator monitoring matrix",
       ],
     },
     {
-      title: "Open Practice (Homework Mode)",
-      desc: "Flexible study assessments allowing retakes, hints, and immediate answers without active lockdown restrictions.",
+      title: "Self-Paced Practice Mode",
+      desc: "Flexible self-study mode allowing candidates to test their knowledge without strict lockdown constraints.",
       badge: "Practice Mode",
       features: [
-        "Instant answer explanations & solutions",
-        "Multiple practice attempt limits",
-        "Self-paced timer or untimed options",
-        "Immediate score card generation",
+        "Instant answer explanations upon submission",
+        "Untimed or customizable practice sessions",
+        "Clear pass/fail score calculations",
+        "Unlimited self-assessment retakes",
       ],
     },
   ];
@@ -77,7 +77,7 @@ export default function PlatformHighlights() {
   const currentMode = securityModes[activeSecurityTab];
 
   return (
-    <section id="security" className="relative w-full overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#EFF6FB] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 py-16 lg:py-24 border-t border-[#E8EEF3] dark:border-slate-800 transition-colors duration-300">
+    <section id="highlights" className="relative w-full overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#F1F7FB] to-[#FAF8F5] dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 py-16 lg:py-24 border-t border-[#E8EEF3] dark:border-slate-800 transition-colors duration-300">
       {/* Dynamic Animated Glow & Tech Grid */}
       <AnimatedBackground />
 
@@ -143,7 +143,7 @@ export default function PlatformHighlights() {
               Choose the right security level for your test
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-              Teachers can set customized security rules ranging from casual practice mode to full AI-monitored lockdown.
+              Teachers can set customized security rules ranging from casual practice mode to strict lockdown and camera proctoring.
             </p>
           </motion.div>
 
@@ -183,16 +183,18 @@ export default function PlatformHighlights() {
                     <ShieldCheck className="h-4 w-4 text-[#00A3C4] dark:text-cyan-400" /> {currentMode.title}
                   </span>
                   <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    Integrity Verified
+                    {currentMode.badge}
                   </span>
                 </div>
                 <div className="p-4 rounded-2xl bg-[#F0F7FB] dark:bg-slate-800/80 border border-[#D5DFE8] dark:border-slate-700 text-[#0B2238] dark:text-slate-200 space-y-2.5 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600 dark:text-slate-400 font-semibold">Lockdown Status:</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-semibold">Security Level:</span>
                     <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">ACTIVE</span>
                   </div>
                   <div className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-[#D5DFE8] dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
-                    Student screen locked. Exiting requires teacher unlock PIN.
+                    {activeSecurityTab === 0 && "Student exam room locked. 1-strike tab switch or window blur triggers immediate auto-submit."}
+                    {activeSecurityTab === 1 && "Live webcam proctoring active. WebRTC video feed streams to teacher invigilator matrix."}
+                    {activeSecurityTab === 2 && "Practice mode active. Auto-saved answers and instant explanation feedback."}
                   </div>
                 </div>
               </div>
