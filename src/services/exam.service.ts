@@ -64,11 +64,11 @@ export const examService = {
     return apiClient.get(`/exams/${id}`);
   },
 
-  async createExam(payload: Partial<ExamItem>): Promise<{ success: boolean; message: string; data: ExamItem }> {
+  async createExam(payload: any): Promise<{ success: boolean; message: string; data: ExamItem }> {
     return apiClient.post("/exams", payload);
   },
 
-  async updateExam(id: string, payload: Partial<ExamItem>): Promise<{ success: boolean; message: string; data: ExamItem }> {
+  async updateExam(id: string, payload: any): Promise<{ success: boolean; message: string; data: ExamItem }> {
     return apiClient.patch(`/exams/${id}`, payload);
   },
 

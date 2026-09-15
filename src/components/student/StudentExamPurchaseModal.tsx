@@ -122,7 +122,16 @@ export function StudentExamPurchaseModal({
     return null;
   }
 
+    const isExpired = Boolean(
+    (exam as any)?.endDateTime &&
+      !isNaN(new Date((exam as any).endDateTime).getTime()) &&
+      new Date() > new Date((exam as any).endDateTime)
+  ) || (exam as any)?.status === "Expired" || (exam as any)?.status === "EXPIRED";
   const handlePurchase = async () => {
+    if (isExpired) {
+      setErrorMessage("This examination has expired. Purchasing is permanently disabled.");
+      return;
+    }
     setIsProcessing(true);
     setErrorMessage(null);
 

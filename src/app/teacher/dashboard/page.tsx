@@ -103,35 +103,85 @@ export default function TeacherDashboardPage() {
           setRecentExamsList(revRes.data.examBreakdown || []);
         }
 
-        const backendStatus = await paymentService.getTeacherPremiumStatus();
-        if (backendStatus?.success && backendStatus.data && isMounted) {
-          if (backendStatus.data.isPremium || backendStatus.data.premiumStatus === "active") {
-            let daysLeft = 365;
-            let expiryDateStr = "Active Subscription";
-            if (backendStatus.data.premiumExpiresAt) {
-              const expDate = new Date(backendStatus.data.premiumExpiresAt);
+        let activeSubInfo: any = null;
+
+        try {
+          const backendStatus = await paymentService.getTeacherPremiumStatus();
+          if (backendStatus?.success && backendStatus.data && (backendStatus.data.isPremium || backendStatus.data.premiumStatus === "active")) {
+            activeSubInfo = backendStatus.data;
+          }
+        } catch {}
+
+        if (!activeSubInfo) {
+          try {
+            const subRes: any = await subscriptionService.getMyStatus();
+            const subObj = subRes?.data || subRes;
+            if (subObj && (subObj.hasActiveSubscription || subObj.subscription?.status === "active" || subObj.status === "active")) {
+              activeSubInfo = {
+                isPremium: true,
+                planName: subObj.planName || subObj.subscription?.planId?.name || "Teacher Premium",
+                price: subObj.pricePaid || subObj.subscription?.planId?.price || 19.99,
+                premiumExpiresAt: subObj.endDate || subObj.subscription?.currentPeriodEnd,
+              };
+            }
+          } catch {}
+        }
+
+        if (!activeSubInfo && (hasPremium || typeof window !== "undefined")) {
+          const userEmail = session?.user?.email;
+          if (userEmail) {
+            try {
+              const stored = localStorage.getItem(`testify_teacher_subscription_${userEmail}`);
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.hasActiveSubscription || parsed.status === "active" || parsed.isPremium) {
+                  activeSubInfo = {
+                    isPremium: true,
+                    planName: parsed.plan || "Teacher Premium",
+                    price: parsed.price || 19.99,
+                    premiumExpiresAt: parsed.expiryDate,
+                  };
+                }
+              }
+            } catch {}
+          }
+        }
+
+        if (activeSubInfo && isMounted) {
+          let daysLeft = daysRemaining || 365;
+          let expiryDateStr = expiryDateFormatted || "Active Subscription";
+          if (activeSubInfo.premiumExpiresAt) {
+            const expDate = new Date(activeSubInfo.premiumExpiresAt);
+            if (!isNaN(expDate.getTime())) {
               expiryDateStr = expDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
               daysLeft = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
             }
-
-            setTeacherInvoices([
-              {
-                id: `INV-SUB-${session.user.id ? String(session.user.id).slice(-6).toUpperCase() : "TEACHER-88"}`,
-                teacherName: displayedName,
-                teacherEmail: session.user.email,
-                planName: backendStatus.data.planName || "Teacher Premium",
-                amount: backendStatus.data.price || 20.0,
-                currency: "USD",
-                paymentProvider: "Stripe Secured Payment",
-                transactionId: backendStatus.data.stripeSubscriptionId || "active_txn",
-                paymentStatus: "PAID IN FULL",
-                purchasedAt: new Date(Date.now() - Math.max(0, 365 - daysLeft) * 86400000).toISOString(),
-                expiryDate: expiryDateStr,
-                daysRemaining: daysLeft > 0 ? daysLeft : 365,
-                accessStatus: "ACTIVE",
-              },
-            ]);
           }
+
+          const isYearlySub = daysLeft > 40 ||
+            (activeSubInfo.planName && (activeSubInfo.planName.toLowerCase().includes("annual") || activeSubInfo.planName.toLowerCase().includes("yearly")));
+          const resolvedPlanName = activeSubInfo.planName || (isYearlySub ? "Teacher Premium Annual" : "Teacher Monthly Pro");
+          const resolvedAmount = (activeSubInfo.price && activeSubInfo.price !== 20) ? activeSubInfo.price : (isYearlySub ? 199.99 : 19.99);
+
+          setTeacherInvoices([
+            {
+              id: `INV-SUB-${session.user.id ? String(session.user.id).slice(-6).toUpperCase() : "TEACHER-88"}`,
+              teacherName: displayedName,
+              teacherEmail: session.user.email,
+              planName: resolvedPlanName,
+              amount: resolvedAmount,
+              currency: "USD",
+              paymentProvider: "Stripe Secured Payment",
+              transactionId: activeSubInfo.stripeSubscriptionId || activeSubInfo.paymentId || "active_txn",
+              paymentStatus: "PAID IN FULL",
+              purchasedAt: new Date(Date.now() - Math.max(0, 365 - daysLeft) * 86400000).toISOString(),
+              expiryDate: expiryDateStr,
+              daysRemaining: daysLeft > 0 ? daysLeft : 365,
+              accessStatus: "ACTIVE",
+            },
+          ]);
+        } else if (isMounted) {
+          setTeacherInvoices([]);
         }
       } catch (err) {
         console.error("Failed to fetch teacher dashboard data", err);
