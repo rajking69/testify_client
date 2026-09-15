@@ -32,6 +32,7 @@ import {
   Camera,
   CameraOff,
   Video,
+  Lock as LockIcon,
 } from "lucide-react";
 import { usePractice } from "@/lib/practice/practice-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -113,6 +114,25 @@ function PracticeSessionContent() {
 
   // Ref to end session to avoid circular deps
   const handleEndSessionRef = useRef<() => Promise<void>>(async () => { });
+
+
+  // Browser Back Button Interceptor for Live Exam Security
+  useEffect(() => {
+    if (!isLiveExam || typeof window === "undefined") return;
+
+    window.history.pushState(null, "", window.location.href);
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      console.error("[Proctoring] Browser Back button pressed during live exam. Auto-submitting exam.");
+      handleEndSessionRef.current();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isLiveExam]);
 
   // 1. Setup Proctoring & Anti-Cheating Suite
   const {
@@ -1105,6 +1125,20 @@ function PracticeSessionContent() {
             )}
           </div>
         </motion.div>
+
+        
+        {/* Strict Linear Exam Warning Callout */}
+        {isLiveExam && (
+          <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs">
+            <span className="flex items-center gap-2">
+              <LockIcon className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Strict Linear Exam: Going back to previous questions is strictly forbidden. Navigating backward will auto-submit your exam.</span>
+            </span>
+            <span className="text-[10px] bg-amber-200 dark:bg-amber-900 px-2 py-0.5 rounded text-amber-900 dark:text-amber-100 font-extrabold uppercase shrink-0">
+              Forward Only
+            </span>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">

@@ -52,9 +52,100 @@ export interface MarketplaceExam {
   status: string;
   startDateTime?: string;
   endDateTime?: string;
+  requireCamera?: boolean;
 }
 
 const defaultMarketplaceExams: MarketplaceExam[] = [];
+
+
+export const getExamScheduleDetails = (exam: {
+  startDateTime?: string;
+  endDateTime?: string;
+  createdAt?: string;
+  date?: string;
+  status?: string;
+}) => {
+  let startFormatted = "";
+  let endFormatted = "";
+  let isUpcoming = false;
+
+  const now = Date.now();
+
+  if (exam.startDateTime) {
+    const startDate = new Date(exam.startDateTime);
+    if (!isNaN(startDate.getTime())) {
+      if (startDate.getTime() > now) {
+        isUpcoming = true;
+      }
+      const dStr = startDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const tStr = startDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      startFormatted = dStr + " • " + tStr;
+    }
+  }
+
+  if (exam.endDateTime) {
+    const endDate = new Date(exam.endDateTime);
+    if (!isNaN(endDate.getTime())) {
+      const dStr = endDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const tStr = endDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      endFormatted = dStr + " • " + tStr;
+    }
+  }
+
+  if (!startFormatted) {
+    if (exam.date && exam.date !== "Scheduled Soon" && !exam.date.toLowerCase().includes("soon")) {
+      startFormatted = exam.date;
+    } else if (exam.createdAt) {
+      const created = new Date(exam.createdAt);
+      if (!isNaN(created.getTime())) {
+        startFormatted = created.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    }
+    if (!startFormatted) {
+      startFormatted = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+  }
+
+  if (!endFormatted) {
+    endFormatted = "Open / Flexible";
+  }
+
+  if (
+    exam.status &&
+    (exam.status === "Scheduled" ||
+      exam.status === "SCHEDULED" ||
+      exam.status === "Upcoming" ||
+      exam.status === "UPCOMING")
+  ) {
+    isUpcoming = true;
+  }
+
+  return { startFormatted, endFormatted, isUpcoming };
+};
 
 export default function StudentExamsMarketplacePage() {
   const router = useRouter();
@@ -69,6 +160,8 @@ export default function StudentExamsMarketplacePage() {
 
   // Purchase Modal
   const [purchasingExam, setPurchasingExam] = useState<MarketplaceExam | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -209,6 +302,7 @@ export default function StudentExamsMarketplacePage() {
               status: "Published",
               startDateTime: t.startDateTime || t.date,
               endDateTime: t.endDateTime,
+                requireCamera: Boolean(t.requireCamera || t.requireCameraProctoring || t.cameraRequired || (t.proctoring && t.proctoring.cameraActive)),
             }));
         }
 
@@ -264,7 +358,8 @@ export default function StudentExamsMarketplacePage() {
         return true;
       }
     }
-    if (exam.status === "Expired" || exam.status === "EXPIRED") {
+    const statusUpper = String(exam.status || "").toUpperCase();
+    if (statusUpper === "EXPIRED") {
       return true;
     }
     return false;
@@ -322,6 +417,10 @@ export default function StudentExamsMarketplacePage() {
 
   const subjects = ["All", ...Array.from(new Set(exams.map((e) => e.subject)))];
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedSubject, typeFilter]);
+
   const filteredExams = useMemo(() => {
     return exams.filter((exam) => {
       const matchSearch =
@@ -336,6 +435,13 @@ export default function StudentExamsMarketplacePage() {
       return matchSearch && matchSubject && matchType;
     });
   }, [exams, search, selectedSubject, typeFilter]);
+
+  const totalPages = Math.ceil(filteredExams.length / ITEMS_PER_PAGE) || 1;
+
+  const paginatedExams = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredExams.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredExams, currentPage]);
 
   const handleJoinByCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,11 +589,12 @@ export default function StudentExamsMarketplacePage() {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredExams.map((exam) => {
+          {paginatedExams.map((exam) => {
             const isPurchased = purchasedExamIds.includes(exam.id);
             const expired = isExamExpired(exam);
             const isPaid = exam.accessType === "PAID";
             const targetToken = exam.accessToken || exam.joinCode || exam.id;
+            const scheduleInfo = getExamScheduleDetails(exam);
 
             return (
               <Card
@@ -502,6 +609,12 @@ export default function StudentExamsMarketplacePage() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                      {scheduleInfo.isUpcoming && !expired && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs animate-pulse">
+                          <Sparkles className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                          SOON
+                        </span>
+                      )}
                       {expired ? (
                         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 shadow-2xs">
                           <Clock className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Expired
@@ -544,6 +657,28 @@ export default function StudentExamsMarketplacePage() {
                   <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {exam.description}
                   </p>
+
+                  {/* Schedule Date & Time Box */}
+                  <div className="mt-3 p-2.5 rounded-xl bg-blue-50/80 dark:bg-slate-950/70 border border-blue-100 dark:border-slate-800 text-[11px] space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1 font-bold text-[#0092E3]">
+                        <Calendar className="h-3.5 w-3.5 shrink-0" />
+                        <span>Start:</span>
+                      </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                        {scheduleInfo.startFormatted}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1 font-bold text-amber-500">
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        <span>End:</span>
+                      </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                        {scheduleInfo.endFormatted}
+                      </span>
+                    </div>
+                  </div>
                 </CardHeader>
 
                 <CardContent className="flex flex-col justify-between flex-1 p-5 pt-0 space-y-4">
@@ -605,6 +740,59 @@ export default function StudentExamsMarketplacePage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* 9 Cards Per Page Pagination Bar */}
+      {filteredExams.length > ITEMS_PER_PAGE && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200/80 dark:border-slate-800/80">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            Showing <span className="font-bold text-slate-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filteredExams.length)}</span> of <span className="font-bold text-slate-900 dark:text-white">{filteredExams.length}</span> examinations
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => {
+                setCurrentPage((p) => Math.max(1, p - 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-[#0092E3] text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white dark:bg-slate-900 transition-colors cursor-pointer shadow-2xs"
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => {
+                  setCurrentPage(pageNum);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                  currentPage === pageNum
+                    ? "bg-[#0092E3] text-white shadow-xs font-extrabold"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-[#0092E3]"
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => {
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-[#0092E3] text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white dark:bg-slate-900 transition-colors cursor-pointer shadow-2xs"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

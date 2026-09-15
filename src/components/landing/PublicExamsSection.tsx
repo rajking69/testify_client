@@ -15,6 +15,10 @@ import {
   Lock,
   Layers,
   CreditCard,
+  Video,
+  User,
+  Calendar,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -42,7 +46,98 @@ export interface PublicExamCard {
   startDateTime?: string;
   endDateTime?: string;
   createdAt?: string;
+  requireCamera?: boolean;
 }
+
+
+export const getExamScheduleDetails = (exam: {
+  startDateTime?: string;
+  endDateTime?: string;
+  createdAt?: string;
+  date?: string;
+  status?: string;
+}) => {
+  let startFormatted = "";
+  let endFormatted = "";
+  let isUpcoming = false;
+
+  const now = Date.now();
+
+  if (exam.startDateTime) {
+    const startDate = new Date(exam.startDateTime);
+    if (!isNaN(startDate.getTime())) {
+      if (startDate.getTime() > now) {
+        isUpcoming = true;
+      }
+      const dStr = startDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const tStr = startDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      startFormatted = dStr + " • " + tStr;
+    }
+  }
+
+  if (exam.endDateTime) {
+    const endDate = new Date(exam.endDateTime);
+    if (!isNaN(endDate.getTime())) {
+      const dStr = endDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const tStr = endDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      endFormatted = dStr + " • " + tStr;
+    }
+  }
+
+  if (!startFormatted) {
+    if (exam.date && exam.date !== "Scheduled Soon" && !exam.date.toLowerCase().includes("soon")) {
+      startFormatted = exam.date;
+    } else if (exam.createdAt) {
+      const created = new Date(exam.createdAt);
+      if (!isNaN(created.getTime())) {
+        startFormatted = created.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    }
+    if (!startFormatted) {
+      startFormatted = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+  }
+
+  if (!endFormatted) {
+    endFormatted = "Open / Flexible";
+  }
+
+  if (
+    exam.status &&
+    (exam.status === "Scheduled" ||
+      exam.status === "SCHEDULED" ||
+      exam.status === "Upcoming" ||
+      exam.status === "UPCOMING")
+  ) {
+    isUpcoming = true;
+  }
+
+  return { startFormatted, endFormatted, isUpcoming };
+};
 
 export default function PublicExamsSection() {
   const router = useRouter();
@@ -87,13 +182,55 @@ export default function PublicExamsSection() {
             price: Number(e.price) > 0 ? Number(e.price) : 0,
             joinCode: e.joinCode || String(e.id || e._id),
             accessToken: e.accessToken || String(e.id || e._id),
+            startDateTime: e.startDateTime || e.date,
+            endDateTime: e.endDateTime,
+            requireCamera: Boolean(e.requireCamera || e.requireCameraProctoring || e.cameraRequired || (e.proctoring && e.proctoring.cameraActive)),
             status: "Published",
           }));
 
         list = apiList;
       }
 
-           setExams(list);
+      // Merge local teacher exam updates for 0ms instant real-time sync
+      if (typeof window !== "undefined") {
+        try {
+          const storedTeacherExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
+          const localPublished = storedTeacherExams
+            .filter((e: any) => e.status === "Published" || e.status === "PUBLISHED" || e.status === "Scheduled")
+            .map((e: any) => ({
+              id: String(e.id || e._id),
+              title: e.title,
+              subject: e.subject || e.category || "General",
+              description: e.description || "Official examination hosted on Testify.",
+              teacherName: e.teacherName || "Certified Instructor",
+              teacherEmail: e.teacherEmail || "",
+              teacherId: e.teacherId || "",
+              duration: e.duration || e.durationMinutes || 60,
+              totalMarks: e.totalMarks || 50,
+              passMark: e.passMark || Math.round(((e.totalMarks || 50) * 0.4)),
+              questionsCount: e.questions?.length || 0,
+              accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
+              price: Number(e.price) > 0 ? Number(e.price) : 0,
+              joinCode: e.joinCode || String(e.id),
+              accessToken: e.accessToken || String(e.id),
+              startDateTime: e.startDateTime || e.date,
+              endDateTime: e.endDateTime,
+              requireCamera: Boolean(e.requireCamera || e.requireCameraProctoring || e.cameraRequired || (e.proctoring && e.proctoring.cameraActive)),
+              status: "Published",
+            }));
+
+          localPublished.forEach((localItem: any) => {
+            const idx = list.findIndex((apiItem) => apiItem.id === localItem.id || (localItem.joinCode && apiItem.joinCode === localItem.joinCode));
+            if (idx !== -1) {
+              list[idx] = { ...list[idx], ...localItem };
+            } else {
+              list.unshift(localItem);
+            }
+          });
+        } catch {}
+      }
+
+      setExams(list);
     } catch (err: any) {
       console.error("Failed to load public exams:", err);
       setErrorMessage(err?.message || "Failed to load exams. Please check your internet connection.");
@@ -192,6 +329,9 @@ export default function PublicExamsSection() {
     }
     syncBackendSubmissions();
     loadPublicExams();
+
+    window.addEventListener("testify_public_exams_updated", loadPublicExams);
+    return () => window.removeEventListener("testify_public_exams_updated", loadPublicExams);
   }, [session?.user?.email, session?.user?.id]);
 
 
@@ -257,6 +397,10 @@ export default function PublicExamsSection() {
 
     return false;
   };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedSubject, typeFilter]);
 
   const subjects = ["All", ...Array.from(new Set(exams.map((e) => e.subject)))];
 
@@ -438,23 +582,32 @@ export default function PublicExamsSection() {
               const isPaid = exam.accessType === "PAID";
               const priceDisplay = exam.price > 0 ? exam.price : 5;
               const expired = isExamExpired(exam);
+              const scheduleInfo = getExamScheduleDetails(exam);
 
               return (
                 <motion.div
                   key={exam.id}
                   whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
-                  className="group p-5.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                  className="group p-5.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-[#0092E3] dark:hover:border-cyan-500 shadow-xs hover:shadow-xl transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-4">
-                    {/* Badge Row: PAID exams ALWAYS show Lock & Price, Free shows Free Access */}
+                    {/* Top Badge Row */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
+                      <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
                         {exam.subject}
                       </span>
 
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {scheduleInfo.isUpcoming && !expired && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs animate-pulse">
+                            <Sparkles className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                            SOON
+                          </span>
+                        )}
+
                       {expired ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 shadow-2xs">
-                          <Clock className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Expired
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-lg bg-rose-600 text-white border border-rose-700 shadow-sm animate-pulse">
+                          <Clock className="h-3.5 w-3.5 text-white" /> EXPIRED
                         </span>
                       ) : isExamCompleted(exam) ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
@@ -469,38 +622,78 @@ export default function PublicExamsSection() {
                           Free
                         </span>
                       )}
+                      </div>
                     </div>
+
+                    {/* Camera Proctoring Banner */}
+                    {exam.requireCamera && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50/90 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg border border-purple-200/80 dark:border-purple-800/80 w-fit shadow-2xs">
+                        <Video className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                        <span>Camera & Webcam Required</span>
+                      </div>
+                    )}
 
                     {/* Title & Description */}
                     <div>
                       <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#0092E3] transition-colors line-clamp-1">
                         {exam.title}
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1.5 leading-relaxed min-h-[32px]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed min-h-[28px]">
                         {exam.description}
                       </p>
                     </div>
 
-                    {/* Metadata Chips */}
-                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span>{exam.duration} Minutes</span>
+                    {/* Schedule Date & Time Box */}
+                    <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-slate-950/70 border border-blue-100 dark:border-slate-800 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1 font-bold text-[#0092E3]">
+                          <Calendar className="h-3.5 w-3.5 shrink-0" />
+                          <span>Start:</span>
+                        </span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                          {scheduleInfo.startFormatted}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Award className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span>{exam.totalMarks} Marks (Pass: {exam.passMark})</span>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1 font-bold text-amber-500">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          <span>End:</span>
+                        </span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                          {scheduleInfo.endFormatted}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Security / Verification Badge */}
+                    {/* Rich Metadata Chips */}
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <span>{exam.duration} Mins</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-medium justify-end">
+                        <Layers className="h-3.5 w-3.5 text-[#0092E3] shrink-0" />
+                        <span>{exam.questionsCount || 10} Questions</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <Award className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <span>{exam.totalMarks} Marks</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-medium justify-end text-slate-500">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>Pass: {exam.passMark} pts</span>
+                      </div>
+                    </div>
+
+                    {/* Teacher / Provider Info Badge */}
                     <div className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-[11px] flex items-center justify-between text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        Verified Exam
+                        <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[140px]">{exam.teacherName}</span>
                       </span>
-                      <span className="text-[10px] font-medium text-slate-400">
-                        {isPaid ? "Stripe Checkout" : "Passcode Protected"}
+                      <span className="flex items-center gap-1 font-medium text-slate-400">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        {isPaid ? "Stripe Verified" : "Verified Exam"}
                       </span>
                     </div>
                   </div>
@@ -512,6 +705,11 @@ export default function PublicExamsSection() {
                         <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
                         <span>Teachers Cannot Take Exams</span>
                       </div>
+                    ) : expired ? (
+                      <div className="w-full text-xs font-black py-3 rounded-xl bg-rose-500 text-white shadow-sm flex items-center justify-center gap-2 cursor-not-allowed uppercase tracking-wider select-none">
+                        <Clock className="h-4 w-4 text-white shrink-0" />
+                        <span>Exam Expired</span>
+                      </div>
                     ) : isExamCompleted(exam) ? (
                       <Link href={`/practice/result?examId=${exam.id}&title=${encodeURIComponent(exam.title)}&subject=${encodeURIComponent(exam.subject)}`} className="block w-full">
                         <Button
@@ -522,29 +720,108 @@ export default function PublicExamsSection() {
                         </Button>
                       </Link>
                     ) : isPaid ? (
-                      <Button
-                        type="button"
-                        onClick={() => setSelectedPurchaseExam(exam)}
-                        className="w-full text-xs font-semibold py-2.5 bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
-                      >
-                        <CreditCard className="h-3.5 w-3.5" />
-                        <span>Unlock Exam • ${priceDisplay}</span>
-                      </Button>
-                    ) : (
-                      <Link href={`/exam/${exam.accessToken || exam.joinCode || exam.id}`} className="block w-full">
+                      !session?.user ? (
+                        <Link href={`/auth/login?redirect=${encodeURIComponent(`/exam/${exam.accessToken || exam.joinCode || exam.id}`)}`} className="block w-full">
+                          <Button
+                            className="w-full text-xs font-bold py-2.5 bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" />
+                            <span>Log In to Unlock (${priceDisplay})</span>
+                          </Button>
+                        </Link>
+                      ) : (
                         <Button
-                          variant="outline"
-                          className="w-full text-xs font-semibold py-2.5 rounded-xl border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#0092E3] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                          type="button"
+                          onClick={() => setSelectedPurchaseExam(exam)}
+                          className="w-full text-xs font-bold py-2.5 bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
                         >
-                          <span>Enter Assessment</span>
-                          <ArrowRight className="h-3.5 w-3.5" />
+                          <CreditCard className="h-3.5 w-3.5" />
+                          <span>Unlock Exam (${priceDisplay})</span>
                         </Button>
-                      </Link>
+                      )
+                    ) : (
+                      !session?.user ? (
+                        <Link href={`/auth/login?redirect=${encodeURIComponent(`/exam/${exam.accessToken || exam.joinCode || exam.id}`)}`} className="block w-full">
+                          <Button
+                            variant="outline"
+                            className="w-full text-xs font-bold py-2.5 rounded-xl border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#0092E3] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                          >
+                            <span>Log In to Take Exam</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Link href={`/exam/${exam.accessToken || exam.joinCode || exam.id}`} className="block w-full">
+                          <Button
+                            variant="outline"
+                            className="w-full text-xs font-bold py-2.5 rounded-xl border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#0092E3] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                          >
+                            <span>Enter Assessment</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                      )
                     )}
                   </div>
                 </motion.div>
               );
             })}
+          </div>
+        )}
+
+        {/* 9 Cards Per Page Pagination Bar */}
+        {allFilteredExams.length > ITEMS_PER_PAGE && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200/80 dark:border-slate-800/80">
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Showing <span className="font-bold text-slate-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, allFilteredExams.length)}</span> of <span className="font-bold text-slate-900 dark:text-white">{allFilteredExams.length}</span> published examinations
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => {
+                  setCurrentPage((p) => Math.max(1, p - 1));
+                  const el = document.getElementById("explore-exams");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-[#0092E3] text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white dark:bg-slate-900 transition-colors cursor-pointer shadow-2xs"
+              >
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => {
+                    setCurrentPage(pageNum);
+                    const el = document.getElementById("explore-exams");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                    currentPage === pageNum
+                      ? "bg-[#0092E3] text-white shadow-xs font-extrabold"
+                      : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-[#0092E3]"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => {
+                  setCurrentPage((p) => Math.min(totalPages, p + 1));
+                  const el = document.getElementById("explore-exams");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-[#0092E3] text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white dark:bg-slate-900 transition-colors cursor-pointer shadow-2xs"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

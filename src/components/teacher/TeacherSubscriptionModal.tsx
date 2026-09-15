@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { paymentService } from "@/services/payment.service";
+import { useTeacherSubscription } from "@/lib/subscription-sync";
 import { apiClient } from "@/lib/apiClient";
 
 export interface SubscriptionPlanInfo {
@@ -44,10 +45,16 @@ export function TeacherSubscriptionModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const { hasPremium: syncHasPremium, daysRemaining: syncDays, expiryDateFormatted: syncExp } = useTeacherSubscription(sessionData);
+
   // Active Subscription State fetched from backend
-  const [isAlreadyActive, setIsAlreadyActive] = useState(false);
-  const [daysRemaining, setDaysRemaining] = useState(365);
-  const [expiryDateFormatted, setExpiryDateFormatted] = useState("");
+  const [isBackendActive, setIsBackendActive] = useState(false);
+  const [backendDays, setBackendDays] = useState<number | null>(null);
+  const [backendExp, setBackendExp] = useState<string | null>(null);
+
+  const isAlreadyActive = syncHasPremium || isBackendActive;
+  const daysRemaining = syncDays || backendDays || 365;
+  const expiryDateFormatted = syncExp || backendExp || "";
 
   // Available plans from MongoDB
   const [allTeacherPlans, setAllTeacherPlans] = useState<any[]>([]);
@@ -71,13 +78,13 @@ export function TeacherSubscriptionModal({
         .then((res) => {
           if (res && res.success && res.data) {
             const active = Boolean(res.data.isPremium || res.data.premiumStatus === "active");
-            setIsAlreadyActive(active);
+            setIsBackendActive(active);
 
             if (res.data.premiumExpiresAt) {
               const expDate = new Date(res.data.premiumExpiresAt);
               const remaining = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-              setDaysRemaining(remaining);
-              setExpiryDateFormatted(expDate.toLocaleDateString());
+              setBackendDays(remaining);
+              setBackendExp(expDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
             }
           }
         })
@@ -195,25 +202,29 @@ export function TeacherSubscriptionModal({
         )}
 
         {isAlreadyActive ? (
-          <div className="p-5 rounded-3xl bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 space-y-3">
+          <div className="p-6 rounded-3xl bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="text-sm font-extrabold text-emerald-950 dark:text-emerald-200">
-                  Premium Membership Active
+                <h4 className="text-base font-extrabold text-emerald-950 dark:text-emerald-200">
+                  Premium Membership Currently Active
                 </h4>
                 <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                   {daysRemaining} days remaining • Valid until {expiryDateFormatted || "Active Period"}
                 </p>
               </div>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2.5">
-              You already have full access to all teacher privileges. Additional payments or renewals are locked until your current plan expires.
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-t border-emerald-200/60 dark:border-emerald-800/60 pt-3">
+              You already have full access to all teacher privileges including unlimited exam hosting, question banking, and live proctoring. Additional subscription purchases are strictly locked until your plan expires.
             </p>
-          </div>
-        ) : (
+            <div className="pt-2 flex justify-end">
+              <Button type="button" onClick={onClose} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl cursor-pointer shadow-md">
+                Close Window
+              </Button>
+            </div>
+          </div>) : (
           <>
             {user && userRole === "student" && (
               <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-2.5">
