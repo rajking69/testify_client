@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,7 +19,18 @@ import {
 import { AnimatedBackground } from "./AnimatedBackground";
 
 export default function TestifyHero() {
-  const [activeRoleView, setActiveRoleView] = useState<"teacher" | "student" | "admin">("teacher");
+  const [activeRoleView, setActiveRoleView] = useState<"teacher" | "student" | "admin">("student");
+
+  useEffect(() => {
+    const roles: ("teacher" | "student" | "admin")[] = ["student", "teacher", "admin"];
+    const interval = setInterval(() => {
+      setActiveRoleView((prev) => {
+        const currentIndex = roles.indexOf(prev);
+        return roles[(currentIndex + 1) % roles.length];
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#F5F9FC]/60 via-[#EEF5FA]/50 to-[#F8FBFE]/60 dark:from-[#030712] dark:via-[#090d16] dark:to-[#0f172a] text-[#0B2238] dark:text-slate-100 pt-28 sm:pt-32 lg:pt-36 pb-28 sm:pb-32 lg:pb-36 min-h-[95vh] sm:min-h-screen flex flex-col justify-center transition-colors duration-300 transition-colors duration-300">
@@ -203,10 +214,10 @@ export default function TestifyHero() {
                   {activeRoleView === "teacher" && (
                     <motion.div
                       key="teacher"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0, filter: "blur(4px)", scale: 0.98 }}
+                      animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                      exit={{ opacity: 0, filter: "blur(4px)", scale: 0.98 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
                       className="grid grid-cols-12 min-h-[300px] text-xs"
                     >
                       <div className="col-span-4 bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] dark:from-slate-900 dark:to-slate-950 border-r border-[#E9EFF4] dark:border-slate-800 p-3 space-y-3">
@@ -270,10 +281,10 @@ export default function TestifyHero() {
                   {activeRoleView === "student" && (
                     <motion.div
                       key="student"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0, filter: "blur(4px)", scale: 0.98 }}
+                      animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                      exit={{ opacity: 0, filter: "blur(4px)", scale: 0.98 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
                       className="p-5 space-y-3.5 text-xs bg-white dark:bg-slate-900"
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
@@ -311,10 +322,10 @@ export default function TestifyHero() {
                   {activeRoleView === "admin" && (
                     <motion.div
                       key="admin"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0, filter: "blur(4px)", scale: 0.98 }}
+                      animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                      exit={{ opacity: 0, filter: "blur(4px)", scale: 0.98 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
                       className="p-5 space-y-3.5 text-xs bg-white dark:bg-slate-900"
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
