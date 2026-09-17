@@ -13,6 +13,8 @@ import {
 import { cn } from "@/lib/admin/utils";
 import { authClient } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { formatDistanceToNow } from "date-fns";
 
 interface AdminTopbarProps {
   onOpenMobileSidebar: () => void;
@@ -65,29 +67,7 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
     await authClient.signOut();
   };
 
-  const notifications = [
-    {
-      id: 1,
-      title: "New user registration",
-      message: "5 new users registered today",
-      time: "2h ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      title: "System alert",
-      message: "High CPU usage detected",
-      time: "4h ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "Payment received",
-      message: "New subscription payment from Lisa Anderson",
-      time: "6h ago",
-      unread: false,
-    },
-  ];
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-[#060B14]/90 backdrop-blur-xl px-4 sm:px-6 transition-colors">
@@ -136,7 +116,7 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
             title="Notifications"
           >
             <Bell className="h-4 w-4" />
-            {notifications.some((n) => n.unread) && (
+            {notifications.some((n) => !n.readStatus) && (
               <span className="absolute top-2 right-2 h-2 w-2 bg-purple-500 rounded-full ring-2 ring-white dark:ring-slate-950 animate-pulse" />
             )}
           </button>
@@ -147,39 +127,79 @@ export function AdminTopbar({ onOpenMobileSidebar }: AdminTopbarProps) {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowNotifications(false)}
               />
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 z-50 animate-in fade-in zoom-in-95">
-                <div className="flex items-center justify-between mb-3">
+              <div className="absolute right-0 top-full mt-2 w-[340px] max-h-[420px] flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800/80">
                   <h3 className="text-xs font-bold font-display uppercase tracking-wider text-[#0B2238] dark:text-white">
                     System Notifications
                   </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                    {notifications.filter((n) => n.unread).length} New
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={() => markAllAsRead()}
+                        className="text-[10px] font-bold text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      {unreadCount} New
+                    </span>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={cn(
-                        "p-2.5 rounded-xl border transition-colors",
-                        notification.unread
-                          ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/40"
-                          : "bg-slate-50/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800"
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {notification.title}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {notification.time}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                        {notification.message}
-                      </p>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5 no-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-8 flex flex-col items-center text-slate-400">
+                      <Bell className="h-8 w-8 mb-2 opacity-50" />
+                      <span className="text-xs font-medium">You're all caught up!</span>
                     </div>
-                  ))}
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        onClick={() => {
+                          if (!notification.readStatus) {
+                            markAsRead(notification._id);
+                          }
+                        }}
+                        className={cn(
+                          "relative p-3 rounded-xl transition-colors cursor-pointer group flex items-start gap-3",
+                          !notification.readStatus
+                            ? "bg-purple-50/40 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        )}
+                      >
+                        <div className="shrink-0 mt-0.5">
+                          {!notification.readStatus ? (
+                            <div className="h-2 w-2 rounded-full bg-purple-500 mt-1" />
+                          ) : (
+                            <div className="h-2 w-2 rounded-full bg-transparent mt-1" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className={cn("text-xs font-bold truncate", !notification.readStatus ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300")}>
+                              {notification.title}
+                            </span>
+                            <span className="text-[9px] font-medium text-slate-400 shrink-0">
+                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <p className={cn("text-[11px] leading-relaxed", !notification.readStatus ? "text-slate-700 dark:text-slate-300 font-medium" : "text-slate-500 dark:text-slate-400")}>
+                            {notification.message}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-2 border-t border-slate-100 dark:border-slate-800/80">
+                  <Link 
+                    href="/admin/notifications" 
+                    onClick={() => setShowNotifications(false)}
+                    className="flex items-center justify-center w-full py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+                  >
+                    View Notification Center
+                  </Link>
                 </div>
               </div>
             </>

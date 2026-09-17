@@ -18,7 +18,6 @@ import {
   ChevronRight,
   FileText,
   Zap,
-  LogOut,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/admin/utils";
@@ -78,16 +77,6 @@ const navItems: NavItem[] = [
     href: "/admin/settings",
     icon: <Settings className="h-5 w-5" />,
   },
-  {
-    label: "Feature Flags",
-    href: "/admin/features",
-    icon: <Zap className="h-5 w-5" />,
-  },
-  {
-    label: "Permissions",
-    href: "/admin/permissions",
-    icon: <Lock className="h-5 w-5" />,
-  },
 ];
 
 interface AdminSidebarProps {
@@ -107,10 +96,6 @@ export function AdminSidebar({
   const { data: session } = authClient.useSession();
   const user = session?.user;
 
-  const handleLogout = async () => {
-    await authClient.signOut();
-  };
-
   return (
     <>
       {/* Mobile Backdrop */}
@@ -124,7 +109,7 @@ export function AdminSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white/95 dark:bg-[#060B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out lg:static",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white/95 dark:bg-[#060B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen",
           isCollapsed ? "w-20" : "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
@@ -228,18 +213,6 @@ export function AdminSidebar({
               </div>
             </div>
           )}
-
-          <button
-            onClick={handleLogout}
-            className={cn(
-              "w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors cursor-pointer",
-              isCollapsed && "justify-center px-0"
-            )}
-            title="Sign Out"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span>Sign Out</span>}
-          </button>
         </div>
       </aside>
     </>
