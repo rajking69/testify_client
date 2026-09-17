@@ -140,11 +140,26 @@ export interface AnalyticsData {
   };
 }
 
+export interface FeatureFlag {
+  id: string;
+  name: string;
+  key: string;
+  enabled: boolean;
+  description?: string;
+}
+
+export interface PermissionMatrix {
+  id: string;
+  role: UserRole;
+  permissions: string[];
+}
+
 export interface FilterState {
   search: string;
   status?: UserStatus | ExamStatus | PaymentStatus;
   role?: UserRole;
   tier?: SubscriptionTier;
+  category?: string;
   type?: string;
   difficulty?: string;
   dateRange?: {
