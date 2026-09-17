@@ -224,26 +224,6 @@ export default function AdminDashboardPage() {
       badge: "15 Parameters",
       subtext: "Production Ready",
     },
-    {
-      icon: Zap,
-      title: "Feature Flags",
-      description: "Runtime toggles for AI grading and proctoring engines",
-      link: "/admin/features",
-      iconColor: "text-rose-500 dark:text-rose-400",
-      iconBg: "bg-rose-50 dark:bg-rose-950/60 border-rose-200/80 dark:border-rose-800",
-      badge: "8/12 Enabled",
-      subtext: "Zero Downtime",
-    },
-    {
-      icon: Lock,
-      title: "RBAC & Permissions",
-      description: "Fine-grained role matrix and API scope authorization",
-      link: "/admin/permissions",
-      iconColor: "text-violet-600 dark:text-violet-400",
-      iconBg: "bg-violet-50 dark:bg-violet-950/60 border-violet-200/80 dark:border-violet-800",
-      badge: "5 Role Matrix",
-      subtext: "Strict Guard active",
-    },
   ];
 
   return (

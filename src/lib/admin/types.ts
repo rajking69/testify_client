@@ -5,7 +5,6 @@ export type UserStatus = "active" | "deactivated" | "suspended";
 export type ExamStatus = "draft" | "scheduled" | "published" | "completed";
 export type PaymentStatus = "success" | "pending" | "failed";
 export type SubscriptionTier = "free" | "pro" | "institutional";
-export type FeatureCategory = "ai" | "security" | "system";
 export type QuestionType = "mcq" | "true_false" | "short_answer";
 
 export interface User {
@@ -58,28 +57,6 @@ export interface Question {
   usageCount: number;
 }
 
-export interface FeatureFlag {
-  id: string;
-  key: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  category: FeatureCategory;
-  lastModified: string;
-  modifiedBy: string;
-}
-
-export interface PermissionScope {
-  read: boolean;
-  write: boolean;
-  delete: boolean;
-  admin: boolean;
-}
-
-export interface PermissionMatrix {
-  role: string;
-  permissions: Record<string, PermissionScope>;
-}
 
 export interface Subscription {
   id: string;
@@ -168,7 +145,6 @@ export interface FilterState {
   status?: UserStatus | ExamStatus | PaymentStatus;
   role?: UserRole;
   tier?: SubscriptionTier;
-  category?: FeatureCategory;
   type?: string;
   difficulty?: string;
   dateRange?: {

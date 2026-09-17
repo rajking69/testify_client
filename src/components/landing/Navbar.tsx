@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -102,16 +102,10 @@ export default function Navbar() {
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6 text-[13px] font-semibold text-slate-800 dark:text-slate-200">
             <Link
-              href="#features"
+              href="/public-exams"
               className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
             >
-              Features
-            </Link>
-            <Link
-              href="#why-testify"
-              className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
-            >
-              Why Testify
+              Public Exams
             </Link>
             <Link
               href="/practice"
@@ -121,10 +115,10 @@ export default function Navbar() {
               Practice
             </Link>
             <Link
-              href="#security"
+              href="/about"
               className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
             >
-              Security
+              About Us
             </Link>
 
             {/* Role Portals Dropdown */}
@@ -202,12 +196,6 @@ export default function Navbar() {
               )}
             </div>
 
-            <Link
-              href="#pricing"
-              className="hover:text-[#00A3C4] dark:hover:text-cyan-400 transition-colors"
-            >
-              Pricing
-            </Link>
           </nav>
         </div>
 
@@ -423,18 +411,11 @@ export default function Navbar() {
           )}
 
           <Link
-            href="#features"
+            href="/public-exams"
             onClick={() => setIsOpen(false)}
             className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
           >
-            Features
-          </Link>
-          <Link
-            href="#why-testify"
-            onClick={() => setIsOpen(false)}
-            className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
-          >
-            Why Testify
+            Public Exams
           </Link>
           <Link
             href="/practice"
@@ -445,11 +426,11 @@ export default function Navbar() {
             Practice Mode
           </Link>
           <Link
-            href="#security"
+            href="/about"
             onClick={() => setIsOpen(false)}
             className="block text-sm font-medium text-slate-800 dark:text-slate-300 hover:text-[#00A3C4] dark:hover:text-white"
           >
-            Security
+            About Us
           </Link>
 
           {isLoggedIn ? (

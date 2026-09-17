@@ -428,7 +428,7 @@ export default function RegisterPage() {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 text-left">
                     Role
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
                     <button
                       type="button"
                       onClick={() => handleRoleChange("student")}
@@ -452,18 +452,6 @@ export default function RegisterPage() {
                     >
                       <School className="h-3.5 w-3.5 shrink-0" />
                       <span>Teacher</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRoleChange("admin")}
-                      className={`py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-semibold ${
-                        formData.role === "admin"
-                          ? "bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-2xs font-bold"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
-                    >
-                      <Shield className="h-3.5 w-3.5 shrink-0" />
-                      <span>Admin</span>
                     </button>
                   </div>
                 </div>

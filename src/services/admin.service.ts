@@ -57,26 +57,6 @@ export const adminService = {
     return apiClient.get("/admin/payments");
   },
 
-  async getFeatureFlags(): Promise<{ success: boolean; count: number; data: any[] }> {
-    return apiClient.get("/admin/features");
-  },
-
-  async toggleFeatureFlag(id: string): Promise<{ success: boolean; message: string; data: any }> {
-    return apiClient.patch(`/admin/features/${id}/toggle`);
-  },
-
-  async createFeatureFlag(payload: { key: string; name: string; description: string; category: string }): Promise<{ success: boolean; message: string; data: any }> {
-    return apiClient.post(`/admin/features`, payload);
-  },
-
-  async updateFeatureFlag(id: string, payload: { key?: string; name?: string; description?: string; category?: string; enabled?: boolean }): Promise<{ success: boolean; message: string; data: any }> {
-    return apiClient.put(`/admin/features/${id}`, payload);
-  },
-
-  async deleteFeatureFlag(id: string): Promise<{ success: boolean; message: string; data?: any }> {
-    return apiClient.delete(`/admin/features/${id}`);
-  },
-
   async getSystemConfigs(): Promise<{ success: boolean; count: number; data: any[] }> {
     return apiClient.get("/admin/settings");
   },
