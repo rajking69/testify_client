@@ -1,6 +1,7 @@
 "use client";
 
 import React, { ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export interface ModalProps {
@@ -46,7 +47,7 @@ export function Modal({
     "2xl": "max-w-3xl",
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
@@ -59,17 +60,19 @@ export function Modal({
         className={`relative z-10 w-full ${sizes[size]} rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-100 dark:border-slate-800 transition-all`}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
+        aria-describedby={description ? "modal-description" : undefined}
       >
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             {title && (
-              <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white">
+              <h3 id="modal-title" className="text-lg font-bold font-display text-slate-900 dark:text-white">
                 {title}
               </h3>
             )}
             {description && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p id="modal-description" className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {description}
               </p>
             )}
@@ -97,4 +100,7 @@ export function Modal({
       </div>
     </div>
   );
+
+  // Portal to document.body for proper z-index stacking
+  return createPortal(modalContent, document.body);
 }
