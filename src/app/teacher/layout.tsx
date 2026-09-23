@@ -89,7 +89,7 @@ export default function TeacherLayout({
 
   // Teachers get sidebar + topbar layout
   return (
-    <div className="relative min-h-screen bg-slate-50/60 dark:bg-slate-950 flex flex-col lg:flex-row text-slate-900 dark:text-slate-100 overflow-hidden">
+    <div className="relative h-screen bg-slate-50/60 dark:bg-slate-950 flex flex-col lg:flex-row text-slate-900 dark:text-slate-100 overflow-hidden">
       {/* Full Dashboard Landing Page Animated Aurora & Grid Background */}
       <AnimatedBackground variant="hero" />
 
@@ -102,7 +102,7 @@ export default function TeacherLayout({
       />
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex-1 flex flex-col min-w-0">
+      <div className="relative z-10 flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Topbar Header */}
         <Topbar onOpenMobileSidebar={() => setIsMobileOpen(true)} />
 

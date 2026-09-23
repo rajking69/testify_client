@@ -14,6 +14,12 @@ import {
 } from "lucide-react";
 import { cn, formatNumber, getPaginationInfo } from "@/lib/admin/utils";
 import { TableColumn, ActionMenuItem, FilterState } from "@/lib/admin/types";
+
+export interface FilterConfig {
+  key: keyof FilterState;
+  label: string;
+  options: { label: string; value: string }[];
+}
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -31,6 +37,8 @@ interface AdminTableProps<T> {
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
   className?: string;
+  filterConfigs?: FilterConfig[];
+  onRefresh?: () => void;
 }
 
 export function AdminTable<T extends object>({
@@ -47,6 +55,8 @@ export function AdminTable<T extends object>({
   onRowClick,
   emptyMessage = "No data available",
   className,
+  filterConfigs,
+  onRefresh,
 }: AdminTableProps<T>) {
   const [sortColumn, setSortColumn] = useState<string>(filters?.sortBy || "");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(filters?.sortOrder || "asc");
@@ -124,7 +134,11 @@ export function AdminTable<T extends object>({
   };
 
   const handleRefresh = () => {
-    onFilterChange?.({ search: localSearch });
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      onFilterChange?.({ search: localSearch });
+    }
   };
 
   const paginationInfo = total
@@ -187,10 +201,6 @@ export function AdminTable<T extends object>({
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
         </div>
       </div>
 
@@ -198,47 +208,76 @@ export function AdminTable<T extends object>({
       {showFilters && (
         <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
-                Status
-              </label>
-              <select
-                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                value={filters?.status || ""}
-                onChange={(e) =>
-                  onFilterChange?.({
-                    status: (e.target.value as FilterState["status"]) || undefined,
-                  })
-                }
-              >
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="deactivated">Deactivated</option>
-                <option value="suspended">Suspended</option>
-              </select>
-            </div>
+            {/* Dynamic or Default Filters */}
+            {filterConfigs ? (
+              filterConfigs.map((config) => (
+                <div key={config.key}>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                    {config.label}
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    value={(filters?.[config.key] as string) || ""}
+                    onChange={(e) =>
+                      onFilterChange?.({
+                        [config.key]: e.target.value || undefined,
+                      })
+                    }
+                  >
+                    <option value="">All {config.label}s</option>
+                    {config.options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))
+            ) : (
+              <>
+                {/* Status Filter Default */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                    Status
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    value={filters?.status || ""}
+                    onChange={(e) =>
+                      onFilterChange?.({
+                        status: (e.target.value as FilterState["status"]) || undefined,
+                      })
+                    }
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="deactivated">Deactivated</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
 
-            {/* Role Filter */}
-            <div>
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
-                Role
-              </label>
-              <select
-                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                value={filters?.role || ""}
-                onChange={(e) =>
-                  onFilterChange?.({
-                    role: (e.target.value as FilterState["role"]) || undefined,
-                  })
-                }
-              >
-                <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="teacher">Teacher</option>
-                <option value="student">Student</option>
-              </select>
-            </div>
+                {/* Role Filter Default */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                    Role
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                    value={filters?.role || ""}
+                    onChange={(e) =>
+                      onFilterChange?.({
+                        role: (e.target.value as FilterState["role"]) || undefined,
+                      })
+                    }
+                  >
+                    <option value="">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="student">Student</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             {/* Page Size */}
             <div>

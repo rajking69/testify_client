@@ -218,7 +218,7 @@ export function Sidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white/75 dark:bg-[#060B14]/75 backdrop-blur-2xl border-r border-slate-200/60 dark:border-slate-800/60 transition-all duration-300 ease-in-out lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white/75 dark:bg-[#060B14]/75 backdrop-blur-2xl border-r border-slate-200/60 dark:border-slate-800/60 transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen ${
           isCollapsed ? "w-20" : "w-64"
         } ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
