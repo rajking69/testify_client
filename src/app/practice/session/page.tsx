@@ -659,7 +659,7 @@ function PracticeSessionContent() {
   const showExplanation = false;
 
   const handleEndSession = async () => {
-    const result = endPracticeSession();
+    const result = await endPracticeSession();
 
     try {
       const currentExamId = searchParams.get("examId");

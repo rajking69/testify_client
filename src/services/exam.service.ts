@@ -99,4 +99,8 @@ export const examService = {
   async getMyPurchases(): Promise<{ success: boolean; count: number; data: any[] }> {
     return apiClient.get("/exams/my/purchases");
   },
+
+  async getTeacherSubmissions(): Promise<{ success: boolean; count: number; data: any[] }> {
+    return apiClient.get("/teacher/submissions/all");
+  },
 };

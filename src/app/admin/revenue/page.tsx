@@ -42,10 +42,10 @@ export default function AdminRevenuePage() {
     subscriptionRevenue: 80,
     totalPurchases: 6,
     activeSubscriptions: 4,
-    platformFeeRate: 15,
-    platformFeeFromPurchases: 31.5,
+    platformFeeRate: 40,
+    platformFeeFromPurchases: 84,
     platformFeeFromSubscriptions: 80,
-    totalPlatformFee: 111.5,
+    totalPlatformFee: 164,
   });
 
   const fetchData = async () => {
