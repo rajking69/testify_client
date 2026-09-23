@@ -3169,7 +3169,7 @@ export function ResultsPanel() {
             </Card>
 
             <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Platform Fee (10%)</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Platform Fee (15%)</span>
               <p className="text-2xl font-black text-rose-500 font-display mt-1">
                 ${earnings?.platformFees || 0}.00
               </p>

@@ -124,7 +124,7 @@ export default function TeacherRevenuePage() {
           } catch {}
         }
 
-        // 3. Calculate Teacher Earnings strictly isolated by Teacher Identity (40% Fee)
+        // 3. Calculate Teacher Earnings strictly isolated by Teacher Identity (15% Fee)
         const summary = purchaseService.getTeacherEarnings(userEmail || userId, myExams);
         setEarningsData(summary);
       } catch (err) {
@@ -316,7 +316,7 @@ export default function TeacherRevenuePage() {
             <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
               Revenue Console
             </span>
-            <span className="text-[10px] font-bold text-slate-400 font-mono">40% Platform Fee</span>
+            <span className="text-[10px] font-bold text-slate-400 font-mono">15% Platform Fee</span>
           </div>
           <h1 className="text-2xl font-extrabold font-display tracking-tight text-[#0B2238] dark:text-white">
             Revenue &amp; Sales Management
@@ -360,17 +360,17 @@ export default function TeacherRevenuePage() {
 
       {/* 2. CONSISTENT & UNIFORM METRIC CARDS (DARK MODE STYLE MATCHED) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Card 1: Net Teacher Earnings (60%) */}
+        {/* Card 1: Net Teacher Earnings (85%) */}
         <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#070E1A] shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Net Teacher Earnings (60%)
+            Net Teacher Earnings (85%)
           </span>
           <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
             ${netRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex justify-between font-medium">
             <span>Gross: ${grossRev.toFixed(2)}</span>
-            <span className="text-amber-600 dark:text-amber-400">Fee (40%): ${platformFee.toFixed(2)}</span>
+            <span className="text-amber-600 dark:text-amber-400">Fee (15%): ${platformFee.toFixed(2)}</span>
           </div>
         </div>
 
@@ -459,10 +459,10 @@ export default function TeacherRevenuePage() {
                     Platform Revenue Split Breakdown
                   </h3>
                   <p className="text-xs text-slate-500">
-                    60% Instructor Net vs 40% Platform Maintenance Split
+                    85% Instructor Net vs 15% Platform Maintenance Split
                   </p>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-mono">40% Fee Standard</Badge>
+                <Badge variant="outline" className="text-[10px] font-mono">15% Fee Standard</Badge>
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-xs">
@@ -473,13 +473,13 @@ export default function TeacherRevenuePage() {
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60">
-                  <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Platform Fee (40%)</span>
+                  <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Platform Fee (15%)</span>
                   <div className="text-base font-extrabold font-mono text-amber-700 dark:text-amber-300 mt-0.5">
                     -${platformFee.toFixed(2)}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/60">
-                  <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Net Teacher (60%)</span>
+                  <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Net Teacher (85%)</span>
                   <div className="text-base font-extrabold font-mono text-emerald-700 dark:text-emerald-400 mt-0.5">
                     ${netRev.toFixed(2)}
                   </div>
@@ -488,12 +488,12 @@ export default function TeacherRevenuePage() {
 
               <div className="space-y-1.5 pt-1">
                 <div className="flex justify-between text-[11px] font-bold">
-                  <span className="text-emerald-600 dark:text-emerald-400">Teacher Net (60%)</span>
-                  <span className="text-amber-600 dark:text-amber-400">Platform Maintenance (40%)</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">Teacher Net (85%)</span>
+                  <span className="text-amber-600 dark:text-amber-400">Platform Maintenance (15%)</span>
                 </div>
                 <div className="w-full bg-amber-100 dark:bg-amber-950 rounded-full h-2.5 overflow-hidden flex">
-                  <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: grossRev > 0 ? "60%" : "100%" }} />
-                  <div className="bg-amber-500 h-full transition-all duration-500" style={{ width: grossRev > 0 ? "40%" : "0%" }} />
+                  <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: grossRev > 0 ? "85%" : "100%" }} />
+                  <div className="bg-amber-500 h-full transition-all duration-500" style={{ width: grossRev > 0 ? "15%" : "0%" }} />
                 </div>
               </div>
             </div>
@@ -601,7 +601,7 @@ export default function TeacherRevenuePage() {
                   <th className="py-2.5 px-3">Purchased Exam</th>
                   <th className="py-2.5 px-3 text-center">Gateway</th>
                   <th className="py-2.5 px-3 text-right">Gross Charged</th>
-                  <th className="py-2.5 px-3 text-right">Teacher Net (60%)</th>
+                  <th className="py-2.5 px-3 text-right">Teacher Net (85%)</th>
                   <th className="py-2.5 px-3 text-center">Status</th>
                   <th className="py-2.5 px-3 text-right rounded-r-xl">Date</th>
                 </tr>
@@ -619,7 +619,7 @@ export default function TeacherRevenuePage() {
                       (e: any) => String(e.id || e._id || e.code) === String(tx.examId)
                     );
                     const grossPrice = matchedExam?.price && matchedExam.price > 0 ? Number(matchedExam.price) : (tx.amount || 50);
-                    const netShare = grossPrice * 0.6;
+                    const netShare = grossPrice * 0.85;
                     const displayExamTitle = matchedExam?.title || tx.examTitle || "JavaScript Fundamentals – Live Assessment";
 
                     return (
@@ -753,8 +753,8 @@ export default function TeacherRevenuePage() {
                   <th className="py-2.5 px-3 text-center">Unit Price</th>
                   <th className="py-2.5 px-3 text-center">Students Purchased</th>
                   <th className="py-2.5 px-3 text-right">Gross Sales</th>
-                  <th className="py-2.5 px-3 text-right">Platform Fee (40%)</th>
-                  <th className="py-2.5 px-3 text-right">Net Teacher (60%)</th>
+                  <th className="py-2.5 px-3 text-right">Platform Fee (15%)</th>
+                  <th className="py-2.5 px-3 text-right">Net Teacher (85%)</th>
                   <th className="py-2.5 px-3 text-center rounded-r-xl">Status</th>
                 </tr>
               </thead>
@@ -988,13 +988,13 @@ export default function TeacherRevenuePage() {
                 <span className="font-mono font-bold text-white">${(selectedTxnModal.amount || 50).toFixed(2)} USD</span>
               </div>
               <div className="flex justify-between items-center text-amber-400 text-xs">
-                <span>Platform Maintenance Fee (40%):</span>
-                <span className="font-mono font-bold">-${((selectedTxnModal.amount || 50) * 0.4).toFixed(2)} USD</span>
+                <span>Platform Maintenance Fee (15%):</span>
+                <span className="font-mono font-bold">-${((selectedTxnModal.amount || 50) * 0.15).toFixed(2)} USD</span>
               </div>
               <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-extrabold">
-                <span className="text-emerald-400">Net Teacher Share (60%):</span>
+                <span className="text-emerald-400">Net Teacher Share (85%):</span>
                 <span className="font-mono text-emerald-400 text-base">
-                  +${((selectedTxnModal.amount || 50) * 0.6).toFixed(2)} USD
+                  +${((selectedTxnModal.amount || 50) * 0.85).toFixed(2)} USD
                 </span>
               </div>
             </div>

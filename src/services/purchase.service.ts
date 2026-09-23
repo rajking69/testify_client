@@ -309,7 +309,7 @@ export const purchaseService = {
 
       // Revenue calculations based strictly on immutable paidAmount of verified purchases
       const grossRevenue = purchases.reduce((sum, p) => sum + (p.paidAmount || p.amount || 0), 0);
-      const platformFeePercentage = 40; // 40% Platform Fee
+      const platformFeePercentage = 15; // 15% Platform Fee (consistent with admin dashboard)
       const platformFees = (grossRevenue * platformFeePercentage) / 100;
       const teacherEarnings = grossRevenue - platformFees;
 
@@ -403,7 +403,7 @@ export const purchaseService = {
         paidExamsCount: 0,
         totalSalesCount: 0,
         grossRevenue: 0,
-        platformFeePercentage: 40,
+        platformFeePercentage: 15,
         platformFees: 0,
         teacherEarnings: 0,
         todayGrossRevenue: 0,
