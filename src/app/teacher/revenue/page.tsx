@@ -39,6 +39,7 @@ import {
   ExamwiseRevenue,
   ExamPurchaseRecord,
 } from "@/services/purchase.service";
+import { eventBus, AppEvents, emitDashboardRefresh } from "@/lib/event-bus";
 
 export default function TeacherRevenuePage() {
   const { data: session, isPending } = authClient.useSession();
@@ -77,69 +78,79 @@ export default function TeacherRevenuePage() {
   // Transaction Details Modal State
   const [selectedTxnModal, setSelectedTxnModal] = useState<ExamPurchaseRecord | null>(null);
 
-  useEffect(() => {
-    const loadRevenueData = () => {
-      try {
-        const userEmail = user?.email;
-        const userId = user?.id;
-        if (!userEmail && !userId) return;
+useEffect(() => {
+      const loadRevenueData = () => {
+        try {
+          const userEmail = user?.email;
+          const userId = user?.id;
+          if (!userEmail && !userId) return;
 
-        // 1. Fetch teacher exams stored in localStorage
-        const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
-        const myExams = storedExams.filter((e: any) => {
-          const eTeacher = (e.teacherEmail || e.createdBy || "").trim().toLowerCase();
-          const uEmail = (userEmail || "").trim().toLowerCase();
-          const uId = userId || "";
-          return eTeacher === uEmail || e.teacherId === uId || e.createdBy === uEmail;
-        });
-        setTeacherExams(myExams);
+          // 1. Fetch teacher exams stored in localStorage
+          const storedExams = JSON.parse(localStorage.getItem("testify_teacher_exams") || "[]");
+          const myExams = storedExams.filter((e: any) => {
+            const eTeacher = (e.teacherEmail || e.createdBy || "").trim().toLowerCase();
+            const uEmail = (userEmail || "").trim().toLowerCase();
+            const uId = userId || "";
+            return eTeacher === uEmail || e.teacherId === uId || e.createdBy === uEmail;
+          });
+          setTeacherExams(myExams);
 
-        // 2. Sanitize local purchase records to match active exam prices ($50.00)
-        const storedPurchases = localStorage.getItem("testify_purchased_records");
-        if (storedPurchases) {
-          try {
-            let records: ExamPurchaseRecord[] = JSON.parse(storedPurchases);
-            let updated = false;
-            records = records.map((r) => {
-              const matched = myExams.find(
-                (e: any) => String(e.id || e._id || e.code) === String(r.examId)
-              );
-              if (matched && matched.price && matched.price > 0 && r.amount !== matched.price) {
-                updated = true;
-                return {
-                  ...r,
-                  amount: Number(matched.price),
-                  examTitle: matched.title || r.examTitle,
-                };
+          // 2. Sanitize local purchase records to match active exam prices ($50.00)
+          const storedPurchases = localStorage.getItem("testify_purchased_records");
+          if (storedPurchases) {
+            try {
+              let records: ExamPurchaseRecord[] = JSON.parse(storedPurchases);
+              let updated = false;
+              records = records.map((r) => {
+                const matched = myExams.find(
+                  (e: any) => String(e.id || e._id || e.code) === String(r.examId)
+                );
+                if (matched && matched.price && matched.price > 0 && r.amount !== matched.price) {
+                  updated = true;
+                  return {
+                    ...r,
+                    amount: Number(matched.price),
+                    examTitle: matched.title || r.examTitle,
+                  };
+                }
+                if (r.amount === 5 || !r.amount) {
+                  updated = true;
+                  return { ...r, amount: 50 };
+                }
+                return r;
+              });
+              if (updated) {
+                localStorage.setItem("testify_purchased_records", JSON.stringify(records));
               }
-              if (r.amount === 5 || !r.amount) {
-                updated = true;
-                return { ...r, amount: 50 };
-              }
-              return r;
-            });
-            if (updated) {
-              localStorage.setItem("testify_purchased_records", JSON.stringify(records));
-            }
-          } catch {}
+            } catch {}
+          }
+
+          // 3. Calculate Teacher Earnings strictly isolated by Teacher Identity (40% Fee)
+          const summary = purchaseService.getTeacherEarnings(userEmail || userId, myExams);
+          setEarningsData(summary);
+        } catch (err) {
+          console.error("Failed to load teacher revenue:", err);
         }
+      };
 
-        // 3. Calculate Teacher Earnings strictly isolated by Teacher Identity (40% Fee)
-        const summary = purchaseService.getTeacherEarnings(userEmail || userId, myExams);
-        setEarningsData(summary);
-      } catch (err) {
-        console.error("Failed to load teacher revenue:", err);
-      }
-    };
+      loadRevenueData();
+      
+      // Use event bus for cross-tab and cross-component updates
+      const revenueUpdateSubscription = eventBus.subscribe(AppEvents.REVENUE_UPDATED, loadRevenueData);
+      const dashboardRefreshSubscription = eventBus.subscribe(AppEvents.TEACHER_DASHBOARD_REFRESH, loadRevenueData);
+      const examPurchasedSubscription = eventBus.subscribe(AppEvents.EXAM_PURCHASED, loadRevenueData);
+      
+      // Keep localStorage listener for backward compatibility
+      const storageHandler = () => loadRevenueData();
+      window.addEventListener("storage", storageHandler);
 
-    loadRevenueData();
-    window.addEventListener("storage", loadRevenueData);
-    window.addEventListener("testify_exam_submitted", loadRevenueData);
-    return () => {
-      window.removeEventListener("storage", loadRevenueData);
-      window.removeEventListener("testify_exam_submitted", loadRevenueData);
-    };
-  }, [user?.email, user?.id]);
+      return () => {
+        revenueUpdateSubscription.unsubscribe();
+        dashboardRefreshSubscription.unsubscribe();
+        examPurchasedSubscription.unsubscribe();
+        window.removeEventListener("storage", storageHandler);
+      };
+    }, [user?.email, user?.id]);
 
   useEffect(() => {
     setTxnPage(1);
