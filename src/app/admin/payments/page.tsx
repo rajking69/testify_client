@@ -24,6 +24,7 @@ import {
   formatRelativeTime,
   cn,
   sortByKey,
+  exportToCSV,
 } from "@/lib/admin/utils";
 import { adminService } from "@/services/admin.service";
 import {
@@ -47,22 +48,27 @@ export default function AdminPaymentsPage() {
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch real payments from backend if available
-  React.useEffect(() => {
-    let isMounted = true;
+  const fetchPayments = React.useCallback(() => {
+    setIsLoading(true);
     adminService
       .getPayments()
       .then((res) => {
-        if (isMounted && res.data && res.data.purchases) {
+        if (res.data && res.data.purchases) {
           setPayments(res.data.purchases);
         }
       })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
+      .catch(() => {})
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
+
+  // Fetch real payments from backend if available
+  React.useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
 
   // Filter payments
   const filteredPayments = React.useMemo(() => {
@@ -107,6 +113,20 @@ export default function AdminPaymentsPage() {
     pendingRevenue: payments
       .filter((p) => p.status === "pending")
       .reduce((sum, p) => sum + p.amount, 0),
+  };
+
+  const handleExport = () => {
+    const dataToExport = sortedPayments.map((p) => ({
+      "Transaction ID": p.transactionId,
+      Customer: p.userName,
+      Email: p.userEmail,
+      Amount: p.amount,
+      Currency: p.currency,
+      Status: p.status,
+      "Payment Method": p.paymentMethod,
+      Date: p.createdAt ? formatRelativeTime(p.createdAt) : "",
+    }));
+    exportToCSV(dataToExport, "payments_report.csv");
   };
 
   // Table columns
@@ -198,7 +218,7 @@ export default function AdminPaymentsPage() {
           {
             label: "Download Invoice",
             icon: <Download className="h-4 w-4" />,
-            onClick: (p: Payment) => console.log("Download invoice", p.invoiceUrl),
+            onClick: (p: Payment) => window.open(p.invoiceUrl, "_blank"),
           },
         ]
       : []),
@@ -225,7 +245,7 @@ export default function AdminPaymentsPage() {
             Monitor transactions and payment history
           </p>
         </div>
-        <Button>
+        <Button onClick={handleExport}>
           <FileText className="h-4 w-4 mr-2" />
           Export Report
         </Button>
@@ -344,6 +364,19 @@ export default function AdminPaymentsPage() {
         onFilterChange={updateFilters}
         onClearFilters={clearFilters}
         total={sortedPayments.length}
+        loading={isLoading}
+        onRefresh={fetchPayments}
+        filterConfigs={[
+          {
+            key: "status",
+            label: "Status",
+            options: [
+              { label: "Success", value: "success" },
+              { label: "Pending", value: "pending" },
+              { label: "Failed", value: "failed" },
+            ],
+          },
+        ]}
         actionMenuItems={getActionMenuItems}
         emptyMessage="No payments found"
       />
@@ -426,7 +459,7 @@ export default function AdminPaymentsPage() {
 
             <div className="flex justify-end gap-2 pt-4">
               {selectedPayment.invoiceUrl && (
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => window.open(selectedPayment.invoiceUrl, "_blank")}>
                   <Download className="h-4 w-4 mr-2" />
                   Download Invoice
                 </Button>
