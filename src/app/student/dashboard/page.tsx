@@ -5,42 +5,40 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FiBookOpen,
-  FiAward,
-  FiClock,
-  FiTarget,
-  FiZap,
-  FiHome,
-  FiKey,
-  FiBarChart2,
-  FiChevronRight,
-  FiEdit3,
-  FiCheck,
-  FiAlertCircle,
-  FiCamera,
-  FiUpload,
-  FiUser,
-  FiCalendar,
-  FiArrowRight,
-  FiCheckCircle,
-  FiActivity,
-  FiTrendingUp,
-  FiLayers,
-  FiFilter,
-  FiExternalLink,
-  FiSearch,
-  FiChevronLeft,
-  FiFileText,
-  FiPlayCircle,
-  FiBookmark,
-  FiShield,
-} from "react-icons/fi";
-import {
-  HiOutlineAcademicCap,
-  HiOutlineSparkles,
-  HiOutlineRocketLaunch,
-  HiOutlineTrophy,
-} from "react-icons/hi2";
+  BookOpen,
+  Award,
+  Clock,
+  Target,
+  Zap,
+  Home,
+  Key,
+  BarChart2,
+  ChevronRight,
+  Edit3,
+  Check,
+  AlertCircle,
+  Camera,
+  Upload,
+  User,
+  Calendar,
+  ArrowRight,
+  CheckCircle,
+  Activity,
+  TrendingUp,
+  Layers,
+  Filter,
+  ExternalLink,
+  Search,
+  ChevronLeft,
+  FileText,
+  PlayCircle,
+  Bookmark,
+  Shield,
+  GraduationCap,
+  Sparkles,
+  Rocket,
+  Trophy,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
@@ -509,7 +507,7 @@ export default function StudentDashboardPage() {
       <div className="min-h-[60vh] flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1220] p-8 shadow-xl text-center space-y-4">
           <div className="h-14 w-14 rounded-2xl bg-[#EBF7FF] dark:bg-cyan-950/60 text-[#0092E3] flex items-center justify-center mx-auto border border-blue-100">
-            <HiOutlineAcademicCap className="h-7 w-7" />
+            <GraduationCap className="h-7 w-7" />
           </div>
           <h2 className="text-xl font-bold font-display text-[#152234] dark:text-white">Authentication Required</h2>
           <p className="text-xs text-slate-500">Please sign in to access your student portal.</p>
@@ -529,7 +527,7 @@ export default function StudentDashboardPage() {
       <div className="min-h-[60vh] flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-3xl border border-rose-200 bg-white dark:bg-[#0B1220] p-8 shadow-xl text-center space-y-4">
           <div className="h-14 w-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-            <FiAlertCircle className="h-7 w-7" />
+            <AlertCircle className="h-7 w-7" />
           </div>
           <h2 className="text-xl font-bold font-display text-[#152234] dark:text-white">Access Restricted</h2>
           <p className="text-xs text-slate-500">Signed in as <strong className="text-[#0092E3] capitalize">{session.user.role}</strong>.</p>
@@ -568,7 +566,7 @@ export default function StudentDashboardPage() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-6 right-6 z-50 rounded-2xl bg-[#0B2238] dark:bg-cyan-950 border border-cyan-500/40 text-white px-5 py-3 shadow-2xl flex items-center gap-3 text-xs font-semibold backdrop-blur-xl"
           >
-            <FiCheckCircle className="h-4 w-4 text-[#00CBB8] shrink-0" />
+            <CheckCircle className="h-4 w-4 text-[#00CBB8] shrink-0" />
             <span>{toastMessage}</span>
           </motion.div>
         )}
@@ -602,7 +600,7 @@ export default function StudentDashboardPage() {
                 className="absolute -bottom-1 -right-1 p-1.5 rounded-xl bg-[#0092E3] hover:bg-[#007AC9] text-white shadow-sm transition-all active:scale-95 cursor-pointer"
                 title="Change Profile Picture"
               >
-                <FiCamera className="h-3.5 w-3.5" />
+                <Camera className="h-3.5 w-3.5" />
               </button>
             </div>
 
@@ -616,17 +614,17 @@ export default function StudentDashboardPage() {
                   className="text-slate-400 hover:text-[#0092E3] transition-colors cursor-pointer"
                   title="Edit Profile"
                 >
-                  <FiEdit3 className="h-4 w-4" />
+                  <Edit3 className="h-4 w-4" />
                 </button>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#EBF7FF] dark:bg-cyan-950/60 border border-blue-100 dark:border-cyan-800 text-[11px] font-bold text-[#0092E3] dark:text-cyan-300">
-                  <HiOutlineAcademicCap className="h-3.5 w-3.5" />
+                  <GraduationCap className="h-3.5 w-3.5" />
                   Student Scholar
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                  <FiCheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                   Verified Student
                 </span>
               </div>
@@ -639,7 +637,7 @@ export default function StudentDashboardPage() {
               <Button
                 variant="outline"
                 size="sm"
-                leftIcon={<FiChevronLeft className="h-4 w-4 text-[#0092E3]" />}
+                leftIcon={<ChevronLeft className="h-4 w-4 text-[#0092E3]" />}
                 className="h-9 px-3.5 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-800 hover:border-[#0092E3]/40 transition-all shadow-2xs"
               >
                 Back to Home
@@ -650,7 +648,7 @@ export default function StudentDashboardPage() {
               <Button
                 variant="outline"
                 size="sm"
-                leftIcon={<FiZap className="h-4 w-4 text-[#00CBB8]" />}
+                leftIcon={<Zap className="h-4 w-4 text-[#00CBB8]" />}
                 className="h-9 px-3.5 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-800 hover:border-[#00CBB8]/40 transition-all shadow-2xs"
               >
                 Practice Hub
@@ -660,7 +658,7 @@ export default function StudentDashboardPage() {
             <Link href="/student/exams">
               <Button
                 size="sm"
-                rightIcon={<FiArrowRight className="h-3.5 w-3.5" />}
+                rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
                 className="h-9 px-4 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#0092E3] to-[#007AC9] text-white shadow-xs shadow-[#0092E3]/20 transition-all"
               >
                 Browse Exams
@@ -676,7 +674,7 @@ export default function StudentDashboardPage() {
           <form onSubmit={handleJoinByCode} className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <div className="relative flex-1 min-w-0">
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-500 pointer-events-none">
-                <FiKey className="h-4 w-4" />
+                <Key className="h-4 w-4" />
               </div>
               <input
                 type="text"
@@ -695,12 +693,12 @@ export default function StudentDashboardPage() {
               className="h-10.5 px-6 rounded-xl bg-gradient-to-r from-[#0092E3] to-[#007AC9] hover:from-[#007AC9] hover:to-[#0062A3] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
             >
               <span>Join Exam Room</span>
-              <FiArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           </form>
           {roomCodeError && (
             <p className="text-[11px] text-rose-500 mt-1 font-semibold flex items-center gap-1 pl-1">
-              <FiAlertCircle className="h-3 w-3" />
+              <AlertCircle className="h-3 w-3" />
               <span>{roomCodeError}</span>
             </p>
           )}
@@ -720,7 +718,7 @@ export default function StudentDashboardPage() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-colors" />
           <div className="flex items-center justify-between mb-3">
             <div className="h-10 w-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200/50 dark:border-cyan-800/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
-              <FiBookOpen className="h-5 w-5" />
+              <BookOpen className="h-5 w-5" />
             </div>
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200/50 dark:border-cyan-800/50">
               {dashboardStats.completedExams > 0 ? `+${dashboardStats.completedExams} Passed` : "0 Submitted"}
@@ -747,7 +745,7 @@ export default function StudentDashboardPage() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
           <div className="flex items-center justify-between mb-3">
             <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/50 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-              <FiAward className="h-5 w-5" />
+              <Award className="h-5 w-5" />
             </div>
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
               {dashboardStats.averageScore >= 80 ? "Grade A+" : dashboardStats.averageScore > 0 ? "Active Learner" : "Pending"}
@@ -774,7 +772,7 @@ export default function StudentDashboardPage() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-colors" />
           <div className="flex items-center justify-between mb-3">
             <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/50 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-              <FiTarget className="h-5 w-5" />
+              <Target className="h-5 w-5" />
             </div>
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50">
               {dashboardStats.practiceSessionsCount} Drills
@@ -801,7 +799,7 @@ export default function StudentDashboardPage() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-colors" />
           <div className="flex items-center justify-between mb-3">
             <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/50 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-              <FiClock className="h-5 w-5" />
+              <Clock className="h-5 w-5" />
             </div>
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50">
               {dashboardStats.activeStudyTimeHours > 0 ? "Scholar" : "Standard"}
@@ -828,7 +826,7 @@ export default function StudentDashboardPage() {
       >
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/50 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 group-hover:scale-105 transition-transform">
-            <FiCheckCircle className="h-6 w-6" />
+            <CheckCircle className="h-6 w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -854,7 +852,7 @@ export default function StudentDashboardPage() {
           className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold shadow-sm shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer shrink-0 self-end sm:self-auto"
         >
           <span>View All Transcripts ({liveAssessmentItems.length})</span>
-          <FiArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </motion.div>
 
@@ -870,7 +868,7 @@ export default function StudentDashboardPage() {
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="h-8.5 w-8.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                <FiTrendingUp className="h-4.5 w-4.5" />
+                <TrendingUp className="h-4.5 w-4.5" />
               </div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">
                 Academic Progress Analytics
@@ -940,7 +938,7 @@ export default function StudentDashboardPage() {
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="h-8.5 w-8.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
-                <FiZap className="h-4.5 w-4.5" />
+                <Zap className="h-4.5 w-4.5" />
               </div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">
                 Quick Learning Shortcuts
@@ -958,7 +956,7 @@ export default function StudentDashboardPage() {
             >
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
-                  <FiZap className="h-4.5 w-4.5" />
+                  <Zap className="h-4.5 w-4.5" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-500 transition-colors">
@@ -967,7 +965,7 @@ export default function StudentDashboardPage() {
                   <p className="text-[11px] text-slate-500">Timed drills &amp; topic quizzes</p>
                 </div>
               </div>
-              <FiArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </Link>
 
             <Link
@@ -976,7 +974,7 @@ export default function StudentDashboardPage() {
             >
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                  <FiBookmark className="h-4.5 w-4.5" />
+                  <Bookmark className="h-4.5 w-4.5" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors">
@@ -985,7 +983,7 @@ export default function StudentDashboardPage() {
                   <p className="text-[11px] text-slate-500">Review saved questions</p>
                 </div>
               </div>
-              <FiArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </motion.div>
@@ -1001,7 +999,7 @@ export default function StudentDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-[#EBF7FF] dark:bg-cyan-950/60 text-[#0092E3] dark:text-cyan-400 flex items-center justify-center font-bold border border-blue-100 dark:border-blue-900/50">
-              <FiFileText className="h-5 w-5" />
+              <FileText className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
@@ -1017,7 +1015,7 @@ export default function StudentDashboardPage() {
           </div>
           {studentInvoices.length > 0 && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 text-xs font-bold shrink-0 self-start sm:self-auto">
-              <FiCheckCircle className="h-3.5 w-3.5" /> Stripe Verified Access Active
+              <CheckCircle className="h-3.5 w-3.5" /> Stripe Verified Access Active
             </span>
           )}
         </div>
@@ -1025,7 +1023,7 @@ export default function StudentDashboardPage() {
         {studentInvoices.length === 0 ? (
           <div className="p-8 text-center rounded-2xl bg-slate-50/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800 space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-              <FiFileText className="h-6 w-6" />
+              <FileText className="h-6 w-6" />
             </div>
             <div className="space-y-1">
               <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -1077,7 +1075,7 @@ export default function StudentDashboardPage() {
                             {inv.id}
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                            <FiCalendar className="h-3 w-3 text-slate-400" />
+                            <Calendar className="h-3 w-3 text-slate-400" />
                             {formattedDate}
                           </span>
                         </div>
@@ -1090,7 +1088,7 @@ export default function StudentDashboardPage() {
                             {inv.examTitle || "Certified Examination Assessment"}
                           </h4>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
-                            <FiUser className="h-3 w-3 text-slate-400 shrink-0" />
+                            <User className="h-3 w-3 text-slate-400 shrink-0" />
                             <span>Instructor: <strong className="text-slate-700 dark:text-slate-300">{teacherDisplay}</strong></span>
                           </p>
                         </div>
@@ -1107,15 +1105,15 @@ export default function StudentDashboardPage() {
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {isAttempted ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100/70 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-[11px] font-bold">
-                            <FiCheckCircle className="h-3.5 w-3.5" /> Completed
+                            <CheckCircle className="h-3.5 w-3.5" /> Completed
                           </span>
                         ) : expired ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-100/70 text-rose-700 dark:bg-rose-950 dark:text-rose-300 text-[11px] font-bold">
-                            <FiClock className="h-3.5 w-3.5" /> Expired
+                            <Clock className="h-3.5 w-3.5" /> Expired
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-100/70 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300 text-[11px] font-bold">
-                            <FiClock className="h-3.5 w-3.5" /> Ready to Take
+                            <Clock className="h-3.5 w-3.5" /> Ready to Take
                           </span>
                         )}
                       </td>
@@ -1131,7 +1129,7 @@ export default function StudentDashboardPage() {
                             }}
                             className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:border-[#0092E3] text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#0092E3] bg-white dark:bg-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                           >
-                            <FiFileText className="h-3.5 w-3.5 text-[#0092E3]" />
+                            <FileText className="h-3.5 w-3.5 text-[#0092E3]" />
                             <span>Invoice</span>
                           </button>
 
@@ -1140,20 +1138,20 @@ export default function StudentDashboardPage() {
                               href={`/practice/result?examId=${inv.examId}&title=${encodeURIComponent(inv.examTitle || "Exam")}`}
                             >
                               <Button className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer">
-                                <FiCheckCircle className="h-3.5 w-3.5" />
+                                <CheckCircle className="h-3.5 w-3.5" />
                                 <span>Result</span>
                               </Button>
                             </Link>
                           ) : expired ? (
                             <div className="px-3 py-1.5 rounded-lg bg-rose-500 text-white text-[11px] font-black flex items-center gap-1 cursor-not-allowed uppercase tracking-wider select-none shadow-2xs">
-                              <FiClock className="h-3.5 w-3.5 text-white" />
+                              <Clock className="h-3.5 w-3.5 text-white" />
                               <span>Expired</span>
                             </div>
                           ) : (
                             <Link href={`/exam/${inv.examId}`}>
                               <Button className="bg-[#0092E3] hover:bg-[#007AC9] text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer">
                                 <span>Start</span>
-                                <FiArrowRight className="h-3.5 w-3.5" />
+                                <ArrowRight className="h-3.5 w-3.5" />
                               </Button>
                             </Link>
                           )}
@@ -1222,7 +1220,7 @@ export default function StudentDashboardPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-xl bg-[#0092E3] text-white shadow-md hover:bg-[#007AC9] transition-all cursor-pointer"
               >
-                <FiCamera className="h-3.5 w-3.5" />
+                <Camera className="h-3.5 w-3.5" />
               </button>
             </div>
             <input
