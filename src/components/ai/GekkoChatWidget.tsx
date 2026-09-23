@@ -78,7 +78,7 @@ export function GekkoChatWidget() {
   }, [user?.name, messages.length]);
 
   // RESTRICTION: Hide Gekko completely for guests and during live active exams
-  if (!mounted || !user || isLiveExam || (userRole !== "student" && userRole !== "teacher")) {
+  if (!mounted || !user || isLiveExam || (userRole !== "student" && userRole !== "teacher" && userRole !== "admin")) {
     return null;
   }
 

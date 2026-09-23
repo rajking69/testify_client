@@ -14,8 +14,8 @@ import {
   Home,
 } from "lucide-react";
 import { usePractice } from "@/lib/practice/practice-context";
-import { subjects } from "@/lib/practice/practice-constants";
-import { PracticeMode, Difficulty } from "@/lib/practice/practice-types";
+import { apiClient } from "@/lib/apiClient";
+import { SubjectData, PracticeMode, Difficulty } from "@/lib/practice/practice-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -28,6 +28,30 @@ export default function PracticePage() {
   const [selectedDifficulties, setSelectedDifficulties] = useState<
     Difficulty[]
   >(["easy", "medium", "hard"]);
+  const [dynamicSubjects, setDynamicSubjects] = useState<SubjectData[]>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(true);
+
+  React.useEffect(() => {
+    async function loadSubjects() {
+      try {
+        const response = await apiClient.get("/practice/subjects");
+        if (response.data && response.data.length > 0) {
+          setDynamicSubjects(response.data);
+        } else {
+          // Fallback if no questions in DB
+          setDynamicSubjects([
+            { name: "General", topics: ["General"] }
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to load subjects:", error);
+        setDynamicSubjects([{ name: "General", topics: ["General"] }]);
+      } finally {
+        setIsLoadingSubjects(false);
+      }
+    }
+    loadSubjects();
+  }, []);
 
   const practiceModes = [
     {
@@ -85,13 +109,13 @@ export default function PracticePage() {
     { value: "50", label: "50 Questions" },
   ];
 
-  const subjectOptions = subjects.map((subject) => ({
+  const subjectOptions = dynamicSubjects.map((subject) => ({
     value: subject.name,
     label: subject.name,
   }));
 
   const getTopicsForSubject = (subjectName: string) => {
-    const subject = subjects.find((s) => s.name === subjectName);
+    const subject = dynamicSubjects.find((s) => s.name === subjectName);
     return subject?.topics || [];
   };
 
@@ -230,12 +254,13 @@ export default function PracticePage() {
               <div>
                 <Select
                   label="Select Subject"
-                  options={subjectOptions}
-                  placeholder="Choose a subject"
+                  options={isLoadingSubjects ? [{ value: "", label: "Loading..." }] : subjectOptions}
+                  placeholder={isLoadingSubjects ? "Loading subjects..." : "Choose a subject"}
                   value={config.subject}
                   onChange={(e) =>
                     handleSubjectChange((e.target as HTMLSelectElement).value)
                   }
+                  disabled={isLoadingSubjects || subjectOptions.length === 0}
                 />
               </div>
 

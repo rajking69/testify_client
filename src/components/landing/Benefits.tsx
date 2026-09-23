@@ -153,7 +153,7 @@ export default function Benefits() {
                 <span className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-2 py-0.5 rounded-md font-bold font-mono text-[11px] border border-amber-200 dark:border-amber-800">42:15 Remaining</span>
               </div>
               <div className="p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-[#FFE8D1] dark:border-amber-900/40 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
-                &check; Answer to Question 8 saved (100% Synced to Server)
+                ✓ Answer to Question 8 saved (100% Synced to Server)
               </div>
             </div>
           </motion.div>

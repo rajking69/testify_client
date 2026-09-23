@@ -236,24 +236,28 @@ export default function AdminDashboardPage() {
       {/* Executive Command Banner */}
       <motion.div
         variants={itemVariants}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0B2238] via-[#152234] to-[#1E1B4B] p-6 sm:p-10 text-white shadow-xl shadow-[#0B2238]/15 border border-slate-700/50"
+        className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-white via-indigo-50/80 to-purple-50/90 dark:from-[#0B2238] dark:via-[#152234] dark:to-[#1E1B4B] p-8 sm:p-12 shadow-[0_20px_60px_-15px_rgba(79,70,229,0.15)] dark:shadow-[#0B2238]/15 border border-white dark:border-slate-700/50 backdrop-blur-3xl"
       >
+        {/* Premium Light Mode Inner Glow */}
+        <div className="absolute inset-0 rounded-[2.5rem] border-2 border-white/60 pointer-events-none dark:hidden" />
+
         {/* Ambient Blur Orbs */}
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#5B67F7]/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 left-1/4 w-60 h-60 bg-[#00A3C4]/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-indigo-500/20 dark:bg-[#5B67F7]/25 rounded-full blur-3xl pointer-events-none mix-blend-multiply dark:mix-blend-normal" />
+        <div className="absolute -bottom-32 left-1/4 w-80 h-80 bg-fuchsia-500/20 dark:bg-[#00A3C4]/20 rounded-full blur-3xl pointer-events-none mix-blend-multiply dark:mix-blend-normal" />
+        <div className="absolute top-1/2 -translate-y-1/2 left-2/3 w-72 h-72 bg-sky-400/20 dark:hidden rounded-full blur-3xl pointer-events-none mix-blend-multiply" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-purple-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 dark:bg-white/10 border border-indigo-100 dark:border-white/15 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-indigo-800 dark:text-purple-300 shadow-sm dark:shadow-none">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
               <span>Platform Core Online • v2.4.0</span>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-extrabold font-display tracking-tight text-white">
+            <h1 className="text-3xl sm:text-5xl font-extrabold font-display tracking-tight text-[#0B2238] dark:text-white drop-shadow-sm dark:drop-shadow-none">
               Administrator Command Center
             </h1>
 
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl font-medium">
               Monitor institutional performance, manage active subscriptions, audit proctoring logs, and govern user permissions across all campuses.
             </p>
           </div>
@@ -261,7 +265,7 @@ export default function AdminDashboardPage() {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link href="/admin/revenue">
               <Button
-                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-lg shadow-emerald-500/25 transition-all cursor-pointer gap-2"
+                className="group bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow-[0_8px_20px_-4px_rgba(16,185,129,0.5)] border border-emerald-300/50 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer gap-2"
               >
                 <DollarSign className="h-4 w-4" />
                 <span>Revenue Center</span>
@@ -269,7 +273,7 @@ export default function AdminDashboardPage() {
             </Link>
             <Link href="/admin/analytics">
               <Button
-                className="bg-[#5B67F7] hover:bg-[#4F46E5] text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-lg shadow-indigo-500/25 transition-all cursor-pointer"
+                className="group bg-gradient-to-b from-indigo-500 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow-[0_8px_20px_-4px_rgba(99,102,241,0.5)] border border-indigo-400/50 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 leftIcon={<BarChart3 className="h-4 w-4" />}
               >
                 Telemetry & Analytics
@@ -278,10 +282,10 @@ export default function AdminDashboardPage() {
 
             <Link href="/admin/settings">
               <Button
-                variant="glass"
-                className="group border-white/25 bg-white/10 hover:bg-white/20 hover:border-purple-300/50 hover:shadow-lg hover:shadow-purple-500/20 text-white font-bold text-xs px-5 py-2.5 rounded-full backdrop-blur-md transition-all duration-300 cursor-pointer active:scale-95"
+                variant="ghost"
+                className="group border border-indigo-200/60 bg-white/60 dark:border-white/10 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 hover:border-indigo-300 dark:hover:border-white/20 shadow-[0_8px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none text-slate-700 dark:text-white font-bold text-xs px-6 py-2.5 rounded-full backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                 leftIcon={
-                  <Settings className="h-4 w-4 text-purple-300 transition-transform duration-500 ease-out group-hover:rotate-90 group-hover:text-purple-200" />
+                  <Settings className="h-4 w-4 text-indigo-500 dark:text-purple-300 transition-transform duration-500 ease-out group-hover:rotate-90 group-hover:text-indigo-600 dark:group-hover:text-purple-200" />
                 }
               >
                 System Config
