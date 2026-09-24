@@ -229,7 +229,7 @@ export default function StudentExamWaitingRoomPage({
   // Check Purchase Status strictly against verified Stripe transactions
   useEffect(() => {
     if (!exam) return;
-    const isPaidExam = exam.accessType === "PAID" || Number(exam.price) > 0;
+    const isPaidExam = String(exam.accessType).toUpperCase() === "PAID" || Number(exam.price) > 0;
     if (isPaidExam) {
       try {
         const stored = localStorage.getItem("testify_purchased_records");
@@ -304,7 +304,7 @@ export default function StudentExamWaitingRoomPage({
     }
 
     // Strict Paywall Guard: Paid exams CANNOT be started without completing payment
-    if ((exam?.accessType === "PAID" || Number(exam?.price) > 0) && !isPurchased) {
+    if ((String(exam?.accessType).toUpperCase() === "PAID" || Number(exam?.price) > 0) && !isPurchased) {
       setIsCardModalOpen(true);
       return;
     }
@@ -488,7 +488,7 @@ export default function StudentExamWaitingRoomPage({
     );
   }
 
-  const isPaid = exam.accessType === "PAID" || Number(exam.price) > 0;
+  const isPaid = String(exam.accessType).toUpperCase() === "PAID" || Number(exam.price) > 0;
 
   return (
     <div className="relative min-h-screen bg-slate-50/70 dark:bg-slate-950 flex items-center justify-center p-4 sm:p-6 overflow-hidden">

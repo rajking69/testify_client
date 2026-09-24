@@ -358,7 +358,7 @@ export const purchaseService = {
       // Also include active paid exams created by teacher even if 0 sales yet
       teacherExams.forEach((e) => {
         const eId = String(e.id || e._id || e.code);
-        if (!examMap.has(eId) && (Number(e.price) > 0 || e.accessType === "PAID")) {
+        if (!examMap.has(eId) && (Number(e.price) > 0 || String(e.accessType).toUpperCase() === "PAID")) {
           examMap.set(eId, {
             examTitle: e.title || "Monetized Assessment",
             unitPrice: Number(e.price) || 0,

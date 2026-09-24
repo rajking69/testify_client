@@ -56,8 +56,9 @@ export const examService = {
     return apiClient.get("/exams/public");
   },
 
-  async getAllExams(): Promise<{ success: boolean; count: number; data: ExamItem[] }> {
-    return apiClient.get("/exams");
+  async getAllExams(params?: { mine?: boolean; teacherId?: string }): Promise<{ success: boolean; count: number; data: ExamItem[] }> {
+    const query = params?.mine ? "?mine=true" : params?.teacherId ? `?teacherId=${params.teacherId}` : "";
+    return apiClient.get(`/exams${query}`);
   },
 
   async getExamById(id: string): Promise<{ success: boolean; data: ExamItem }> {
@@ -102,5 +103,9 @@ export const examService = {
 
   async getTeacherSubmissions(): Promise<{ success: boolean; count: number; data: any[] }> {
     return apiClient.get("/teacher/submissions/all");
+  },
+
+  async getLiveMonitoringData(examId: string): Promise<{ success: boolean; data: any }> {
+    return apiClient.get(`/exams/teacher/live-monitoring/${examId}`);
   },
 };

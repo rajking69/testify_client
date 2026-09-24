@@ -71,6 +71,7 @@ function PracticeSessionContent() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const iceQueueRef = useRef<RTCIceCandidateInit[]>([]);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isHighFreqStreaming, setIsHighFreqStreaming] = useState(false);
@@ -158,9 +159,9 @@ function PracticeSessionContent() {
     },
   });
 
-  // 1.1 Socket.IO Live Monitoring & Proctor Connection
+  // 1.1 Socket.IO Live Monitoring & Proctor Connection — always for live exam (camera optional)
   useEffect(() => {
-    if (!isLiveExam || !isCameraRequiredForExam) return;
+    if (!isLiveExam) return;
     const socket = getMonitoringSocket();
     if (!socket) return;
 
@@ -365,6 +366,10 @@ function PracticeSessionContent() {
         };
 
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        // flush any ICE candidates that arrived before remoteDescription
+        for (const c of iceQueueRef.current.splice(0)) {
+          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+        }
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
@@ -380,9 +385,12 @@ function PracticeSessionContent() {
 
     const handleIceCandidate = async (data: { candidate: RTCIceCandidateInit }) => {
       try {
-        if (peerConnectionRef.current && data.candidate) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        if (!peerConnectionRef.current || !data.candidate) return;
+        if (!peerConnectionRef.current.remoteDescription) {
+          iceQueueRef.current.push(data.candidate);
+          return;
         }
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
       } catch (err) {
         console.warn("WebRTC candidate error on student:", err);
       }

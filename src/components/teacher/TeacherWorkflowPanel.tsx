@@ -1700,28 +1700,51 @@ export function MonitoringPanel() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isWebRtcConnected, setIsWebRtcConnected] = useState(false);
   const [videoHasFrames, setVideoHasFrames] = useState(false);
+  const [availableExams, setAvailableExams] = useState<any[]>([]);
+  const [selectedExamFilter, setSelectedExamFilter] = useState<string>("all");
+  const [violationLogs, setViolationLogs] = useState<Array<{ time: string; student: string; reason: string; exam: string }>>([]);
+  const [monitorRecentResults, setMonitorRecentResults] = useState<any[]>([]);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Connect to live monitoring Socket.IO gateway
+  // Connect to live monitoring Socket.IO gateway + HTTP polling fallback
   useEffect(() => {
     const socket = getMonitoringSocket();
-    if (!socket) return;
-
-    socket.emit("teacher:subscribe");
+    const subscribePerExam = async () => {
+      if (!socket) return;
+      console.log("[Monitoring] Subscribing to teacher monitoring feed (per-exam)");
+      try {
+        const myExamsRes = await examService.getAllExams({ mine: true } as any);
+        const myExams = myExamsRes?.data || [];
+        if (myExams.length === 0) {
+          socket.emit("teacher:subscribe");
+        } else {
+          for (const ex of myExams) {
+            const exId = (ex as any)._id || (ex as any).id;
+            if (exId) socket.emit("teacher:subscribe", { examId: String(exId) });
+          }
+        }
+      } catch {
+        socket.emit("teacher:subscribe");
+      }
+      socket.on("connect", () => console.log("[Monitoring] socket connected", socket.id));
+      socket.on("connect_error", (e: any) => console.warn("[Monitoring] connect_error", e?.message));
+      socket.on("error", (e: any) => console.warn("[Monitoring] socket error", e));
+    };
+    subscribePerExam();
 
     const handleUpdate = (candidates: CandidateTelemetry[]) => {
-      const mapped: MonitorStudent[] = candidates.map((c) => {
+      console.log("[Monitoring] candidates_update", candidates?.length);
+      // Dedup by studentId to avoid duplicate React keys
+      const deduped = Array.from(new Map((candidates || []).map((c: any) => [String(c.studentId || c.id || c.email).toLowerCase(), c])).values()) as CandidateTelemetry[];
+      const mapped: MonitorStudent[] = deduped.map((c: any) => {
         let status: "Normal" | "Warning" | "Suspicious" = "Normal";
-        if (c.status === "Critical" || c.tabSwitches >= 2) {
-          status = "Suspicious";
-        } else if (c.status === "Warning" || c.tabSwitches === 1) {
-          status = "Warning";
-        }
-
+        if (c.hasCamera === false || c.faceDetected === false) status = "Suspicious";
+        else if (c.status === "Critical" || c.tabSwitches >= 2) status = "Suspicious";
+        else if (c.status === "Warning" || c.tabSwitches === 1) status = "Warning";
         return {
           id: c.studentId || c.id,
           name: c.name || "Student Candidate",
@@ -1735,39 +1758,106 @@ export function MonitoringPanel() {
           lastPing: c.lastPing || new Date().toLocaleTimeString(),
         };
       });
-
-      // Cache any latestFrame snapshots included with candidates
-      candidates.forEach((c) => {
-        if (c.latestFrame) {
-          setLiveFrames((prev) => ({
-            ...prev,
-            [c.studentId || c.id]: c.latestFrame!,
-          }));
+      // Auto log tab-switch / face-missing with red flag
+      deduped.forEach((c: any) => {
+        const isTabSwitch = (c.tabSwitches || 0) > 0 || c.status === "Warning" || c.status === "Critical";
+        const isFaceMissing = c.hasCamera === false || c.faceDetected === false;
+        if (isTabSwitch || isFaceMissing) {
+          const reason = isFaceMissing ? "Face missing / Camera off" : `Tab switch x${c.tabSwitches}`;
+          const key = `${c.studentId}-${reason}-${c.lastPing}`;
+          setViolationLogs((prev) => {
+            if (prev.some((l) => l.student === (c.name || c.email) && l.reason === reason && l.time === c.lastPing)) return prev;
+            const entry = { time: c.lastPing || new Date().toLocaleTimeString(), student: c.name || c.email || c.studentId, reason, exam: c.examTitle || "" };
+            return [entry, ...prev].slice(0, 50);
+          });
         }
       });
-
-      setStudents(mapped);
+      candidates.forEach((c) => {
+        if (c.latestFrame) setLiveFrames((prev) => ({ ...prev, [c.studentId || c.id]: c.latestFrame! }));
+      });
+      // Always sync live list — empty means no active test takers
+      setStudents((prev) => {
+        if (mapped.length === 0) return [];
+        const merged = mapped.map((m) => {
+          const old = prev.find((p) => p.id === m.id);
+          if (old && old.status === "Suspicious" && m.status !== "Suspicious") return { ...m, status: "Suspicious" as const, tabSwitches: Math.max(m.tabSwitches, old.tabSwitches) };
+          return m;
+        });
+        return merged;
+      });
       setInspectingStudent((curr) => {
         if (!curr) return null;
         const found = mapped.find((m) => m.id === curr.id);
-        return found || curr;
+        // Student finished/left — close inspector, no longer live
+        if (!found) return null;
+        return found;
       });
     };
 
     const handleVideoFrame = (data: { studentId: string; frame: string }) => {
-      setLiveFrames((prev) => ({
-        ...prev,
-        [data.studentId]: data.frame,
-      }));
+      setLiveFrames((prev) => ({ ...prev, [data.studentId]: data.frame }));
     };
 
-    socket.on("monitoring:candidates_update", handleUpdate);
-    socket.on("monitoring:video_frame", handleVideoFrame);
-    socket.emit("teacher:request_refresh");
+    socket?.on("monitoring:candidates_update", handleUpdate);
+    socket?.on("monitoring:video_frame", handleVideoFrame);
+    socket?.emit("teacher:request_refresh");
+
+    // HTTP polling fallback — works even if socket not connected or no activeCandidates in memory
+    let pollTimer: any = null;
+    const pollHttp = async () => {
+      try {
+        const myExamsRes = await examService.getAllExams({ mine: true } as any);
+        const myExams = myExamsRes?.data || [];
+        let allCandidates: any[] = [];
+        for (const ex of myExams.slice(0, 5)) {
+          const exId = (ex as any)._id || (ex as any).id;
+          if (!exId) continue;
+          try {
+            const liveRes = await examService.getLiveMonitoringData(String(exId));
+            const cands = liveRes?.data?.candidates || [];
+            // tag exam title
+            cands.forEach((c: any) => (c.examTitle = c.examTitle || (ex as any).title));
+            allCandidates = allCandidates.concat(cands);
+          } catch {}
+        }
+        // Filter HTTP to live In-Progress only — completed should not appear in live monitoring
+        const liveOnly = allCandidates.filter((c: any) => c.status === "In Progress" && c.isOnline !== false);
+        if (liveOnly.length >= 0) {
+          const dedupedHttp = Array.from(new Map(liveOnly.map((c: any) => [String(c.studentId || c.attemptId || c.email).toLowerCase(), c])).values());
+          console.log("[Monitoring] HTTP poll candidates", dedupedHttp.length, "(raw", allCandidates.length, "live", liveOnly.length, ")");
+          // If no live, clear live list so inspector closes
+          if (dedupedHttp.length === 0) {
+            setStudents([]);
+            setInspectingStudent(null);
+            return;
+          }
+          const mapped: MonitorStudent[] = dedupedHttp.map((c: any) => ({
+            id: c.studentId || c.attemptId || c.email,
+            name: c.name || "Student Candidate",
+            email: c.email || "",
+            exam: c.examTitle || "Live Examination",
+            progress: c.progress ? Math.round((c.progress.answered / c.progress.total) * 100) : 0,
+            timeRemaining: c.remainingSeconds ? `${Math.floor(c.remainingSeconds / 60)}:${String(c.remainingSeconds % 60).padStart(2, "0")}` : "--:--",
+            tabSwitches: c.proctoring?.tabSwitchCount || 0,
+            focusLossCount: c.proctoring?.tabSwitchCount || 0,
+            status: c.status === "In Progress" ? "Normal" : c.status === "Completed" ? "Normal" : "Warning",
+            lastPing: new Date().toLocaleTimeString(),
+          }));
+          setStudents((prev) => {
+            // merge HTTP candidates with socket ones; prefer HTTP if socket empty
+            if (mapped.length > 0) return mapped;
+            return prev;
+          });
+        }
+      } catch {}
+    };
+    pollHttp();
+    pollTimer = setInterval(pollHttp, 5000);
 
     return () => {
-      socket.off("monitoring:candidates_update", handleUpdate);
-      socket.off("monitoring:video_frame", handleVideoFrame);
+      socket?.off("monitoring:candidates_update", handleUpdate);
+      socket?.off("monitoring:video_frame", handleVideoFrame);
+      if (pollTimer) clearInterval(pollTimer);
     };
   }, []);
 
@@ -1825,19 +1915,30 @@ export function MonitoringPanel() {
       try {
         if (teacherPcRef.current && data.studentId === targetStudentId) {
           await teacherPcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+          await flushPending();
         }
       } catch (err) {
         console.warn("Error setting remote description on teacher:", err);
       }
     };
 
+    const pendingIceRef = { current: [] as RTCIceCandidateInit[] } as { current: RTCIceCandidateInit[] };
     const handleIceCandidate = async (data: { fromStudentId: string; candidate: RTCIceCandidateInit }) => {
       try {
-        if (teacherPcRef.current && data.fromStudentId === targetStudentId && data.candidate) {
-          await teacherPcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        if (!teacherPcRef.current || data.fromStudentId !== targetStudentId || !data.candidate) return;
+        if (!teacherPcRef.current.remoteDescription) {
+          pendingIceRef.current.push(data.candidate);
+          return;
         }
+        await teacherPcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
       } catch (err) {
         console.warn("Error adding ICE candidate on teacher:", err);
+      }
+    };
+    const flushPending = async () => {
+      if (!teacherPcRef.current?.remoteDescription) return;
+      for (const c of pendingIceRef.current.splice(0)) {
+        try { await teacherPcRef.current.addIceCandidate(new RTCIceCandidate(c)); } catch {}
       }
     };
 
@@ -1876,6 +1977,28 @@ export function MonitoringPanel() {
       setVideoHasFrames(false);
     };
   }, [inspectingStudent?.id]);
+
+  // Recent results snapshot for monitoring (from Results & Transcripts)
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        const res = await examService.getTeacherSubmissions();
+        const list = res?.data || [];
+        // Filter by selected exam if needed, keep latest 5
+        let filtered = list;
+        if (selectedExamFilter !== "all") {
+          filtered = list.filter((r: any) => (r.examTitle || r.exam) === selectedExamFilter);
+        }
+        setMonitorRecentResults(filtered.slice(0, 5));
+        // also populate availableExams for filter dropdown
+        const titles = Array.from(new Set(list.map((r: any) => r.examTitle || r.exam).filter(Boolean)));
+        if (titles.length > 0) setAvailableExams((prev) => (prev.length === 0 ? titles.map((t) => ({ title: t, _id: t })) : prev));
+      } catch {}
+    };
+    fetchRecent();
+    const t = setInterval(fetchRecent, 10000);
+    return () => clearInterval(t);
+  }, [selectedExamFilter]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -2000,6 +2123,84 @@ export function MonitoringPanel() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Auto Violation Log — Tab-switch / Face-missing Red Flag */}
+      {violationLogs.length > 0 && (
+        <Card className="rounded-3xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/20 overflow-hidden">
+          <CardHeader className="p-4 border-b border-rose-200 dark:border-rose-900/40 flex flex-row items-center justify-between">
+            <CardTitle className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4" /> Auto Violation Log — Red Flag
+            </CardTitle>
+            <button onClick={() => setViolationLogs([])} className="text-[11px] font-bold text-rose-600 hover:underline">
+              Clear
+            </button>
+          </CardHeader>
+          <CardContent className="p-0 max-h-48 overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-rose-100/60 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300">
+                <tr>
+                  <th className="px-4 py-2">Time</th>
+                  <th className="px-4 py-2">Student</th>
+                  <th className="px-4 py-2">Exam</th>
+                  <th className="px-4 py-2">Reason</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rose-100 dark:divide-rose-900/30">
+                {violationLogs.map((log, idx) => (
+                  <tr key={idx} className="hover:bg-rose-100/40">
+                    <td className="px-4 py-2 font-mono text-rose-900 dark:text-rose-100">{log.time}</td>
+                    <td className="px-4 py-2 font-bold text-slate-800 dark:text-slate-100">{log.student}</td>
+                    <td className="px-4 py-2 text-slate-600 dark:text-slate-300">{log.exam}</td>
+                    <td className="px-4 py-2">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                        <AlertTriangle className="h-3 w-3" /> {log.reason}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Results Snapshot (from Transcripts) */}
+      {monitorRecentResults.length > 0 && (
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90">
+          <CardHeader className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+            <CardTitle className="text-xs font-bold text-[#152234] dark:text-white flex items-center gap-2">
+              <FileCheck2 className="h-4 w-4 text-[#0092E3]" /> Recent Results — Quick View
+            </CardTitle>
+            <span className="text-[11px] text-slate-400">Latest 5 submissions</span>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-400">
+                <tr>
+                  <th className="px-4 py-2">Student</th>
+                  <th className="px-4 py-2">Exam</th>
+                  <th className="px-4 py-2">Score</th>
+                  <th className="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {monitorRecentResults.map((r: any) => (
+                  <tr key={r.id || r.submissionId} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-2 font-semibold text-slate-800 dark:text-slate-100">{r.studentName || r.student || "Student"}</td>
+                    <td className="px-4 py-2 text-slate-600 dark:text-slate-300">{r.examTitle || r.exam}</td>
+                    <td className="px-4 py-2 font-bold text-[#0092E3]">{r.percentage ?? Math.round((r.score / (r.totalMarks || 100)) * 100)}%</td>
+                    <td className="px-4 py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.isPassed || r.status === "Pass" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {r.isPassed || r.status === "Pass" ? "Pass" : "Fail"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Live Monitoring Table */}
       <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
@@ -2964,6 +3165,7 @@ export function EvaluationPanel() {
 
 interface ExamResultRecord {
   id: string;
+  examId?: string;
   student: string;
   email: string;
   exam: string;
@@ -2979,24 +3181,13 @@ interface ExamResultRecord {
 const initialResultRows: ExamResultRecord[] = [];
 
 export function ResultsPanel() {
-  const [results, setResults] = useState<ExamResultRecord[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("testify_teacher_results");
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {}
-      }
-    }
-    return [];
-  });
-  const [activeTab, setActiveTab] = useState<"transcripts" | "gradebook" | "earnings">("transcripts");
+  const [results, setResults] = useState<ExamResultRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<"transcripts" | "gradebook">("gradebook");
   const [query, setQuery] = useState("");
   const [selectedExam, setSelectedExam] = useState("All Exams");
   const [selectedResult, setSelectedResult] = useState<ExamResultRecord | null>(null);
   const [isPublished, setIsPublished] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
-  const [earnings, setEarnings] = useState<TeacherEarningsSummary | null>(null);
 
   const { data: sessionData } = authClient.useSession();
   const currentUser = sessionData?.user;
@@ -3004,12 +3195,31 @@ export function ResultsPanel() {
   useEffect(() => {
     let isMounted = true;
     async function loadTeacherSubmissions() {
+      const emailKey = (currentUser?.email || "").toLowerCase().trim();
+      const cacheKey = emailKey ? `testify_teacher_results_${emailKey}` : "testify_teacher_results";
+      // per-teacher cache first
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+            // dedup cached as well (old cache may have duplicates)
+            const cMap = new Map<string, any>();
+            for (const r of parsed) {
+              const k = `${(r.email || "").toLowerCase().trim()}::${(r.exam || "").toLowerCase().trim()}`;
+              if (!cMap.has(k)) cMap.set(k, r);
+            }
+            setResults(Array.from(cMap.values()));
+          }
+        }
+      } catch {}
       try {
         const res = await apiClient.get('/exams/teacher/submissions/all');
-        if (isMounted && res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: ExamResultRecord[] = res.data.map((sub: any, idx: number) => ({
-            rank: `#${idx + 1}`,
+        if (isMounted && res && res.success && Array.isArray(res.data)) {
+          const rawMapped: ExamResultRecord[] = res.data.map((sub: any, idx: number) => ({
+            rank: idx + 1,
             id: String(sub.id || sub.submissionId || `res-${idx}`),
+            examId: String(sub.examId || ""),
             student: sub.studentName || 'Student Candidate',
             email: sub.studentEmail || 'student@testify.local',
             exam: sub.examTitle || 'Academic Examination',
@@ -3021,38 +3231,38 @@ export function ResultsPanel() {
             submitted: sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent Session',
             answers: sub.answers || [],
           }));
+          // Deduplicate by student+exam to remove duplicate submissions professionally
+          const dedupedMap = new Map<string, ExamResultRecord>();
+          for (const r of rawMapped) {
+            const key = `${r.email.toLowerCase().trim()}::${r.exam.toLowerCase().trim()}`;
+            if (!dedupedMap.has(key)) dedupedMap.set(key, r);
+            else {
+              // keep latest (higher percentage)
+              const prev = dedupedMap.get(key)!;
+              if (r.percentage > prev.percentage) dedupedMap.set(key, r);
+            }
+          }
+          const mapped = Array.from(dedupedMap.values()).map((r, idx) => ({ ...r, rank: idx + 1 }));
           setResults(mapped);
-          localStorage.setItem('testify_teacher_results', JSON.stringify(mapped));
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(mapped));
+            // clear legacy global cache to prevent cross-teacher leak
+            localStorage.removeItem("testify_teacher_results");
+          } catch {}
+        } else if (isMounted) {
+          setResults([]);
         }
       } catch (err) {
         console.warn('Backend teacher submissions fetch fallback:', err);
+        if (isMounted) setResults([]);
       }
     }
-    loadTeacherSubmissions();
+    if (currentUser?.email) loadTeacherSubmissions();
+    else if (!currentUser) setResults([]);
     return () => { isMounted = false; };
-  }, []);
-
-  useEffect(() => {
-    async function loadEarnings() {
-      try {
-        const revRes = await paymentService.getTeacherRevenue();
-        if (revRes && revRes.data) {
-          setEarnings(revRes.data);
-          return;
-        }
-      } catch (err) {
-        console.warn("Backend revenue fetch fallback to isolated local state:", err);
-      }
-
-      if (currentUser?.email) {
-        const localData = purchaseService.getTeacherEarnings(currentUser.email);
-        setEarnings(localData);
-      } else {
-        setEarnings(purchaseService.getTeacherEarnings("__NO_TEACHER__"));
-      }
-    }
-    loadEarnings();
   }, [currentUser?.email]);
+
+
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -3084,15 +3294,24 @@ export function ResultsPanel() {
       : 0;
 
   const handleExportCSV = () => {
-    const headers = ["Rank", "Student", "Email", "Exam", "Score", "Max Score", "Percentage", "Grade", "Status", "Submitted"];
-    const rows = results.map((r) => [r.rank, r.student, r.email, r.exam, r.score, r.maxScore, `${r.percentage}%`, r.grade, r.status, r.submitted]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const dataSource = filtered.length > 0 ? filtered : results;
+    if (dataSource.length === 0) {
+      showToast("No results to export");
+      return;
+    }
+    const headers = ["Rank", "Candidate", "Exam", "Mark", "Grade", "Status", "Submitted"];
+    const rows = dataSource.map((r) => [r.rank, r.student, r.exam, `${r.score}/${r.maxScore} (${r.percentage}%)`, r.grade, r.status, r.submitted]);
+    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "Testify_Exam_Results_Gradebook.csv");
+    link.href = url;
+    link.download = `Testify_Gradebook_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Gradebook exported (${dataSource.length} records)`);
   };
 
   return (
@@ -3146,19 +3365,8 @@ export function ResultsPanel() {
         </div>
       </div>
 
-      {/* Tab Switcher */}
+      {/* Tab Switcher — Grade Sheet first */}
       <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 w-fit">
-        <button
-          onClick={() => setActiveTab("transcripts")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "transcripts"
-              ? "bg-white dark:bg-slate-800 text-[#152234] dark:text-white shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          Candidate Transcripts & Results
-        </button>
-
         <button
           onClick={() => setActiveTab("gradebook")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -3167,103 +3375,67 @@ export function ResultsPanel() {
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          Class Gradebook & Analytics ({totalSubmissions})
+          Grade Sheet & Analytics ({totalSubmissions})
         </button>
 
         <button
-          onClick={() => setActiveTab("earnings")}
+          onClick={() => setActiveTab("transcripts")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "earnings"
+            activeTab === "transcripts"
               ? "bg-white dark:bg-slate-800 text-[#152234] dark:text-white shadow-sm"
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          💰 Paid Exam Earnings
+          Candidate Transcripts
         </button>
+
       </div>
 
       {activeTab === "transcripts" ? (
-        <AdmissionPanel isResultsView={true} hideHeader={true} />
-      ) : activeTab === "earnings" ? (
-        /* Teacher Earnings & Revenue View */
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-4">
-            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Paid Exams Sold</span>
-              <p className="text-2xl font-black text-[#152234] dark:text-white font-display mt-1">
-                {earnings?.totalSalesCount || 14}
-              </p>
-            </Card>
-
-            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Gross Sales Volume</span>
-              <p className="text-2xl font-black text-[#0092E3] dark:text-cyan-400 font-display mt-1">
-                ${earnings?.grossRevenue || 0}.00
-              </p>
-            </Card>
-
-            <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 bg-white/80 dark:bg-slate-900/80">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Platform Fee (15%)</span>
-              <p className="text-2xl font-black text-rose-500 font-display mt-1">
-                ${earnings?.platformFees || 0}.00
-              </p>
-            </Card>
-
-            <Card className="rounded-3xl border border-emerald-200 dark:border-emerald-800 shadow-sm p-5 bg-emerald-50/50 dark:bg-emerald-950/30">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Teacher Net Earnings</span>
-              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display mt-1">
-                ${earnings?.teacherEarnings || 0}.00
-              </p>
-            </Card>
-          </div>
-
-          <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90 p-5 space-y-4">
-            <h3 className="text-base font-bold font-display text-slate-900 dark:text-white">
-              Recent Paid Exam Transactions
-            </h3>
-
-            <div className="overflow-x-auto">
+        <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white/90 dark:bg-slate-900/90">
+          <CardHeader className="p-5 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-sm font-bold text-[#152234] dark:text-white">Candidate Transcripts — Your Exams Only</CardTitle>
+            <p className="text-xs text-slate-400">Filtered by your exams (isolated per teacher)</p>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            {filtered.length === 0 ? (
+              <div className="p-12 text-center text-xs text-slate-400">No transcripts for your exams yet.</div>
+            ) : (
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold">
-                    <th className="pb-3">Candidate</th>
-                    <th className="pb-3">Exam Paper</th>
-                    <th className="pb-3">Gateway</th>
-                    <th className="pb-3">Transaction ID</th>
-                    <th className="pb-3">Amount</th>
-                    <th className="pb-3 text-right">Status</th>
+                <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3">Candidate</th>
+                    <th className="px-5 py-3">Exam</th>
+                    <th className="px-5 py-3">Submitted</th>
+                    <th className="px-5 py-3 text-right">Transcript</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {earnings?.recentTransactions && earnings.recentTransactions.length > 0 ? (
-                    earnings.recentTransactions.map((tx) => (
-                      <tr key={tx.id}>
-                        <td className="py-3 font-semibold text-slate-800 dark:text-slate-200">{tx.studentName || tx.studentEmail || "Student"}</td>
-                        <td className="py-3 text-slate-600 dark:text-slate-400">{tx.examTitle}</td>
-                        <td className="py-3 font-mono">{tx.paymentProvider}</td>
-                        <td className="py-3 font-mono text-slate-500">{tx.transactionId}</td>
-                        <td className="py-3 font-bold text-emerald-600">${tx.amount}.00</td>
-                        <td className="py-3 text-right">
-                          <Badge variant="success">{tx.paymentStatus}</Badge>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="py-6 text-center text-slate-400 text-xs font-medium">
-                        No sales transactions recorded yet.
+                  {filtered.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/50">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 font-bold text-xs flex items-center justify-center">{r.student.charAt(0)}</div>
+                          <span className="font-bold text-slate-900 dark:text-white">{r.student}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-slate-600 dark:text-slate-300 font-medium">{r.exam}</td>
+                      <td className="px-5 py-3 text-slate-500 font-mono text-xs">{r.submitted}</td>
+                      <td className="px-5 py-3 text-right">
+                        <Button size="sm" onClick={() => setSelectedResult(r)} className="bg-[#0092E3] hover:bg-[#007AC9] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-blue-500/20">
+                          <span className="flex items-center gap-1.5"><FileCheck2 className="h-3.5 w-3.5" /> View Transcript</span>
+                        </Button>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
-            </div>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       ) : (
-        /* Standard Gradebook View */
         <>
-          {/* Stats Cards */}
+          {/* Gradebook Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-4">
             <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <CardContent className="flex items-center gap-3.5 p-5">
@@ -3355,11 +3527,9 @@ export function ResultsPanel() {
             <table className="w-full min-w-[720px] text-left text-xs">
               <thead className="bg-slate-50/80 dark:bg-slate-950/60 uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <th className="px-5 py-3">Rank</th>
                   <th className="px-5 py-3">Candidate</th>
                   <th className="px-5 py-3">Exam</th>
-                  <th className="px-5 py-3">Score</th>
-                  <th className="px-5 py-3">Percentage</th>
+                  <th className="px-5 py-3">Mark</th>
                   <th className="px-5 py-3">Grade</th>
                   <th className="px-5 py-3 text-right">Details</th>
                 </tr>
@@ -3367,28 +3537,19 @@ export function ResultsPanel() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filtered.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/30">
-                    <td className="px-5 py-3.5 font-mono font-bold text-slate-400">
-                      #{row.rank}
-                    </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-cyan-950 text-[#0092E3] font-bold text-[11px] flex items-center justify-center">
                           {row.student.charAt(0)}
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{row.student}</p>
-                          <p className="text-[10px] text-slate-400">{row.email}</p>
-                        </div>
+                        <p className="font-bold text-slate-900 dark:text-white">{row.student}</p>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
                       {row.exam}
                     </td>
                     <td className="px-5 py-3.5 font-bold font-mono text-slate-900 dark:text-white">
-                      {row.score} / {row.maxScore}
-                    </td>
-                    <td className="px-5 py-3.5 font-bold font-mono text-[#0092E3]">
-                      {row.percentage}%
+                      {row.score} / {row.maxScore} <span className="text-[#0092E3]">({row.percentage}%)</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
@@ -3398,7 +3559,7 @@ export function ResultsPanel() {
                           ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
                           : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
                       }`}>
-                        {row.grade} ({row.status})
+                        {row.grade}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">

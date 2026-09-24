@@ -70,14 +70,9 @@ const roleNavItems: Record<string, NavItem[]> = {
       icon: <BookOpen className="h-5 w-5" />,
     },
     {
-      label: "Students",
-      href: "/teacher/students",
-      icon: <GraduationCap className="h-5 w-5" />,
-    },
-    {
-      label: "Monitoring",
+      label: "Students & Monitoring",
       href: "/teacher/monitoring",
-      icon: <Activity className="h-5 w-5" />,
+      icon: <Users className="h-5 w-5" />,
     },
     {
       label: "Results",

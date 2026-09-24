@@ -343,7 +343,7 @@ export default function PracticeHistoryPage() {
                     <tbody>
                       {filteredHistory.map((item, index) => (
                         <motion.tr
-                          key={item.id}
+                          key={(item as any)._id || item.id || index}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.4 + index * 0.05 }}

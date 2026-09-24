@@ -71,58 +71,47 @@ export function getExamTimingStatus(exam: ExamItem, now: Date = new Date()): Exa
     return "draft";
   }
 
-  // 1. Precise ISO timestamps
+  // 1. Flexible or open published exams stay LIVE indefinitely for candidates
+  if ((exam.scheduleType === "flexible" || !exam.startDateTime) && (exam.status === "Published" || exam.status === "Ready")) {
+    return "live";
+  }
+
+  // 2. Precise ISO timestamps for scheduled exams
   if (exam.startDateTime) {
     const start = new Date(exam.startDateTime);
     if (!isNaN(start.getTime())) {
-      let end: Date;
+      let end: Date | null = null;
       if (exam.endDateTime) {
         const parsedEnd = new Date(exam.endDateTime);
-        end = !isNaN(parsedEnd.getTime()) ? parsedEnd : new Date(start.getTime() + (exam.duration || 60) * 60 * 1000);
-      } else {
-        end = new Date(start.getTime() + (exam.duration || 60) * 60 * 1000);
+        if (!isNaN(parsedEnd.getTime())) end = parsedEnd;
       }
 
       if (now < start) {
         return "upcoming";
-      } else if (now >= start && now <= end) {
+      } else if (end && now >= start && now <= end) {
         return "live";
-      } else {
+      } else if (!end && now >= start) {
+        // If no explicit endDateTime is set, flexible or published exams remain live
+        if (exam.scheduleType === "flexible" || exam.status === "Published" || exam.status === "Ready") {
+          return "live";
+        }
+        const fallbackEnd = new Date(start.getTime() + (exam.duration || 60) * 60 * 1000);
+        return now <= fallbackEnd ? "live" : "finished";
+      } else if (end && now > end) {
+        if (exam.scheduleType === "flexible" && (exam.status === "Published" || exam.status === "Ready")) {
+          return "live";
+        }
         return "finished";
       }
     }
   }
 
-  // 2. Text heuristics
-  const dateStr = (exam.date || "").trim();
-  if (dateStr.toLowerCase() === "active") {
+  // 3. Text heuristics
+  const dateStr = (exam.date || "").trim().toLowerCase();
+  if (dateStr === "active" || dateStr.includes("flexible") || dateStr.includes("open")) {
     return "live";
   }
 
-  // 3. Time range string like "Sep 9, 02:29 PM - 03:07 PM"
-  if (dateStr.includes("-") && (dateStr.includes("AM") || dateStr.includes("PM") || dateStr.includes(":"))) {
-    try {
-      const parts = dateStr.split(",");
-      if (parts.length >= 2) {
-        const datePart = parts[0].trim();
-        const times = parts[1].split("-");
-        if (times.length === 2) {
-          const startStr = times[0].trim();
-          const endStr = times[1].trim();
-          const curYear = now.getFullYear();
-          const s = new Date(`${datePart}, ${curYear} ${startStr}`);
-          const e = new Date(`${datePart}, ${curYear} ${endStr}`);
-          if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-            if (now < s) return "upcoming";
-            if (now >= s && now <= e) return "live";
-            return "finished";
-          }
-        }
-      }
-    } catch {}
-  }
-
-  // 4. Default fallback by status
   if (exam.status === "Scheduled") {
     return "upcoming";
   }
@@ -159,64 +148,25 @@ export interface ExamItem {
   questions?: any[];
 }
 
-// Robust deduplication utility guaranteeing unique exams per teacher
+// Deduplication by canonical identifiers only — never by title
 export function deduplicateExams(exams: ExamItem[]): ExamItem[] {
   const seenIds = new Set<string>();
   const seenCodes = new Set<string>();
   const seenTokens = new Set<string>();
-  const seenTitles = new Map<string, ExamItem>();
-
   const result: ExamItem[] = [];
-
   for (const exam of exams) {
-    if (!exam || !exam.title) continue;
-
-    const teacher = (exam.teacherEmail || exam.createdBy || "").toLowerCase().trim();
-    const cleanTitle = exam.title.trim().toLowerCase();
-    const titleKey = `${teacher}::${cleanTitle}`;
-
-    // 1. Direct ID match
-    if (exam.id && seenIds.has(exam.id)) {
-      continue;
-    }
-
-    // 2. Direct joinCode match
-    if (exam.joinCode && seenCodes.has(exam.joinCode.toLowerCase())) {
-      continue;
-    }
-
-    // 3. Direct accessToken match
-    if (exam.accessToken && seenTokens.has(exam.accessToken)) {
-      continue;
-    }
-
-    // 4. Same teacher + same title match
-    if (seenTitles.has(titleKey)) {
-      const existing = seenTitles.get(titleKey)!;
-      if (existing.subject === "General" && exam.subject && exam.subject !== "General") {
-        existing.subject = exam.subject;
-      }
-      if ((existing.date === "Active" || !existing.date) && exam.date && exam.date !== "Active") {
-        existing.date = exam.date;
-      }
-      if (exam.startDateTime) existing.startDateTime = exam.startDateTime;
-      if (exam.endDateTime) existing.endDateTime = exam.endDateTime;
-      if (exam.questions && exam.questions.length > (existing.questions?.length || 0)) {
-        existing.questions = exam.questions;
-      }
-      if (exam.id && exam.id.length === 24 && existing.id.length !== 24) {
-        existing.id = exam.id;
-      }
-      continue;
-    }
-
-    if (exam.id) seenIds.add(exam.id);
-    if (exam.joinCode) seenCodes.add(exam.joinCode.toLowerCase());
-    if (exam.accessToken) seenTokens.add(exam.accessToken);
-    seenTitles.set(titleKey, exam);
+    if (!exam || !exam.id) continue;
+    const idStr = String(exam.id || "").trim();
+    const codeStr = String(exam.joinCode || "").toLowerCase().trim();
+    const tokenStr = String(exam.accessToken || "").trim();
+    if (idStr && seenIds.has(idStr)) continue;
+    if (codeStr && seenCodes.has(codeStr)) continue;
+    if (tokenStr && seenTokens.has(tokenStr)) continue;
+    if (idStr) seenIds.add(idStr);
+    if (codeStr) seenCodes.add(codeStr);
+    if (tokenStr) seenTokens.add(tokenStr);
     result.push(exam);
   }
-
   return result;
 }
 
@@ -364,27 +314,25 @@ export default function TeacherExamsPage() {
     return examsList.filter((exam) => getExamTimingStatus(exam, currentTime) === selectedFilter);
   }, [examsList, selectedFilter, currentTime]);
 
-  // Load exams belonging strictly to the currently logged in teacher
+  // Load exams — DB is source of truth, localStorage only fallback/cache
   React.useEffect(() => {
     async function loadExams() {
       try {
         const userEmail = session?.user?.email;
-        let myExams: ExamItem[] = [];
-
-        const stored = localStorage.getItem("testify_teacher_exams");
-        if (stored && userEmail) {
-          const allExams: ExamItem[] = JSON.parse(stored);
-          myExams = allExams.filter(
-            (e) => e.teacherEmail === userEmail || e.createdBy === userEmail
-          );
-        }
-
-        // Also fetch from real backend database
+        let apiExamsList: ExamItem[] = [];
+        let fetchedFromApi = false;
         try {
-          const res = await examService.getAllExams();
-          if (res.data && res.data.length > 0 && userEmail) {
-            const apiExams: ExamItem[] = res.data
-              .filter((item: any) => item.teacherEmail === userEmail || item.creatorEmail === userEmail || item.teacherId === (session?.user as any)?.id)
+          const res = await examService.getAllExams({ mine: true });
+          if (res.data && Array.isArray(res.data) && userEmail) {
+            fetchedFromApi = true;
+            apiExamsList = res.data
+              .filter((item: any) => {
+                const myEmail = userEmail.toLowerCase().trim();
+                const itemEmail = (item.teacherEmail || "").toLowerCase().trim();
+                const myUserId = (session?.user as any)?.id;
+                const itemTeacherId = item.teacherId;
+                return (itemEmail && itemEmail === myEmail) || (itemTeacherId && myUserId && String(itemTeacherId) === String(myUserId));
+              })
               .map((item: any) => {
                 let formattedDate = item.date;
                 if (!formattedDate && item.startDateTime) {
@@ -393,12 +341,9 @@ export default function TeacherExamsPage() {
                     if (item.endDateTime) {
                       const eDate = new Date(item.endDateTime);
                       formattedDate = `${sDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${sDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${eDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                    } else {
-                      formattedDate = sDate.toLocaleDateString();
-                    }
+                    } else formattedDate = sDate.toLocaleDateString();
                   } catch {}
                 }
-
                 return {
                   id: String(item.id || item._id),
                   title: item.title,
@@ -410,60 +355,47 @@ export default function TeacherExamsPage() {
                   endDateTime: item.endDateTime,
                   duration: item.durationMinutes || 60,
                   totalMarks: item.totalMarks || 50,
-                  passMark: Math.round((item.totalMarks || 50) * (item.passPercentage || 40) / 100),
+                  passMark: item.passMark || item.passMarks || Math.round((item.totalMarks || 50) * 0.4),
                   studentsCount: item.totalEnrolled || 0,
-                  status: (item.status === "PUBLISHED" || item.isPublished) ? "Published" : "Draft",
-                  accessType: (item.accessType === "PAID" || Number(item.price) > 0) ? "PAID" : "FREE",
+                  status: String(item.status || (item.isPublished ? "published" : "draft")).toLowerCase() === "published" || String(item.status).toLowerCase() === "scheduled" ? "Published" : "Draft",
+                  accessType: String(item.accessType || "").toUpperCase() === "PAID" || Number(item.price) > 0 ? "PAID" : "FREE",
                   price: item.price || 0,
                   joinCode: item.joinCode,
                   accessToken: item.accessToken,
                   teacherEmail: userEmail,
+                  teacherId: (session?.user as any)?.id,
                   createdBy: userEmail,
                   questions: item.questions || [],
+                  requireCamera: Boolean(item.requireCamera),
                 };
               });
-
-            // Merge apiExams with myExams intelligently without creating duplicate cards
-            apiExams.forEach((ae) => {
-              const localIndex = myExams.findIndex(
-                (m) =>
-                  m.id === ae.id ||
-                  (m.joinCode && ae.joinCode && m.joinCode.toLowerCase() === ae.joinCode.toLowerCase()) ||
-                  (m.accessToken && ae.accessToken && m.accessToken === ae.accessToken) ||
-                  (m.title.trim().toLowerCase() === ae.title.trim().toLowerCase())
-              );
-
-              if (localIndex >= 0) {
-                const local = myExams[localIndex];
-                myExams[localIndex] = {
-                  ...ae,
-                  ...local,
-                  id: ae.id, // Prefer permanent MongoDB ID
-                  subject: (local.subject && local.subject !== "General") ? local.subject : ae.subject,
-                  date: (local.date && local.date !== "Active") ? local.date : ae.date,
-                  questions: (local.questions && local.questions.length > 0) ? local.questions : ae.questions,
-                };
-              } else {
-                myExams.unshift(ae);
-              }
-            });
           }
-        } catch {
-          // Backend offline fallback
+        } catch {}
+
+        let finalList: ExamItem[] = [];
+        if (fetchedFromApi) {
+          finalList = deduplicateExams(apiExamsList);
+        } else {
+          const stored = localStorage.getItem("testify_teacher_exams");
+          if (stored && userEmail) {
+            try {
+              const allExams: ExamItem[] = JSON.parse(stored);
+              const lower = userEmail.toLowerCase().trim();
+              finalList = deduplicateExams(allExams.filter((e) => (e.teacherEmail && e.teacherEmail.toLowerCase().trim() === lower) || (e.createdBy && e.createdBy.toLowerCase().trim() === lower) || (e.teacherId && String(e.teacherId) === String((session?.user as any)?.id))));
+            } catch {}
+          }
         }
 
-        const cleanList = deduplicateExams(myExams);
-        setExamsList(cleanList);
-
-        // Permanently purge any duplicate records in localStorage
+        setExamsList(finalList);
+        // Write canonical API list to cache for offline, preserve other teachers
         try {
-          const stored = localStorage.getItem("testify_teacher_exams");
-          let allExams: ExamItem[] = stored ? JSON.parse(stored) : [];
-          if (userEmail) {
+          if (fetchedFromApi && userEmail) {
+            const stored = localStorage.getItem("testify_teacher_exams");
+            let allExams: ExamItem[] = stored ? JSON.parse(stored) : [];
             allExams = allExams.filter((e) => e.teacherEmail !== userEmail && e.createdBy !== userEmail);
+            allExams = [...finalList, ...allExams];
+            localStorage.setItem("testify_teacher_exams", JSON.stringify(deduplicateExams(allExams)));
           }
-          allExams = [...cleanList, ...allExams];
-          localStorage.setItem("testify_teacher_exams", JSON.stringify(deduplicateExams(allExams)));
         } catch {}
       } catch {
         setExamsList([]);
@@ -472,6 +404,21 @@ export default function TeacherExamsPage() {
       }
     }
     loadExams();
+
+    // Cross-tab sync: refetch when another tab mutates exams
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "testify_teacher_exams" || e.key === "testify_public_exams_updated") loadExams();
+    };
+    const onCustom = () => loadExams();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("testify_public_exams_updated", onCustom as any);
+    const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("testify_exams") : null;
+    bc?.addEventListener("message", onCustom as any);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("testify_public_exams_updated", onCustom as any);
+      bc?.close();
+    };
   }, [session?.user?.email]);
 
   // Sync to localStorage on state change preserving other teachers' data
@@ -482,20 +429,17 @@ export default function TeacherExamsPage() {
       const userEmail = session?.user?.email;
       const stored = localStorage.getItem("testify_teacher_exams");
       let allExams: ExamItem[] = stored ? JSON.parse(stored) : [];
-
-      // Remove current teacher's previous exams from allExams and insert updated
       if (userEmail) {
         allExams = allExams.filter((e) => e.teacherEmail !== userEmail && e.createdBy !== userEmail);
       }
       allExams = [...cleanList, ...allExams];
-
       localStorage.setItem("testify_teacher_exams", JSON.stringify(deduplicateExams(allExams)));
+      localStorage.setItem("testify_public_exams_updated", String(Date.now()));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("testify_public_exams_updated"));
+        try { new BroadcastChannel("testify_exams").postMessage("updated"); } catch {}
       }
-    } catch {
-      // Fallback
-    }
+    } catch {}
   };
 
   // Form State
@@ -580,7 +524,7 @@ export default function TeacherExamsPage() {
     setTotalMarks(exam.totalMarks);
     setPassMark(exam.passMark);
     setStatus(exam.status);
-    setAccessType(exam.accessType || "FREE");
+    setAccessType(String(exam.accessType || "FREE").toUpperCase() === "PAID" ? "PAID" : "FREE");
     setPrice(exam.price || 0);
     setIsModalOpen(true);
   };
@@ -617,32 +561,8 @@ export default function TeacherExamsPage() {
     }
 
     if (editingExam) {
-      const updated: ExamItem[] = examsList.map((item) =>
-        item.id === editingExam.id
-          ? {
-              ...item,
-              title: title.trim(),
-              subject: subject.trim(),
-              description: description.trim(),
-              date: formattedSchedule || date,
-              startDateTime,
-              endDateTime,
-              duration: Number(duration),
-              totalMarks: Number(totalMarks),
-              passMark: Number(passMark),
-              status,
-              accessType,
-              price: finalPrice,
-              requireCamera: Boolean(requireCamera),
-              teacherId: item.teacherId || session?.user?.id || session?.user?.email || "",
-              teacherName: item.teacherName || session?.user?.name || "Instructor",
-              teacherEmail: item.teacherEmail || session?.user?.email || "",
-            }
-          : item
-      );
-      updateExamsState(updated);
       try {
-        await examService.updateExam(editingExam.id, {
+        const res = await examService.updateExam(editingExam.id, {
           title: title.trim(),
           category: subject.trim(),
           subject: subject.trim(),
@@ -658,16 +578,46 @@ export default function TeacherExamsPage() {
           accessToken: editingExam.accessToken,
           status: status === "Published" ? "PUBLISHED" : status === "Scheduled" ? "PUBLISHED" : "DRAFT",
           requireCamera: Boolean(requireCamera),
+          questions: editingExam.questions || [],
         });
-      } catch {}
-      window.dispatchEvent(new CustomEvent("testify_public_exams_updated"));
-      showToast("Exam updated successfully!");
-      setIsModalOpen(false);
+        const updatedItem = res?.data;
+        const updated: ExamItem[] = examsList.map((item) =>
+          item.id === editingExam.id
+            ? {
+                ...item,
+                title: title.trim(),
+                subject: subject.trim(),
+                description: description.trim(),
+                date: formattedSchedule || date,
+                startDateTime,
+                endDateTime,
+                duration: Number(duration),
+                totalMarks: Number(totalMarks),
+                passMark: Number(passMark),
+                status,
+                accessType,
+                price: finalPrice,
+                requireCamera: Boolean(requireCamera),
+                teacherId: item.teacherId || session?.user?.id || "",
+                teacherName: item.teacherName || session?.user?.name || "Instructor",
+                teacherEmail: item.teacherEmail || session?.user?.email || "",
+                questions: updatedItem?.questions || item.questions,
+              }
+            : item
+        );
+        updateExamsState(updated);
+        window.dispatchEvent(new CustomEvent("testify_public_exams_updated"));
+        try { new BroadcastChannel("testify_exams").postMessage("updated"); } catch {}
+        try { localStorage.setItem("testify_public_exams_updated", String(Date.now())); } catch {}
+        showToast("Exam updated successfully!");
+        setIsModalOpen(false);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || "Failed to update exam";
+        showToast(msg);
+      }
     } else {
-      let createdId = String(Date.now());
       const joinCode = generateJoinCode(subject);
       const accessToken = generateAccessToken();
-
       try {
         const res = await examService.createExam({
           title: title.trim(),
@@ -687,53 +637,102 @@ export default function TeacherExamsPage() {
           requireCamera: Boolean(requireCamera),
           questions: [],
         });
-        if (res && res.data && res.data._id) {
-          createdId = String(res.data._id);
-        }
-      } catch {}
-
-      const newExam: ExamItem = {
-        id: createdId,
-        title: title.trim(),
-        subject: subject.trim(),
-        description: description.trim(),
-        date: formattedSchedule || date || "Scheduled Soon",
-        startDateTime,
-        endDateTime,
-        duration: Number(duration) || 60,
-        totalMarks: Number(totalMarks) || 50,
-        passMark: Number(passMark) || 20,
-        studentsCount: 0,
-        status: status,
-        accessType,
-        price: finalPrice,
-        joinCode,
-        accessToken,
-        teacherId: session?.user?.id || session?.user?.email || "",
-        teacherName: session?.user?.name || "Instructor",
-        teacherEmail: session?.user?.email || "",
-        createdBy: session?.user?.email || "",
-        questions: [],
-      };
-      updateExamsState([newExam, ...examsList]);
-      showToast("Exam created! Redirecting to Question Setup...");
-      setIsModalOpen(false);
-      // Seamlessly redirect teacher to Question Setup Console
-      router.push(`/teacher/exams/${createdId}/setup`);
+        const createdId = String(res?.data?._id || res?.data?.id || "");
+        if (!createdId) throw new Error("Failed to create exam: no ID returned");
+        const newExam: ExamItem = {
+          id: createdId,
+          title: title.trim(),
+          subject: subject.trim(),
+          description: description.trim(),
+          date: formattedSchedule || date || "Scheduled Soon",
+          startDateTime,
+          endDateTime,
+          duration: Number(duration) || 60,
+          totalMarks: Number(totalMarks) || 50,
+          passMark: Number(passMark) || 20,
+          studentsCount: 0,
+          status: status,
+          accessType,
+          price: finalPrice,
+          joinCode: res?.data?.joinCode || joinCode,
+          accessToken: res?.data?.accessToken || accessToken,
+          teacherId: session?.user?.id || "",
+          teacherName: session?.user?.name || "Instructor",
+          teacherEmail: session?.user?.email || "",
+          createdBy: session?.user?.email || "",
+          questions: res?.data?.questions || [],
+          requireCamera: Boolean(requireCamera),
+        };
+        updateExamsState([newExam, ...examsList]);
+        try { new BroadcastChannel("testify_exams").postMessage("created"); } catch {}
+        try { localStorage.setItem("testify_public_exams_updated", String(Date.now())); } catch {}
+        window.dispatchEvent(new CustomEvent("testify_public_exams_updated"));
+        showToast("Exam created! Redirecting to Question Setup...");
+        setIsModalOpen(false);
+        router.push(`/teacher/exams/${createdId}/setup`);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || "Failed to create exam";
+        showToast(msg);
+      }
     }
   };
 
-  const handleDeleteExam = async (id: string) => {
-    const updated = examsList.filter((item) => item.id !== id);
-    updateExamsState(updated);
+  const handleDeleteExam = async (examOrId: ExamItem | string) => {
+    let targetExam: ExamItem | undefined;
+    let targetId = "";
+
+    if (typeof examOrId === "string") {
+      targetId = examOrId;
+      targetExam = examsList.find((e) => e.id === targetId || (e as any)._id === targetId);
+    } else if (examOrId) {
+      targetExam = examOrId;
+      targetId = examOrId.id || (examOrId as any)._id || "";
+    }
+
+    if (!targetExam && !targetId) return;
+
+    const joinCode = targetExam?.joinCode;
+    const accessToken = targetExam?.accessToken;
+
+    const isTarget = (item: any) => {
+      if (targetId && (item.id === targetId || item._id === targetId)) return true;
+      if (joinCode && item.joinCode && item.joinCode.toLowerCase().trim() === joinCode.toLowerCase().trim()) return true;
+      if (accessToken && item.accessToken && item.accessToken === accessToken) return true;
+      return false;
+    };
+
+    const deleteId = targetId || (targetExam as any)?._id || "";
+    if (!deleteId) {
+      showToast("Cannot delete: missing exam ID");
+      return;
+    }
     try {
-      await examService.deleteExam(id);
-    } catch {}
-    showToast("Exam deleted.");
+      await examService.deleteExam(deleteId);
+      const updated = examsList.filter((item) => !isTarget(item));
+      setExamsList(updated);
+      try {
+        const stored = localStorage.getItem("testify_teacher_exams");
+        if (stored) {
+          let allExams: ExamItem[] = JSON.parse(stored);
+          allExams = allExams.filter((item) => !isTarget(item));
+          localStorage.setItem("testify_teacher_exams", JSON.stringify(deduplicateExams(allExams)));
+        }
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("testify_public_exams_updated"));
+        try { new BroadcastChannel("testify_exams").postMessage("deleted"); } catch {}
+        try { localStorage.setItem("testify_public_exams_updated", String(Date.now())); } catch {}
+      }
+      showToast("Exam deleted successfully.");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to delete exam";
+      showToast(msg);
+    }
   };
 
   const handleToggleStatus = async (id: string) => {
     let newStatus: "Published" | "Scheduled" | "Draft" = "Draft";
+    const prevList = examsList;
     const updated: ExamItem[] = examsList.map((item) => {
       if (item.id === id) {
         newStatus = item.status === "Published" ? "Draft" : "Published";
@@ -746,8 +745,13 @@ export default function TeacherExamsPage() {
       await examService.updateExam(id, {
         status: (newStatus as string) === "Published" ? "PUBLISHED" : "DRAFT",
       });
-    } catch {}
-    showToast(`Exam status updated to ${newStatus}!`);
+      try { new BroadcastChannel("testify_exams").postMessage("updated"); } catch {}
+      showToast(`Exam status updated to ${newStatus}!`);
+    } catch (err: any) {
+      updateExamsState(prevList);
+      const msg = err?.response?.data?.message || err?.message || "Failed to update status";
+      showToast(msg);
+    }
   };
 
   if (!isLoaded) {
@@ -995,11 +999,11 @@ export default function TeacherExamsPage() {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {displayedExams.map((exam) => {
+          {displayedExams.map((exam, index) => {
             const timingStatus = getExamTimingStatus(exam, currentTime);
             const scheduleInfo = getExamScheduleDetails(exam);
             return (
-          <Card key={exam.id} hoverEffect className="flex flex-col justify-between bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+          <Card key={(exam as any)._id || exam.id || index} hoverEffect className="flex flex-col justify-between bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
             <CardHeader className="p-5 pb-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-[#0092E3] dark:bg-cyan-950/60 dark:text-cyan-400">
@@ -1029,7 +1033,7 @@ export default function TeacherExamsPage() {
                     </span>
                   )}
 
-                  {exam.accessType === "PAID" ? (
+                  {String(exam.accessType).toUpperCase() === "PAID" ? (
                     <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                       Paid • ${exam.price || 50}
                     </span>
@@ -1120,7 +1124,7 @@ export default function TeacherExamsPage() {
 
                   <button
                     type="button"
-                    onClick={() => handleDeleteExam(exam.id)}
+                    onClick={() => handleDeleteExam(exam)}
                     className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                     title="Delete Exam"
                   >
