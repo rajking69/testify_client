@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.15.0",
+    "@tanstack/react-query": "^5.103.2",
     "better-auth": "^1.7.1",
     "clsx": "^2.1.1",
     "daisyui": "^5.7.19",
@@ -24,7 +25,9 @@
     "recharts": "^3.10.1",
     "socket.io-client": "^4.8.3",
     "sonner": "^2.0.8",
-    "tailwind-merge": "^3.6.0"
+    "stripe": "^22.6.2",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
