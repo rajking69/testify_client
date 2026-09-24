@@ -140,6 +140,37 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
     loadHistory();
   }, [loadHistory]);
 
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const response = await practiceService.getBookmarks();
+      if (response.success && response.data) {
+        const formattedBookmarks = response.data.map((q: any) => ({
+          ...q,
+          id: q._id || q.id,
+          isBookmarked: true
+        }));
+        setBookmarkedQuestions(formattedBookmarks);
+        // Sync local storage with fresh backend data
+        localStorage.setItem("practice_bookmarks", JSON.stringify(formattedBookmarks));
+      }
+    } catch (error) {
+      console.error("Failed to load bookmarks from backend:", error);
+      // Fallback to localStorage
+      const savedBookmarks = localStorage.getItem("practice_bookmarks");
+      if (savedBookmarks) {
+        try {
+          setBookmarkedQuestions(JSON.parse(savedBookmarks));
+        } catch (e) {
+          console.error("Failed to load bookmarks from localStorage", e);
+        }
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBookmarks();
+  }, [loadBookmarks]);
+
   // Save bookmarks to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(
@@ -188,8 +219,10 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
       const params = {
         category: sessionConfig.subject || sessionConfig.topics[0],
         subject: sessionConfig.subject,
-        topic: sessionConfig.topics.length > 0 ? sessionConfig.topics[0] : undefined,
+        topic: sessionConfig.topics.length === 1 ? sessionConfig.topics[0] : undefined,
+        topics: sessionConfig.topics.length > 0 ? sessionConfig.topics : undefined,
         difficulty: sessionConfig.difficulty.length === 1 ? sessionConfig.difficulty[0].toUpperCase() as "EASY" | "MEDIUM" | "HARD" : undefined,
+        difficulties: sessionConfig.difficulty.length > 0 ? sessionConfig.difficulty.map(d => d.toUpperCase()) : undefined,
         count: sessionConfig.questionCount,
       };
 
@@ -267,41 +300,66 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
       throw new Error("No active session to end");
     }
 
-    // Calculate results locally for immediate feedback
+    // Try to finish session on backend and get correct answers
+    const sessionId = sessionStorage.getItem("practice_session_id");
+    let backendQuestions: any[] = [];
+    if (sessionId) {
+      try {
+        const response = await practiceService.finishSession(sessionId);
+        if (response.data && response.data.questions) {
+          backendQuestions = response.data.questions;
+        }
+      } catch (error) {
+        console.warn("Failed to finish practice session on backend:", error);
+      }
+      sessionStorage.removeItem("practice_session_id");
+    }
+
+    // Merge correct answers from backend if available
+    const populatedQuestions = currentSession.map((q) => {
+      const backendQ = backendQuestions.find(
+        (bq) => String(bq._id) === String(q.id) || String(bq.id) === String(q.id)
+      );
+      if (backendQ) {
+        return {
+          ...q,
+          correctAnswer: backendQ.correctAnswer !== undefined ? backendQ.correctAnswer : q.correctAnswer,
+          correctOptionIndex: backendQ.correctOptionIndex !== undefined ? backendQ.correctOptionIndex : q.correctOptionIndex,
+          explanation: backendQ.explanation !== undefined ? backendQ.explanation : q.explanation,
+        };
+      }
+      return q;
+    });
+
+    // Calculate results locally for immediate feedback using populated questions
     let correctAnswers = 0;
 
-    currentSession.forEach((question) => {
+    populatedQuestions.forEach((question) => {
       const userAnswer = userAnswers[question.id];
       if (userAnswer !== undefined && userAnswer !== null) {
-        const directMatch =
-          userAnswer === question.correctAnswer ||
-          String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
-          (question.correctOptionIndex !== undefined && Number(userAnswer) === Number(question.correctOptionIndex));
+        let isCorrect = false;
+        if (question.correctOptionIndex !== undefined) {
+          isCorrect =
+            Number(userAnswer) === Number(question.correctOptionIndex) ||
+            (typeof userAnswer === 'string' && Array.isArray(question.options) && question.options[question.correctOptionIndex] !== undefined && String(userAnswer).trim().toLowerCase() === String(question.options[question.correctOptionIndex]).trim().toLowerCase());
+        } else if (question.correctAnswer !== undefined) {
+          isCorrect =
+            userAnswer === question.correctAnswer ||
+            String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
+            (Array.isArray(question.options) && typeof userAnswer === 'number' && question.options[userAnswer] !== undefined && String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase());
+        }
 
-        const optionTextMatch =
-          Array.isArray(question.options) &&
-          typeof userAnswer === 'number' &&
-          question.options[userAnswer] !== undefined &&
-          String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase();
-
-        const stringOptionMatch =
-          Array.isArray(question.options) &&
-          typeof userAnswer === 'string' &&
-          question.correctOptionIndex !== undefined &&
-          question.options[question.correctOptionIndex] !== undefined &&
-          String(userAnswer).trim().toLowerCase() === String(question.options[question.correctOptionIndex]).trim().toLowerCase();
-
-        if (directMatch || optionTextMatch || stringOptionMatch) {
+        if (isCorrect) {
           correctAnswers++;
         }
       }
     });
 
-    const totalQuestions = currentSession.length;
+    const totalQuestions = populatedQuestions.length;
     const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
 
     const result: PracticeResult = {
-      sessionId: `session-${Date.now()}`,
+      sessionId: sessionId || `session-${Date.now()}`,
       mode: config.mode,
       totalQuestions,
       correctAnswers,
@@ -312,19 +370,8 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
           : timeRemaining,
       completedAt: new Date().toISOString(),
       userAnswers,
-      questions: currentSession,
+      questions: populatedQuestions,
     };
-
-    // Try to finish session on backend
-    const sessionId = sessionStorage.getItem("practice_session_id");
-    if (sessionId) {
-      try {
-        await practiceService.finishSession(sessionId);
-      } catch (error) {
-        console.warn("Failed to finish practice session on backend:", error);
-      }
-      sessionStorage.removeItem("practice_session_id");
-    }
 
     setLastResult(result);
     setIsTimerRunning(false);
@@ -361,10 +408,18 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
       const isBookmarked = prev.some((q) => q.id === questionId);
 
       if (isBookmarked) {
+        // Sync with backend (fire and forget)
+        practiceService.removeBookmark(questionId).catch(err => 
+          console.warn("Failed to sync bookmark removal with backend:", err)
+        );
         return prev.filter((q) => q.id !== questionId);
       } else {
         const questionToAdd = currentSession?.find((q) => q.id === questionId);
         if (questionToAdd) {
+          // Sync with backend (fire and forget)
+          practiceService.addBookmark(questionId).catch(err => 
+            console.warn("Failed to sync bookmark addition with backend:", err)
+          );
           return [...prev, { ...questionToAdd, isBookmarked: true }];
         }
         return prev;
