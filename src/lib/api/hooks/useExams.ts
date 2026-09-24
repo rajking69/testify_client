@@ -148,10 +148,10 @@ export function useCreateExam() {
 
 export function useUpdateExam() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) => 
+  return useMutation<any, Error, { id: string; payload: any }>({
+    mutationFn: ({ id, payload }) => 
       apiClient.patch<{ success: boolean; message: string; data: ExamItem }>(`/exams/${id}`, payload),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["exams", "all"] });
       queryClient.invalidateQueries({ queryKey: ["exams", "detail", id] });
       queryClient.invalidateQueries({ queryKey: ["exams", "public"] });
