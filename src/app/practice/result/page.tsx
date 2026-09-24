@@ -366,14 +366,19 @@ function PracticeResultContent() {
             <div className="space-y-4">
               {displayQuestions.map((question, index) => {
                 const userAnswer = activeResult.userAnswers[question.id];
-                const isCorrect =
-                  userAnswer !== undefined &&
-                  userAnswer !== null &&
-                  (userAnswer === question.correctAnswer ||
-                   String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
-                   (question.correctOptionIndex !== undefined && Number(userAnswer) === Number(question.correctOptionIndex)) ||
-                   (Array.isArray(question.options) && typeof userAnswer === 'number' && question.options[userAnswer] !== undefined && String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase()) ||
-                   (Array.isArray(question.options) && typeof userAnswer === 'string' && question.correctOptionIndex !== undefined && question.options[question.correctOptionIndex] !== undefined && String(userAnswer).trim().toLowerCase() === String(question.options[question.correctOptionIndex]).trim().toLowerCase()));
+                let isCorrect = false;
+                if (userAnswer !== undefined && userAnswer !== null) {
+                  if (question.correctOptionIndex !== undefined) {
+                    isCorrect =
+                      Number(userAnswer) === Number(question.correctOptionIndex) ||
+                      (typeof userAnswer === 'string' && Array.isArray(question.options) && question.options[question.correctOptionIndex] !== undefined && String(userAnswer).trim().toLowerCase() === String(question.options[question.correctOptionIndex]).trim().toLowerCase());
+                  } else if (question.correctAnswer !== undefined) {
+                    isCorrect =
+                      userAnswer === question.correctAnswer ||
+                      String(userAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase() ||
+                      (Array.isArray(question.options) && typeof userAnswer === 'number' && question.options[userAnswer] !== undefined && String(question.options[userAnswer]).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase());
+                  }
+                }
 
                 return (
                   <Card key={question.id || index} className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
@@ -432,11 +437,13 @@ function PracticeResultContent() {
                                 (typeof userAnswer === 'string' && String(userAnswer).trim().toLowerCase() === String(option).trim().toLowerCase());
 
                               const isCorrectOpt =
-                                question.correctAnswer === optIdx ||
-                                question.correctAnswer === option ||
-                                String(question.correctAnswer) === String(optIdx) ||
-                                String(question.correctAnswer).trim().toLowerCase() === String(option).trim().toLowerCase() ||
-                                (question.correctOptionIndex !== undefined && Number(question.correctOptionIndex) === optIdx);
+                                (question.correctOptionIndex !== undefined && Number(question.correctOptionIndex) === optIdx) ||
+                                (question.correctOptionIndex === undefined && question.correctAnswer !== undefined && (
+                                  question.correctAnswer === optIdx ||
+                                  question.correctAnswer === option ||
+                                  String(question.correctAnswer) === String(optIdx) ||
+                                  String(question.correctAnswer).trim().toLowerCase() === String(option).trim().toLowerCase()
+                                ));
 
                               return (
                                 <div

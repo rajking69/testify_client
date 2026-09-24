@@ -400,7 +400,7 @@ export default function TeacherExamsPage() {
                 }
 
                 return {
-                  id: item._id,
+                  id: String(item.id || item._id),
                   title: item.title,
                   subject: item.subject || item.category || "General",
                   description: item.description || "",

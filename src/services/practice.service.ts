@@ -12,7 +12,9 @@ export interface PracticeSessionParams {
   category?: string;
   subject?: string;
   topic?: string;
+  topics?: string[];
   difficulty?: "EASY" | "MEDIUM" | "HARD";
+  difficulties?: string[];
   count?: number;
 }
 
@@ -57,5 +59,32 @@ export const practiceService = {
       credentials: "include",
     });
     return handleResponse<{ success: boolean; count: number; total: number; page: number; totalPages: number; data: any[] }>(res);
+  },
+
+  async getBookmarks(): Promise<{ success: boolean; data: any[] }> {
+    const res = await fetch(`${API_BASE_URL}/practice/bookmarks`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return handleResponse<{ success: boolean; data: any[] }>(res);
+  },
+
+  async addBookmark(questionId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/practice/bookmarks/${questionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return handleResponse<{ success: boolean; message: string }>(res);
+  },
+
+  async removeBookmark(questionId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/practice/bookmarks/${questionId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return handleResponse<{ success: boolean; message: string }>(res);
   },
 };
