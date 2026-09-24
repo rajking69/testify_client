@@ -313,7 +313,7 @@ export default function StudentExamsMarketplacePage() {
             const apiExams: MarketplaceExam[] = res.data
               .filter((t: any) => t.isPublished !== false && t.status !== "Draft")
               .map((t: any) => ({
-                id: String(t._id),
+                id: String(t.id || t._id),
                 title: t.title,
                 subject: t.subject || t.category || "General",
                 description: t.description || "Instructor published examination.",
