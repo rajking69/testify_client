@@ -57,6 +57,7 @@ import { paymentService } from "@/services/payment.service";
 import { purchaseService, TeacherEarningsSummary } from "@/services/purchase.service";
 import { examService, ExamItem } from "@/services/exam.service";
 import { getMonitoringSocket, CandidateTelemetry } from "@/lib/socket-client";
+import { eventBus, AppEvents } from "@/lib/event-bus";
 
 // ==========================================
 // 1. STUDENTS / ADMISSION PANEL
@@ -83,6 +84,42 @@ export interface StudentSubmissionDetails {
     userAnswer?: string;
   }>;
   userAnswers?: Record<string, string>;
+}
+
+export async function lookupStudentResultFromBackend(student: { email?: string; name?: string; id?: string } | null): Promise<StudentSubmissionDetails | null> {
+  if (!student) return null;
+  try {
+    const targetEmail = (student.email || "").trim().toLowerCase();
+    const res = await examService.getTeacherSubmissions();
+    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      const found = res.data.find((s: any) => {
+        const sEmail = (s.studentEmail || "").trim().toLowerCase();
+        const sName = (s.studentName || "").trim().toLowerCase();
+        const sId = String(s.studentId || s.id || "").trim().toLowerCase();
+        return (
+          (targetEmail && sEmail && sEmail === targetEmail) ||
+          (student.name && sName && sName === (student.name || "").trim().toLowerCase()) ||
+          (student.id && sId && sId === (student.id || "").trim().toLowerCase())
+        );
+      });
+      if (found) {
+        return {
+          percentage: Number(found.percentage || 0),
+          correctAnswers: Number(found.correctAnswers || 0),
+          totalQuestions: Number(found.totalQuestions || found.totalMarks || 10),
+          isPassed: Boolean(found.isPassed),
+          title: found.examTitle || found.title || "Examination",
+          timeTakenSeconds: Number(found.timeTakenSeconds || 0),
+          completedAt: found.submittedAt,
+          questions: found.questions || [],
+          userAnswers: found.userAnswers || {},
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to fetch student result from backend:", err);
+  }
+  return null;
 }
 
 export function lookupStudentResult(student: { email?: string; name?: string; id?: string } | null): StudentSubmissionDetails | null {
@@ -556,9 +593,8 @@ export function AdmissionPanel({
     socket.on("monitoring:student_submitted", handleRemoteSubmitted);
     socket.on("monitoring:submissions_snapshot", handleSubmissionsSnapshot);
 
-    // Also listen for local exam submitted event if student submitted in same window/session
-    const handleExamSubmitted = (e: any) => {
-      const sub = e.detail;
+    // Also listen for local exam submitted event via event bus
+    const examSubmittedSubscription = eventBus.subscribe(AppEvents.EXAM_SUBMITTED, (sub: any) => {
       if (!sub) return;
       const subEmail = (sub.studentEmail || "").toLowerCase();
       const subName = (sub.studentName || "").toLowerCase();
@@ -587,15 +623,13 @@ export function AdmissionPanel({
           return s;
         })
       );
-    };
-
-    window.addEventListener("testify_exam_submitted", handleExamSubmitted);
+    });
 
     return () => {
       socket.off("monitoring:candidates_update", handleCandidatesUpdate);
       socket.off("monitoring:student_submitted", handleRemoteSubmitted);
       socket.off("monitoring:submissions_snapshot", handleSubmissionsSnapshot);
-      window.removeEventListener("testify_exam_submitted", handleExamSubmitted);
+      examSubmittedSubscription.unsubscribe();
     };
   }, []);
 

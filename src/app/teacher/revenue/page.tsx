@@ -39,6 +39,7 @@ import {
   ExamwiseRevenue,
   ExamPurchaseRecord,
 } from "@/services/purchase.service";
+import { eventBus, AppEvents, emitDashboardRefresh } from "@/lib/event-bus";
 
 export default function TeacherRevenuePage() {
   const { data: session, isPending } = authClient.useSession();
@@ -124,7 +125,7 @@ export default function TeacherRevenuePage() {
           } catch {}
         }
 
-        // 3. Calculate Teacher Earnings strictly isolated by Teacher Identity (15% Fee)
+        // 3. Calculate Teacher Earnings strictly isolated by Teacher Identity
         const summary = purchaseService.getTeacherEarnings(userEmail || userId, myExams);
         setEarningsData(summary);
       } catch (err) {
@@ -133,11 +134,21 @@ export default function TeacherRevenuePage() {
     };
 
     loadRevenueData();
-    window.addEventListener("storage", loadRevenueData);
-    window.addEventListener("testify_exam_submitted", loadRevenueData);
+    
+    // Use event bus for cross-tab and cross-component updates
+    const revenueUpdateSubscription = eventBus.subscribe(AppEvents.REVENUE_UPDATED, loadRevenueData);
+    const dashboardRefreshSubscription = eventBus.subscribe(AppEvents.TEACHER_DASHBOARD_REFRESH, loadRevenueData);
+    const examPurchasedSubscription = eventBus.subscribe(AppEvents.EXAM_PURCHASED, loadRevenueData);
+    
+    // Keep localStorage listener for backward compatibility
+    const storageHandler = () => loadRevenueData();
+    window.addEventListener("storage", storageHandler);
+
     return () => {
-      window.removeEventListener("storage", loadRevenueData);
-      window.removeEventListener("testify_exam_submitted", loadRevenueData);
+      revenueUpdateSubscription.unsubscribe();
+      dashboardRefreshSubscription.unsubscribe();
+      examPurchasedSubscription.unsubscribe();
+      window.removeEventListener("storage", storageHandler);
     };
   }, [user?.email, user?.id]);
 

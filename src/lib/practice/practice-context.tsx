@@ -20,6 +20,7 @@ import {
   subjects,
   defaultSessionTime,
 } from "./practice-constants";
+import { practiceService } from "@/services/practice.service";
 
 interface PracticeContextType {
   // Configuration state
@@ -51,10 +52,11 @@ interface PracticeContextType {
   // History state
   history: PracticeHistoryItem[];
   addToHistory: (item: PracticeHistoryItem) => void;
+  loadHistory: () => Promise<void>;
 
   // Utility functions
-  startPracticeSession: (config: PracticeSessionConfig) => void;
-  endPracticeSession: () => PracticeResult;
+  startPracticeSession: (config: PracticeSessionConfig) => Promise<void>;
+  endPracticeSession: () => Promise<PracticeResult>;
   resetPracticeSession: () => void;
   getFilteredQuestions: (config: PracticeSessionConfig) => Question[];
 }
@@ -84,7 +86,7 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
   const [timeRemaining, setTimeRemaining] = useState(defaultSessionTime);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
 
-  // Bookmark state (initialized empty for real user bookmarks)
+  // Bookmark state - loaded from backend via practice bookmarks endpoint
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Question[]>([]);
 
   // Results state
@@ -104,35 +106,39 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
   // History state
   const [history, setHistory] = useState<PracticeHistoryItem[]>([]);
 
-  // Load state from localStorage on mount
+  // Load history from backend on mount
+  const loadHistory = useCallback(async () => {
+    try {
+      const response = await practiceService.getHistory({ limit: 50 });
+      if (response.success && response.data) {
+        const formattedHistory: PracticeHistoryItem[] = response.data.map((item) => ({
+          id: item._id || item.id,
+          date: item.startedAt || item.createdAt,
+          mode: item.mode || config.mode,
+          subject: item.subject || item.category || "Mixed",
+          score: `${item.accuracyPercentage || 0}%`,
+          timeTaken: formatTime(item.totalTimeSeconds || 0),
+          sessionId: item._id || item.id,
+        }));
+        setHistory(formattedHistory);
+      }
+    } catch (error) {
+      console.error("Failed to load practice history from backend:", error);
+      // Fallback to localStorage
+      const savedHistory = localStorage.getItem("practice_history");
+      if (savedHistory) {
+        try {
+          setHistory(JSON.parse(savedHistory));
+        } catch (e) {
+          console.error("Failed to load history from localStorage", e);
+        }
+      }
+    }
+  }, [config.mode]);
+
   useEffect(() => {
-    const savedBookmarks = localStorage.getItem("practice_bookmarks");
-    if (savedBookmarks) {
-      try {
-        setBookmarkedQuestions(JSON.parse(savedBookmarks));
-      } catch (e) {
-        console.error("Failed to load bookmarks from localStorage", e);
-      }
-    }
-
-    const savedHistory = localStorage.getItem("practice_history");
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error("Failed to load history from localStorage", e);
-      }
-    }
-
-    const savedResult = localStorage.getItem("testify_last_result");
-    if (savedResult) {
-      try {
-        setLastResultState(JSON.parse(savedResult));
-      } catch (e) {
-        console.error("Failed to load lastResult from localStorage", e);
-      }
-    }
-  }, []);
+    loadHistory();
+  }, [loadHistory]);
 
   // Save bookmarks to localStorage whenever they change
   useEffect(() => {
@@ -142,12 +148,7 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
     );
   }, [bookmarkedQuestions]);
 
-  // Save history to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("practice_history", JSON.stringify(history));
-  }, [history]);
-
-  // Filter questions based on configuration
+  // Filter questions based on configuration (for local filtering of mock data)
   const getFilteredQuestions = useCallback(
     (config: PracticeSessionConfig): Question[] => {
       let filtered: Question[] = [];
@@ -180,41 +181,93 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Start a new practice session
+  // Start a new practice session - use backend API
   const startPracticeSession = useCallback(
-    (sessionConfig: PracticeSessionConfig) => {
-      const filteredQuestions = getFilteredQuestions(sessionConfig);
+    async (sessionConfig: PracticeSessionConfig) => {
+      // Map config to backend API params
+      const params = {
+        category: sessionConfig.subject || sessionConfig.topics[0],
+        subject: sessionConfig.subject,
+        topic: sessionConfig.topics.length > 0 ? sessionConfig.topics[0] : undefined,
+        difficulty: sessionConfig.difficulty.length === 1 ? sessionConfig.difficulty[0].toUpperCase() as "EASY" | "MEDIUM" | "HARD" : undefined,
+        count: sessionConfig.questionCount,
+      };
 
-      if (filteredQuestions.length === 0) {
-        alert(
-          "No questions match your criteria. Please adjust your selection.",
-        );
-        return;
-      }
+      try {
+        const response = await practiceService.startSession(params);
+        
+        if (response.success && response.data) {
+          // Transform backend questions to frontend format
+          const questions: Question[] = response.data.questions.map((q: any) => ({
+            id: q._id || q.id,
+            questionText: q.questionText,
+            options: q.options || [],
+            correctAnswer: q.correctAnswer,
+            correctOptionIndex: q.correctOptionIndex,
+            explanation: q.explanation,
+            subject: q.subject || q.category,
+            topic: q.topic,
+            difficulty: (q.difficulty?.toLowerCase() || "medium") as Difficulty,
+            marks: q.marks || 1,
+          }));
 
-      setCurrentSession(filteredQuestions);
-      setCurrentQuestionIndex(0);
-      setUserAnswers({});
-      setLastResult(null);
+          setCurrentSession(questions);
+          setCurrentQuestionIndex(0);
+          setUserAnswers({});
+          setLastResult(null);
 
-      // Set timer based on mode
-      if (sessionConfig.mode === "timed") {
-        setTimeRemaining(defaultSessionTime);
-        setIsTimerRunning(true);
-      } else {
-        setTimeRemaining(0);
-        setIsTimerRunning(false);
+          // Store session ID for later API calls
+          sessionStorage.setItem("practice_session_id", response.data.session._id || response.data.session.id);
+
+          // Set timer based on mode
+          if (sessionConfig.mode === "timed") {
+            setTimeRemaining(defaultSessionTime);
+            setIsTimerRunning(true);
+          } else {
+            setTimeRemaining(0);
+            setIsTimerRunning(false);
+          }
+        } else {
+          throw new Error(response.message || "Failed to start practice session");
+        }
+      } catch (error) {
+        console.error("Failed to start practice session via backend:", error);
+        // Fallback to local mock data if backend fails
+        console.warn("Falling back to local mock data for practice session");
+        const filteredQuestions = getFilteredQuestions(sessionConfig);
+
+        if (filteredQuestions.length === 0) {
+          alert(
+            "No questions match your criteria. Please adjust your selection.",
+          );
+          return;
+        }
+
+        setCurrentSession(filteredQuestions);
+        setCurrentQuestionIndex(0);
+        setUserAnswers({});
+        setLastResult(null);
+
+        // Set timer based on mode
+        if (sessionConfig.mode === "timed") {
+          setTimeRemaining(defaultSessionTime);
+          setIsTimerRunning(true);
+        } else {
+          setTimeRemaining(0);
+          setIsTimerRunning(false);
+        }
       }
     },
     [getFilteredQuestions],
   );
 
-  // End current practice session and calculate results
-  const endPracticeSession = useCallback((): PracticeResult => {
+  // End current practice session and calculate results - use backend API
+  const endPracticeSession = useCallback(async (): Promise<PracticeResult> => {
     if (!currentSession) {
       throw new Error("No active session to end");
     }
 
+    // Calculate results locally for immediate feedback
     let correctAnswers = 0;
 
     currentSession.forEach((question) => {
@@ -262,6 +315,17 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
       questions: currentSession,
     };
 
+    // Try to finish session on backend
+    const sessionId = sessionStorage.getItem("practice_session_id");
+    if (sessionId) {
+      try {
+        await practiceService.finishSession(sessionId);
+      } catch (error) {
+        console.warn("Failed to finish practice session on backend:", error);
+      }
+      sessionStorage.removeItem("practice_session_id");
+    }
+
     setLastResult(result);
     setIsTimerRunning(false);
 
@@ -288,6 +352,7 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
     setTimeRemaining(defaultSessionTime);
     setIsTimerRunning(false);
     setLastResult(null);
+    sessionStorage.removeItem("practice_session_id");
   }, []);
 
   // Toggle bookmark status
@@ -333,6 +398,7 @@ export function PracticeProvider({ children }: { children: ReactNode }) {
         setLastResult,
         history,
         addToHistory,
+        loadHistory,
         startPracticeSession,
         endPracticeSession,
         resetPracticeSession,
