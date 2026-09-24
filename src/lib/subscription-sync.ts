@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { paymentService } from "@/services/payment.service";
 import { subscriptionService } from "@/services/subscription.service";
 
@@ -141,11 +141,20 @@ export function useTeacherSubscription(userSession?: any): SubscriptionState & {
 
   const [state, setState] = useState<SubscriptionState>(() => getInitialSyncState(userSession));
 
+  // Throttle backend verification to avoid rate-limit storm when multiple
+  // components mount simultaneously (dashboard + hook)
+  const lastCheckRef = React.useRef<number>(0);
+
   const checkSubscription = useCallback(async () => {
     // 1. Calculate current local sync state synchronously
     const syncState = getInitialSyncState(userSession);
     let isSubActive = syncState.hasPremium;
     let expiryStr: string | null = syncState.expiryDateFormatted;
+
+    // Throttle: skip backend call if checked <30s ago and we already have local premium
+    const now = Date.now();
+    const shouldThrottle = now - lastCheckRef.current < 30_000;
+    lastCheckRef.current = now;
 
     // 2. Perform backend API verification in background safely
     try {
@@ -158,16 +167,24 @@ export function useTeacherSubscription(userSession?: any): SubscriptionState & {
           }
         }
       }
-    } catch {
-      try {
-        const subRes = await subscriptionService.getMyStatus();
-        if (subRes && subRes.data && subRes.data.hasActiveSubscription) {
-          isSubActive = true;
-          if (subRes.data.subscription?.currentPeriodEnd) {
-            expiryStr = subRes.data.subscription.currentPeriodEnd;
+    } catch (err: any) {
+      const isRateLimit = Boolean(
+        err?.isRateLimit || err?.status === 429 || /too many.*requests/i.test(err?.message || "")
+      );
+      if (isRateLimit) {
+        // Rate-limited: keep local state, don't fallback to another backend call that would worsen limit
+        console.warn("Subscription sync rate-limited — using local cache");
+      } else if (!shouldThrottle) {
+        try {
+          const subRes = await subscriptionService.getMyStatus();
+          if (subRes && subRes.data && subRes.data.hasActiveSubscription) {
+            isSubActive = true;
+            if (subRes.data.subscription?.currentPeriodEnd) {
+              expiryStr = subRes.data.subscription.currentPeriodEnd;
+            }
           }
-        }
-      } catch {}
+        } catch {}
+      }
     }
 
     let days = 365;

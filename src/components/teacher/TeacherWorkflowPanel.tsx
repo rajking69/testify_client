@@ -400,6 +400,8 @@ export function AdmissionPanel({
   isResultsView?: boolean;
   hideHeader?: boolean;
 } = {}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [students, setStudents] = useState<StudentRecord[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("testify_teacher_exam_students");
@@ -910,7 +912,7 @@ export function AdmissionPanel({
             </div>
             <div>
               <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Students</p>
-              <p className="text-xl sm:text-2xl font-black text-[#152234] dark:text-white font-display mt-0.5">{totalCount}</p>
+              <p suppressHydrationWarning className="text-xl sm:text-2xl font-black text-[#152234] dark:text-white font-display mt-0.5">{totalCount}</p>
             </div>
           </CardContent>
         </Card>

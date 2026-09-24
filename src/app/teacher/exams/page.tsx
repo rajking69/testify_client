@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -199,7 +199,7 @@ export const getExamScheduleDetails = (exam: {
         minute: "2-digit",
         hour12: true,
       });
-      startFormatted = dStr + " • " + tStr;
+      startFormatted = dStr + " â€¢ " + tStr;
     }
   }
 
@@ -216,7 +216,7 @@ export const getExamScheduleDetails = (exam: {
         minute: "2-digit",
         hour12: true,
       });
-      endFormatted = dStr + " • " + tStr;
+      endFormatted = dStr + " â€¢ " + tStr;
     }
   }
 
@@ -485,7 +485,7 @@ export default function TeacherExamsPage() {
 
   const handleOpenCreateModal = () => {
     if (!hasPremium) {
-      setSubscriptionMessage("⭐ Teacher Premium Membership ($20/year) is required to create and conduct examinations on Testify.");
+      setSubscriptionMessage("â­ Teacher Premium Membership ($20/year) is required to create and conduct examinations on Testify.");
       setIsSubscriptionOpen(true);
       return;
     }
@@ -534,7 +534,7 @@ export default function TeacherExamsPage() {
     if (!title.trim() || !subject.trim()) return;
 
     if (!hasPremium) {
-      setSubscriptionMessage("⭐ Teacher Premium Membership ($20/year) is required to create examinations.");
+      setSubscriptionMessage("â­ Teacher Premium Membership ($20/year) is required to create examinations.");
       setIsSubscriptionOpen(true);
       return;
     }
@@ -820,7 +820,7 @@ export default function TeacherExamsPage() {
             {hasPremium ? (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
                 <Sparkles className="h-3 w-3 text-emerald-600" />
-                ⭐ Premium Active • {daysRemaining} Days Left
+                â­ Premium Active â€¢ {daysRemaining} Days Left
               </span>
             ) : (
               <span className="inline-flex items-center text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
@@ -1035,7 +1035,7 @@ export default function TeacherExamsPage() {
 
                   {String(exam.accessType).toUpperCase() === "PAID" ? (
                     <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      Paid • ${exam.price || 50}
+                      Paid â€¢ ${exam.price || 50}
                     </span>
                   ) : (
                     <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -1274,8 +1274,8 @@ export default function TeacherExamsPage() {
                 </label>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
                   {requireCamera
-                    ? "📷 Video feed invigilation active"
-                    : "🚫 Telemetry monitoring active"}
+                    ? "ðŸ“· Video feed invigilation active"
+                    : "ðŸš« Telemetry monitoring active"}
                 </p>
               </div>
               <button
@@ -1302,7 +1302,7 @@ export default function TeacherExamsPage() {
                 Schedule Window
               </span>
               <span className="text-[10px] font-semibold text-[#0092E3] dark:text-cyan-400 bg-blue-100/60 dark:bg-cyan-900/40 px-2 py-0.5 rounded-md">
-                ⚡ Leave Blank = Start Anytime
+                âš¡ Leave Blank = Start Anytime
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1432,10 +1432,10 @@ export default function TeacherExamsPage() {
         isOpen={isSubscriptionOpen}
         onClose={() => setIsSubscriptionOpen(false)}
         onSuccess={() => {
-          showToast("⭐ Premium membership activated for 1 year!");
+          showToast("â­ Premium membership activated for 1 year!");
         }}
         initialMessage={subscriptionMessage}
       />
     </div>
   );
-}
+}

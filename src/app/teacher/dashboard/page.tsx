@@ -90,17 +90,33 @@ export default function TeacherDashboardPage() {
 
   const [recentExamsList, setRecentExamsList] = React.useState<any[]>([]);
 
+  // Prevent duplicate fetches across rapid re-renders / StrictMode
+  const hasFetchedRef = React.useRef(false);
+  const displayedNameRef = React.useRef(displayedName);
+  React.useEffect(() => { displayedNameRef.current = displayedName; }, [displayedName]);
+
   React.useEffect(() => {
     let isMounted = true;
     
     const fetchDashboardData = async () => {
       if (!session?.user) return;
+      // Only fetch once per session user to avoid rate-limit
+      if (hasFetchedRef.current) return;
+      hasFetchedRef.current = true;
       try {
-        const revRes = await paymentService.getTeacherRevenue();
-        if (revRes && revRes.data && isMounted) {
-          setTeacherEarnings(revRes.data);
-          setMyExamsCount(revRes.data.paidExamsCount || 0);
-          setRecentExamsList(revRes.data.examBreakdown || []);
+        try {
+          const revRes = await paymentService.getTeacherRevenue();
+          if (revRes && revRes.data && isMounted) {
+            setTeacherEarnings(revRes.data);
+            setMyExamsCount(revRes.data.paidExamsCount || 0);
+            setRecentExamsList(revRes.data.examBreakdown || []);
+          }
+        } catch (err: any) {
+          if (paymentService.isRateLimitError?.(err)) {
+            console.warn("Teacher revenue rate-limited — using cached/empty data");
+          } else {
+            console.warn("Failed to fetch teacher revenue:", err?.message);
+          }
         }
 
         let activeSubInfo: any = null;
@@ -110,7 +126,11 @@ export default function TeacherDashboardPage() {
           if (backendStatus?.success && backendStatus.data && (backendStatus.data.isPremium || backendStatus.data.premiumStatus === "active")) {
             activeSubInfo = backendStatus.data;
           }
-        } catch {}
+        } catch (err: any) {
+          if (paymentService.isRateLimitError?.(err)) {
+            console.warn("Premium status rate-limited — falling back to subscription/localStorage");
+          }
+        }
 
         if (!activeSubInfo) {
           try {
@@ -166,7 +186,7 @@ export default function TeacherDashboardPage() {
           setTeacherInvoices([
             {
               id: `INV-SUB-${session.user.id ? String(session.user.id).slice(-6).toUpperCase() : "TEACHER-88"}`,
-              teacherName: displayedName,
+              teacherName: displayedNameRef.current,
               teacherEmail: session.user.email,
               planName: resolvedPlanName,
               amount: resolvedAmount,
@@ -183,8 +203,12 @@ export default function TeacherDashboardPage() {
         } else if (isMounted) {
           setTeacherInvoices([]);
         }
-      } catch (err) {
-        console.error("Failed to fetch teacher dashboard data", err);
+      } catch (err: any) {
+        if (paymentService.isRateLimitError?.(err)) {
+          console.warn("Teacher dashboard rate-limited — keeping cached data");
+        } else {
+          console.error("Failed to fetch teacher dashboard data", err);
+        }
       }
     };
 
@@ -193,7 +217,7 @@ export default function TeacherDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [session?.user, displayedName]);
+  }, [session?.user?.id, session?.user?.email]);
 
   // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
