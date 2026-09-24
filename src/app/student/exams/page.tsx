@@ -589,16 +589,16 @@ export default function StudentExamsMarketplacePage() {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {paginatedExams.map((exam) => {
+          {paginatedExams.map((exam, index) => {
             const isPurchased = purchasedExamIds.includes(exam.id);
             const expired = isExamExpired(exam);
-            const isPaid = exam.accessType === "PAID";
+            const isPaid = String(exam.accessType).toUpperCase() === "PAID";
             const targetToken = exam.accessToken || exam.joinCode || exam.id;
             const scheduleInfo = getExamScheduleDetails(exam);
 
             return (
               <Card
-                key={exam.id}
+                key={(exam as any)._id || exam.id || index}
                 hoverEffect
                 className="flex flex-col justify-between bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm"
               >

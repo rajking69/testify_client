@@ -178,7 +178,7 @@ export default function PublicExamsSection() {
             totalMarks: e.totalMarks || 50,
             passMark: e.passMarks || e.passMark || Math.round(((e.totalMarks || 50) * 0.4)),
             questionsCount: e.questions?.length || 0,
-            accessType: (e.accessType === "PAID" || e.accessType === "paid" || Number(e.price) > 0) ? "PAID" : "FREE",
+            accessType: (String(e.accessType || "").toUpperCase() === "PAID" || Number(e.price) > 0) ? "PAID" : "FREE",
             price: Number(e.price) > 0 ? Number(e.price) : 0,
             joinCode: e.joinCode || String(e.id || e._id),
             accessToken: e.accessToken || String(e.id || e._id),
@@ -579,7 +579,7 @@ export default function PublicExamsSection() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {paginatedExams.map((exam) => {
-              const isPaid = exam.accessType === "PAID";
+              const isPaid = String(exam.accessType).toUpperCase() === "PAID";
               const priceDisplay = exam.price > 0 ? exam.price : 5;
               const expired = isExamExpired(exam);
               const scheduleInfo = getExamScheduleDetails(exam);
