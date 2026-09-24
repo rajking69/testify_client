@@ -1,5 +1,5 @@
-import { AdmissionPanel } from "@/components/teacher/TeacherWorkflowPanel";
+import { redirect } from "next/navigation";
 
 export default function TeacherStudentsPage() {
-  return <AdmissionPanel />;
+  redirect("/teacher/monitoring");
 }
