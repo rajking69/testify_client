@@ -33,7 +33,9 @@ export function GekkoChatWidget() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const user = session?.user;
   const userRole = (user as { role?: string })?.role || "student";
@@ -61,7 +63,11 @@ export function GekkoChatWidget() {
     if (isOpen) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen, isLoading]);
+  }, [messages, isOpen, isLoading, streamingId]);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   // Initial welcome message
   useEffect(() => {
@@ -101,8 +107,23 @@ export function GekkoChatWidget() {
     if (!customText) setInputMessage("");
     setIsLoading(true);
 
+    // Deduplication: abort any previous in-flight request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    // Create streaming placeholder for progressive rendering
+    const gekkoId = `gekko-${Date.now()}`;
+    const placeholder: ChatMessage = {
+      id: gekkoId,
+      sender: "gekko",
+      text: "",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setMessages((prev) => [...prev, placeholder]);
+    setStreamingId(gekkoId);
+
     try {
-      // Build conversation history for Gekko memory
       const history = messages.slice(-10).map((m) => ({
         sender: m.sender,
         text: m.text,
@@ -114,45 +135,133 @@ export function GekkoChatWidget() {
         ? "admin-dashboard"
         : "student-dashboard";
 
-      const res = await apiClient.post("/ai/chat", {
-        message: textToSend,
-        context: {
-          page: pageContext,
-          isLiveExam,
-        },
-        history,
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await fetch(`${API_BASE}/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        signal: controller.signal,
+        body: JSON.stringify({
+          message: textToSend,
+          context: { page: pageContext, isLiveExam },
+          history,
+          stream: true,
+        }),
       });
 
-      if (res && res.success && res.data?.message) {
-        const gekkoMsg: ChatMessage = {
-          id: `gekko-${Date.now()}`,
-          sender: "gekko",
-          text: res.data.message,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        };
-        setMessages((prev) => [...prev, gekkoMsg]);
-      } else {
-        throw res;
+      // Handle non-streaming fallback (server may still return JSON if stream not supported)
+      const contentType = res.headers.get("content-type") || "";
+      if (!res.ok) {
+        let errData: any = {};
+        try { errData = await res.json(); } catch {}
+        throw { status: res.status, ...errData, message: errData.message || `Request failed ${res.status}` };
+      }
+
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        const finalText = data?.data?.message || "";
+        setMessages((prev) => prev.map((m) => m.id === gekkoId ? { ...m, text: finalText } : m));
+        return;
+      }
+
+      // SSE streaming
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No stream body");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+        for (const block of lines) {
+          const line = block.trim();
+          if (!line.startsWith("data:")) continue;
+          const jsonStr = line.slice(5).trim();
+          try {
+            const evt = JSON.parse(jsonStr);
+            if (evt.chunk) {
+              accumulated += evt.chunk;
+              setMessages((prev) => prev.map((m) => m.id === gekkoId ? { ...m, text: accumulated } : m));
+            } else if (evt.error) {
+              throw evt.error;
+            } else if (evt.done) {
+              // stream complete
+            }
+          } catch (e: any) {
+            if (e?.chunk) continue;
+            // if parse error for done event, ignore
+            if (jsonStr.includes('"done"')) continue;
+          }
+        }
+      }
+      // If server sent completion with empty remaining buffer, handle last event
+      if (buffer.trim().startsWith("data:")) {
+        try {
+          const evt = JSON.parse(buffer.trim().slice(5).trim());
+          if (evt.chunk) {
+            accumulated += evt.chunk;
+            setMessages((prev) => prev.map((m) => m.id === gekkoId ? { ...m, text: accumulated } : m));
+          }
+        } catch {}
+      }
+      if (!accumulated) {
+        // No chunk from SSE — backend likely sent friendly message as final chunk (now fixed server-side).
+        // If still empty, let outer catch trigger non-stream fallback without noisy stack.
+        throw { code: "EMPTY_STREAM", message: "Empty stream response" };
       }
     } catch (err: any) {
-      console.error("[Gekko AI UI Error]:", err);
+      if (err?.name === "AbortError") return;
+      if (err?.code !== "EMPTY_STREAM") console.error("[Gekko AI UI Error]:", err);
       const isExamBlocked =
         err?.status === 403 ||
         err?.code === "ACTIVE_EXAM_RESTRICTION" ||
         err?.response?.data?.code === "ACTIVE_EXAM_RESTRICTION" ||
-        err?.message?.includes("prohibited during an active examination");
+        err?.message?.includes("prohibited during an active examination") ||
+        err?.message?.includes("unavailable while an exam");
 
-      const errorMsg: ChatMessage = {
-        id: `err-${Date.now()}`,
-        sender: "gekko",
-        text: isExamBlocked
+      // If we already streamed partial content, keep it and append notice instead of replacing
+      const hasPartial = (() => {
+        let found = "";
+        setMessages((prev) => { const m = prev.find((x) => x.id === gekkoId); if (m) found = m.text; return prev; });
+        return found.length > 40;
+      })();
+
+      // Check if placeholder already has meaningful content -> graceful interruption
+      // Don't append duplicate full answer; just keep partial and show retry hint
+      if (hasPartial) {
+        setMessages((prev) => prev.map((m) => m.id === gekkoId ? { ...m, text: m.text + "\n\n*Response was interrupted. Please try again if needed.*" } : m));
+      } else {
+        // No meaningful content streamed -> try non-streaming fallback once
+        try {
+          if (!isExamBlocked) {
+            const history2 = messages.slice(-10).map((m) => ({ sender: m.sender, text: m.text }));
+            const pageContext2 = pathname?.includes("teacher") ? "teacher-dashboard" : pathname?.includes("admin") ? "admin-dashboard" : "student-dashboard";
+            const res2 = await apiClient.post("/ai/chat", {
+              message: textToSend,
+              context: { page: pageContext2, isLiveExam },
+              history: history2,
+            });
+            if (res2 && res2.success && res2.data?.message) {
+              setMessages((prev) => prev.map((m) => m.id === gekkoId ? { ...m, text: res2.data.message } : m));
+              return;
+            }
+          }
+        } catch {}
+        const errorText = isExamBlocked
           ? "🚫 Gekko AI is strictly prohibited during an active examination."
-          : "Sorry, Gekko is temporarily unavailable. Please try again in a moment.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+          : err?.code === "AI_RATE_LIMIT" || err?.message?.includes("Too many")
+          ? "You're sending messages too quickly. Please wait a moment."
+          : "Sorry, Gekko is temporarily unavailable. Please try again in a moment.";
+        setMessages((prev) => prev.map((m) => m.id === gekkoId ? { ...m, text: errorText } : m));
+      }
     } finally {
       setIsLoading(false);
+      setStreamingId(null);
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -347,8 +456,8 @@ export function GekkoChatWidget() {
                   );
                 })}
 
-                {/* Thinking Indicator */}
-                {isLoading && (
+                {/* Thinking Indicator - only before first chunk arrives */}
+                {isLoading && streamingId && messages.find((m) => m.id === streamingId)?.text === "" && (
                   <div className="flex items-center gap-2.5 text-slate-500 dark:text-slate-400">
                     <div className="h-7 w-7 rounded-xl bg-gradient-to-tr from-amber-400 to-cyan-400 flex items-center justify-center text-[#0B1528] shrink-0 font-extrabold shadow-2xs">
                       <Loader2 className="h-4 w-4 animate-spin text-[#0B1528]" />
